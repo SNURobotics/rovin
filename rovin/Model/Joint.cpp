@@ -5,10 +5,6 @@ namespace rovin {
 		Joint::Joint(const std::string & name, unsigned int dof)
 			:_name((checkName(name) ? (name) : (assert(0 && "Invalid name."), "")))
 			,_dof((dof>=0)?(dof): (assert(0 && "DOF of joint cannot be negative"), 0))
-			,_mountLinkPtr(linkPtr())
-			,_actionLinkPtr(linkPtr())
-			,_mountLinkFrame(SE3())
-			,_actionLinkFrame(SE3())
 		{
 			if (dof > 0)
 			{
@@ -39,11 +35,6 @@ namespace rovin {
 			_name = std::string("_") + otherJoint.getName();
 			_dof = otherJoint.getDOF();
 
-			_mountLinkPtr = linkPtr();
-			_mountLinkFrame = otherJoint.getMountLinkToJointFrame();
-			_actionLinkPtr = linkPtr();
-			_actionLinkFrame = otherJoint.getActionLinkToJointFrame();
-
 			_LimitPosLower = otherJoint.getLimitPosLower();
 			_LimitPosUpper = otherJoint.getLimitPosUpper();
 			_LimitVelLower = otherJoint.getLimitVelLower();
@@ -58,7 +49,7 @@ namespace rovin {
 			return *this;
 		}
 
-		const Joint::jointPtr_shared& Joint::copy()
+		const Joint::jointPtr_shared Joint::copy()
 		{
 			return std::shared_ptr<Joint>(new Joint(*this));
 		}
@@ -124,32 +115,17 @@ namespace rovin {
 			return true;
 		}
 
-		bool Joint::addMountLink(const linkPtr & mountLinkPtr, const SE3 & frameLinkToJoint)
+
+
+		bool Joint::setName(const std::string & otherName)
 		{
-			_mountLinkPtr = mountLinkPtr;
-			_mountLinkFrame = frameLinkToJoint;
-			return true;
-		}
-
-		bool Joint::addActionLink(const linkPtr & actionLinkPtr, const SE3 & frameLinkToJoint)
-		{
-			_actionLinkPtr = actionLinkPtr;
-			_actionLinkFrame = frameLinkToJoint;
-			return true;
-		}
-
-
-
-		bool Joint::removeMountLink()
-		{
-			_mountLinkPtr = linkPtr();
-			return true;
-		}
-
-		bool Joint::removeActionLink()
-		{
-			_actionLinkPtr = linkPtr();
-			return true;
+			if (checkName(otherName) == true)
+			{
+				_name = otherName;
+				return true;
+			}
+			else
+				return false;
 		}
 
 	}
