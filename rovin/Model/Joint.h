@@ -26,7 +26,7 @@ namespace rovin
 		*	\class Joint
 		*	\brief Joint class specify kinematic information about general mechanical joints.
 		*/
-
+		class Link;
 		class Joint
 		{
 			friend class Assembly;
@@ -57,10 +57,7 @@ namespace rovin
 
 			const std::string&	getName() const		{ return _name; }
 			unsigned int		getDOF() const		{ return _dof; }
-			const linkPtr&	getMountLinkPtr() const{ return _mountLinkPtr; }
-			const linkPtr&	getActionLinkPtr() const { return _actionLinkPtr; }
-			const SE3&		getMountLinkToJointFrame() const	{ return _mountLinkFrame; }
-			const SE3&		getActionLinkToJointFrame()	const { return _actionLinkFrame; }
+
 			const vec&	getLimitPosLower() const	{ return _LimitPosLower; }
 			const vec&	getLimitPosUpper() const	{ return _LimitPosUpper; }
 			const vec&	getLimitVelLower() const	{ return _LimitVelLower; }
@@ -72,32 +69,18 @@ namespace rovin
 			const vec&	getConstFriction() const	{ return _ConstantFriction; }
 
 			
-
 			///	Return static jacobian matrix (6 by DOF). Derived class should implement this.
 			//virtual const jacobian& getJacobianStatic(const vec& state) const = 0;
 			//virtual const jacobian& getJacobianTimeDerivStatic(const vec& state) const = 0;
 
 
 		protected:
-			//bool setName(const std::string& otherName);
-			bool addMountLink(const linkPtr& mountLinkPtr, const SE3& frameLinkToJoint = SE3());
-			bool addActionLink(const linkPtr& actionLinkPtr, const SE3& frameLinkToJoint = SE3());
-			bool removeMountLink();
-			bool removeActionLink();
+			bool setName(const std::string& otherName);
 
 			///	Unique string representation of joint.
 			std::string		_name;
 			///	Degree of freedom of joint. It can not be changed after construction.
 			unsigned int	_dof;
-
-			///	Pointer to mount Link
-			linkPtr			_mountLinkPtr;
-			///	Frame of this w.r.t. mount link frame.
-			Math::SE3		_mountLinkFrame;
-			///	Pointer to child link.
-			linkPtr			_actionLinkPtr;
-			///	Frame of this w.r.t. child link frame
-			Math::SE3		_actionLinkFrame;
 			
 			vec				_LimitPosLower;
 			vec				_LimitPosUpper;
