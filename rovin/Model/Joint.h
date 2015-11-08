@@ -55,10 +55,10 @@ namespace rovin
 
 			const std::string&	getName() const		{ return _name; }
 			unsigned int		getDOF() const		{ return _dof; }
-			const linkPtr&	getParentLinkPtr() const{ return _parentLinkPtr; }
-			const linkPtr&	getChildLinkPtr() const { return _childLinkPtr; }
-			const SE3&		getParentLinkToJointFrame() const	{ return _parentLinkFrame; }
-			const SE3&		getChildLinkToJointFrame()	const { return _childLinkFrame; }
+			const linkPtr&	getMountLinkPtr() const{ return _mountLinkPtr; }
+			const linkPtr&	getActionLinkPtr() const { return _actionLinkPtr; }
+			const SE3&		getMountLinkToJointFrame() const	{ return _mountLinkFrame; }
+			const SE3&		getActionLinkToJointFrame()	const { return _actionLinkFrame; }
 			const vec&	getLimitPosLower() const	{ return _LimitPosLower; }
 			const vec&	getLimitPosUpper() const	{ return _LimitPosUpper; }
 			const vec&	getLimitVelLower() const	{ return _LimitVelLower; }
@@ -78,24 +78,24 @@ namespace rovin
 
 		protected:
 			//bool setName(const std::string& otherName);
-			bool addParentLink(const linkPtr& parentLinkPtr, const SE3& frameLinkToJoint = SE3());
-			bool addChildLink(const linkPtr& childLinkPtr, const SE3& frameLinkToJoint = SE3());
-			bool removeParentLink();
-			bool removeChildLink();
+			bool addMountLink(const linkPtr& mountLinkPtr, const SE3& frameLinkToJoint = SE3());
+			bool addActionLink(const linkPtr& actionLinkPtr, const SE3& frameLinkToJoint = SE3());
+			bool removeMountLink();
+			bool removeActionLink();
 
 			///	Unique string representation of joint.
 			std::string		_name;
 			///	Degree of freedom of joint. It can not be changed after construction.
 			unsigned int	_dof;
 
-			///	Pointer to parent Link
-			linkPtr			_parentLinkPtr;
-			///	Frame of this w.r.t. parent link frame.
-			Math::SE3		_parentLinkFrame;
+			///	Pointer to mount Link
+			linkPtr			_mountLinkPtr;
+			///	Frame of this w.r.t. mount link frame.
+			Math::SE3		_mountLinkFrame;
 			///	Pointer to child link.
-			linkPtr			_childLinkPtr;
+			linkPtr			_actionLinkPtr;
 			///	Frame of this w.r.t. child link frame
-			Math::SE3		_childLinkFrame;
+			Math::SE3		_actionLinkFrame;
 			
 			vec				_LimitPosLower;
 			vec				_LimitPosUpper;
