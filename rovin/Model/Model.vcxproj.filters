@@ -18,13 +18,13 @@
     <ClCompile Include="GeometryInfo.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="Joint.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
     <ClCompile Include="Link.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="Assembly.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="Joint.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>

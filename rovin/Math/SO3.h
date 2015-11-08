@@ -41,7 +41,7 @@ namespace rovin
 
 			SO3& operator = (const SO3&);
 			SO3& operator = (const Eigen::Matrix3d&);
-			SO3 operator * (const SO3&);
+			SO3 operator * (const SO3&) const;
 			SO3& operator *= (const SO3&);
 			/// Matrix3d로 변환해줍니다.
 			const Eigen::Matrix3d& matrix() const;

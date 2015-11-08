@@ -27,7 +27,7 @@ namespace rovin
 			return *this;
 		}
 
-		SO3 SO3::operator * (const SO3& operand)
+		SO3 SO3::operator * (const SO3& operand) const
 		{
 			SO3 result;
 			result._e = _e * operand._e;

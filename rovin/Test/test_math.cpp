@@ -4,6 +4,7 @@
 
 #include <rovin/Math/LieGroup.h>
 #include <rovin/Math/Constraint.h>
+#include <rovin/Model/Assembly.h>
 
 using namespace std;
 using namespace Eigen;

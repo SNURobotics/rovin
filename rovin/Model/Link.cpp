@@ -19,6 +19,8 @@ namespace rovin
 	{
 		void Link::addMarker(const string& marker_name, const Math::SE3& T, const bool overwrite)
 		{
+			assert(checkName(marker_name) && marker_name!=_name && "마커의 이름으로 사용할 수 없는 이름이 들어왔습니다.");
+
 			if (overwrite)
 			{
 				_marker[marker_name] = T;
@@ -37,38 +39,22 @@ namespace rovin
 		void Link::changeMarker(const string& marker_name, const Math::SE3& T)
 		{
 			map< string, Math::SE3 >::iterator iter = _marker.find(marker_name);
-			assert(iter != _marker.end());
+			assert(iter != _marker.end() && "해당되는 이름을 갖는 marker는 존재 하지 않습니다.");
 			iter->second = T;
 		}
 
-		const Math::SE3& Link::findMarker(const string& marker_name) const
+		const Math::SE3& Link::getMarker(const string& marker_name) const
 		{
 			map< string, Math::SE3 >::const_iterator iter = _marker.find(marker_name);
-			assert(iter != _marker.end());
+			assert(iter != _marker.end() && "해당되는 이름을 갖는 marker는 존재 하지 않습니다.");
 			return iter->second;
 		}
 
-		bool Link::checkMarker(const string& marker_name) const
+		bool Link::isMarker(const string& marker_name) const
 		{
 			int count = _marker.count(marker_name);
 			if (count == 1) return true;
 			return false;
-		}
-
-		void Link::addJoint(const string& joint_name, const weak_ptr<Joint>& joint_pointer, const Math::SE3& T)
-		{
-			_joint.push_front(make_tuple(joint_name, joint_pointer, T));
-		}
-
-		void Link::deleteJoint(const std::string& joint_name)
-		{
-			for (list< tuple< string, weak_ptr<Joint>, Math::SE3 > >::const_iterator iter = _joint.begin(); iter != _joint.end(); iter++)
-			{
-				if (get<0>(*iter) == joint_name)
-				{
-					_joint.erase(iter);
-				}
-			}
 		}
 	}
 }

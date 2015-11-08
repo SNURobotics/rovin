@@ -42,11 +42,11 @@ namespace rovin
 			~Inertia() {}
 
 			Inertia& operator = (const Inertia&);
-			Inertia operator + (const Inertia&);
+			Inertia operator + (const Inertia&) const;
 			Inertia& operator += (const Inertia&);
-			Inertia operator * (const double);
+			Inertia operator * (const double) const;
 			Inertia& operator *= (const double);
-			Inertia operator / (const double);
+			Inertia operator / (const double) const;
 			Inertia& operator /= (const double);
 
 			/// 기준 frame을 T만큼 변환 시켜줍니다.
