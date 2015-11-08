@@ -24,29 +24,30 @@ namespace rovin
 			/// 생성자
 			Constraint() : _NUM_VARIABLES(0), _NUM_CONSTRAINTS(0) {}
 			/// 변수의 갯수와 Constraint의 갯수를 정해줍니다.
-			Constraint(const int& n_variables ///< 변수의 갯수
-				, const int& n_constraints ///< 조건의 갯수 (즉, func의 행의 갯수)
+			Constraint(const unsigned int& n_variables ///< 변수의 갯수
+				, const unsigned int& n_constraints ///< 조건의 갯수 (즉, func의 행의 갯수)
 				) : _NUM_VARIABLES(n_variables), _NUM_CONSTRAINTS(n_constraints) {}
 
 			/// 변수의 갯수를 설정합니다.
-			void setNumVariables(int& n_variables ///< 변수의 갯수
+			void setNumVariables(const unsigned int& n_variables ///< 변수의 갯수
 				)
 			{
 				_NUM_VARIABLES = n_variables;
 			}
-			void setNumConstraints(int& n_constraints ///< 조건의 갯수
+			/// 조건의 갯수를 설정합니다.
+			void setNumConstraints(const unsigned int& n_constraints ///< 조건의 갯수
 				)
 			{
 				_NUM_CONSTRAINTS = n_constraints;
 			}
-			
+
 			/// 변수의 갯수를 가지고 옵니다.
-			const int& getNumVariabales() const
+			const unsigned int& getNumVariabales() const
 			{
 				return _NUM_VARIABLES;
 			}
 			/// 조건의 갯수를 가지고 옵니다.
-			const int& getNumConstraints() const
+			const unsigned int& getNumConstraints() const
 			{
 				return _NUM_CONSTRAINTS;
 			}
@@ -62,8 +63,8 @@ namespace rovin
 
 			const double _DERIVATIVE_STEP_SIZE = 1e-5; ///< 수치미분을 위한 step 크기입니다.
 
-			int _NUM_VARIABLES; ///< 변수의 갯수를 저장하고 있는 변수
-			int _NUM_CONSTRAINTS; ///< 조건의 갯수를 저장하고 있는 변수
+			unsigned int _NUM_VARIABLES; ///< 변수의 갯수를 저장하고 있는 변수
+			unsigned int _NUM_CONSTRAINTS; ///< 조건의 갯수를 저장하고 있는 변수
 		};
 	}
 }

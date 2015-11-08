@@ -142,13 +142,13 @@ copy /Y $(ProjectDir)*.h C:\SNURobotics\include\$(SolutionName)\$(ProjectName)\<
     <ClCompile Include="GeometryInfo.cpp" />
     <ClCompile Include="Joint.cpp" />
     <ClCompile Include="Link.cpp" />
-    <ClCompile Include="Model.cpp" />
+    <ClCompile Include="Assembly.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="GeometryInfo.h" />
     <ClInclude Include="Joint.h" />
     <ClInclude Include="Link.h" />
-    <ClInclude Include="Model.h" />
+    <ClInclude Include="Assembly.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

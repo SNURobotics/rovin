@@ -32,7 +32,7 @@ namespace rovin
 		*/
 		class Link
 		{
-			friend class Joint;
+			friend class Assembly;
 
 		public:
 			/// 기본 생성자
@@ -147,13 +147,20 @@ namespace rovin
 				return _joint;
 			}
 
+			/// 깊은 복사 - joint와 관련된 정보는 복사하지 않는다.
+			std::shared_ptr<Link> copy()
+			{
+				Link *clone = new Link(_name, _inertia, (*_visual).copy(), (*_collision).copy(), _material);
+				return std::shared_ptr<Link>(clone);
+			}
+
 		private:
-			/// Joint class에서만 접근 가능합니다. Joint를 이 link에 연결할 때 사용합니다.
-			void addJoint( const std::string& joint_name, ///< Joint의 이름
+			/// Assembly class에서만 접근 가능합니다. Joint를 이 link에 연결할 때 사용합니다.
+			void addJoint(const std::string& joint_name, ///< Joint의 이름
 				const std::weak_ptr<Joint>& joint_pointer, ///< 연결하고자 하는 joint의 포인터
 				const Math::SE3& T ///< 링크 기준 frame에서 joint의 위치 SE3
 				);
-			/// Joint class에서만 접근 가능합니다. Joint를 이 link에서 제거할 때 사용합니다.
+			/// Assembly class에서만 접근 가능합니다. Joint를 이 link에서 제거할 때 사용합니다.
 			void deleteJoint(const std::string& joint_name ///< 연결을 끊고 싶은 joint의 포인터
 				);
 
@@ -167,6 +174,9 @@ namespace rovin
 
 			std::map< std::string, Math::SE3 > _marker; ///< Link에 붙어있는 marker의 이름과 위치
 			std::list< std::tuple< std::string, std::weak_ptr<Joint>, Math::SE3 > > _joint; ///< Link의 연결되어 있는 joint들의 리스트
+
+		public:
+			EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 		};
 
 		static const int _NUM_OF_BANNED_CHARACTERS = 9;
@@ -181,7 +191,7 @@ namespace rovin
 					if (*pos == _BANNED_CHRACTERS[i]) return false;
 				}
 			}
-			return false;
+			return true;
 		}
 	}
 }
