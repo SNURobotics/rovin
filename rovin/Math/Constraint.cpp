@@ -24,7 +24,7 @@ namespace rovin
 			VectorXd dq(_NUM_VARIABLES);
 			J.setZero();
 			dq.setZero();
-			for (int i = 0; i < _NUM_VARIABLES; i++)
+			for (unsigned int i = 0; i < _NUM_VARIABLES; i++)
 			{
 				dq(i) = _DERIVATIVE_STEP_SIZE;
 

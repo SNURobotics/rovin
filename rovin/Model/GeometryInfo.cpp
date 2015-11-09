@@ -41,6 +41,11 @@ namespace rovin
 			return Vector3d(_width, _depth, _height);
 		}
 
+		shared_ptr<GeometryInfo> Box::copy() const
+		{
+			return shared_ptr<GeometryInfo>(new Box(*this));
+		}
+
 		void Sphere::setRadius(const double& radius)
 		{
 			_radius = radius;
@@ -49,6 +54,11 @@ namespace rovin
 		const double& Sphere::getRadius() const
 		{
 			return _radius;
+		}
+
+		shared_ptr<GeometryInfo> Sphere::copy() const
+		{
+			return shared_ptr<GeometryInfo>(new Sphere(*this));
 		}
 
 		void Capsule::setDimension(const double& radius, const double& height)
@@ -68,6 +78,11 @@ namespace rovin
 			return Vector2d(_radius, _height);
 		}
 
+		shared_ptr<GeometryInfo> Capsule::copy() const
+		{
+			return shared_ptr<GeometryInfo>(new Capsule(*this));
+		}
+
 		void Cylinder::setDimension(const double& radius, const double& height)
 		{
 			_radius = radius;
@@ -85,6 +100,11 @@ namespace rovin
 			return Vector2d(_radius, _height);
 		}
 
+		shared_ptr<GeometryInfo> Cylinder::copy() const
+		{
+			return shared_ptr<GeometryInfo>(new Cylinder(*this));
+		}
+
 		bool Mesh::isValid() const
 		{
 			if (_access(_url.c_str(), 0) == 0)
@@ -94,35 +114,27 @@ namespace rovin
 			return false;
 		}
 
+		shared_ptr<GeometryInfo> Mesh::copy() const
+		{
+			return shared_ptr<GeometryInfo>(new Mesh(*this));
+		}
+
 		void UserModel::addList(const std::shared_ptr<GeometryInfo>& shape, const Math::SE3& T)
 		{
 			_GeometryList.push_front(std::pair< std::shared_ptr<GeometryInfo>, Math::SE3 >(shape, T));
 		}
 
-		shared_ptr<GeometryInfo> copyGeometry(const shared_ptr<GeometryInfo>& geometry)
+		shared_ptr<GeometryInfo> UserModel::copy() const
 		{
-			switch (geometry->getType())
+			UserModel *clone = new UserModel();
+			clone->setType(this->getType());
+			clone->setColor(this->getColor());
+			clone->setFrame(this->getFrame());
+			for (list< pair <shared_ptr<GeometryInfo>, Math::SE3> >::const_iterator iterPos = _GeometryList.begin(); iterPos != _GeometryList.end(); iterPos++)
 			{
-			case GeometryInfo::_BOX:
-				return shared_ptr<GeometryInfo>(new Box(*static_pointer_cast<Box>(geometry)));
-			case GeometryInfo::_SPHERE:
-				return shared_ptr<GeometryInfo>(new Sphere(*static_pointer_cast<Sphere>(geometry)));
-			case GeometryInfo::_CAPSULE:
-				return shared_ptr<GeometryInfo>(new Capsule(*static_pointer_cast<Capsule>(geometry)));
-			case GeometryInfo::_CYLINDER:
-				return shared_ptr<GeometryInfo>(new Cylinder(*static_pointer_cast<Cylinder>(geometry)));
-			case GeometryInfo::_MESH:
-				return shared_ptr<GeometryInfo>(new Mesh(*static_pointer_cast<Mesh>(geometry)));
-			case GeometryInfo::_USERMODEL:
-				shared_ptr<GeometryInfo> tmpUser(new UserModel());
-				list< pair <shared_ptr<GeometryInfo>, Math::SE3> >& glist = static_pointer_cast<UserModel>(geometry)->getList();
-				for (list< pair <shared_ptr<GeometryInfo>, Math::SE3> >::iterator iterPos = glist.begin(); iterPos != glist.end(); iterPos++)
-				{
-					static_pointer_cast<UserModel>(tmpUser)->addList(copyGeometry(iterPos->first), iterPos->second);
-				}
-				return tmpUser;
-				break;
+				clone->addList(iterPos->first->copy(), iterPos->second);
 			}
+			return shared_ptr<GeometryInfo>(clone);
 		}
 	}
 }

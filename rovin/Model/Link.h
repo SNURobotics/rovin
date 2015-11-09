@@ -13,8 +13,10 @@
 #include <memory>
 
 #include <Eigen/Dense>
+#include <rovin/utils/Checker.h>
 #include <rovin/Math/Inertia.h>
 #include <rovin/Math/LieGroup.h>
+
 #include "GeometryInfo.h"
 
 namespace rovin
@@ -24,19 +26,17 @@ namespace rovin
 		class GeometryInfo;
 		class Joint;
 
-		bool checkName(std::string);
-
 		/**
 		*	\class Link
 		*	\brief Link를 생성하고 처리하는 클래스
 		*/
 		class Link
 		{
-			friend class Joint;
+			friend class Assembly;
 
 		public:
 			/// 기본 생성자
-			Link() : _name(""), _inertia(), _visual(NULL), _collision(NULL), _material(""), _marker(), _joint() {}
+			Link() : _name(""), _inertia(), _visual(NULL), _collision(NULL), _material(""), _marker() {}
 			/**
 			*	\warning 이름에 _BANNED_CHRACTERS 가 들어있는 경우 에러가 납니다.
 			*	\brief	이름, 관성행렬, 보여지는 geometry, 충돌 geometry, 재료 이름을 차례로 받아서 생성한다.
@@ -45,16 +45,11 @@ namespace rovin
 				const Math::Inertia& I = Math::Inertia(),
 				const std::shared_ptr<GeometryInfo>& visual = NULL,
 				const std::shared_ptr<GeometryInfo>& collision = NULL,
-				const std::string material = ""
-				) : _name((checkName(name) ? (name) : (assert(0), ""))), _inertia(I), _visual(visual), _collision(collision),
-				_material(material), _marker(), _joint() {}
+				const std::string material = "",
+				const std::map< std::string, Math::SE3 >& marker = std::map< std::string, Math::SE3 >()
+				) : _name((utils::checkName(name) ? (name) : (assert(0 && "링크의 이름으로 사용할 수 없는 이름이 들어왔습니다."), ""))), _inertia(I), _visual(visual), _collision(collision),
+				_material(material), _marker(marker) {}
 
-			/// 이름을 설정합니다.
-			void setName(const std::string& name)
-			{
-				assert(checkName(name));
-				_name = name;
-			}
 			/// 관성행렬을 설정합니다.
 			void setInertia(const Math::Inertia& I)
 			{
@@ -135,27 +130,17 @@ namespace rovin
 			*	\warning 만약에 마커가 없는 경우에는 에러
 			*	\brief	Marker의 상대적 위치를 찾아줍니다.
 			*/
-			const Math::SE3& findMarker(const std::string& marker_name ///< Marker의 이름
+			const Math::SE3& getMarker(const std::string& marker_name ///< Marker의 이름
 				) const;
 			/// 인자로 받은 이름을 갖는 marker가 존재하는지 확인합니다.
-			bool checkMarker(const std::string& marker_name ///< 확인하고 싶은 이름
+			bool isMarker(const std::string& marker_name ///< 확인하고 싶은 이름
 				) const;
 
-			/// Joint map을 가져옵니다.
-			const std::list< std::tuple< std::string, std::weak_ptr<Joint>, Math::SE3 > >& getJointMap() const
+			/// 깊은 복사 - joint와 관련된 정보는 복사하지 않는다.
+			std::shared_ptr<Link> copy() const
 			{
-				return _joint;
+				return std::shared_ptr<Link>(new Link(_name, _inertia, (*_visual).copy(), (*_collision).copy(), _material, _marker));
 			}
-
-		private:
-			/// Joint class에서만 접근 가능합니다. Joint를 이 link에 연결할 때 사용합니다.
-			void addJoint( const std::string& joint_name, ///< Joint의 이름
-				const std::weak_ptr<Joint>& joint_pointer, ///< 연결하고자 하는 joint의 포인터
-				const Math::SE3& T ///< 링크 기준 frame에서 joint의 위치 SE3
-				);
-			/// Joint class에서만 접근 가능합니다. Joint를 이 link에서 제거할 때 사용합니다.
-			void deleteJoint(const std::string& joint_name ///< 연결을 끊고 싶은 joint의 포인터
-				);
 
 		private:
 			std::string _name; ///< Link의 이름, identity로 쓰이므로 system 내부에서는 유일해야한다.
@@ -166,22 +151,9 @@ namespace rovin
 			std::string _material; ///< Link의 물성을 나타내는 변수(재료 이름), 탄성계수와 마찰계수를 정의하기 위해서 쓰인다.
 
 			std::map< std::string, Math::SE3 > _marker; ///< Link에 붙어있는 marker의 이름과 위치
-			std::list< std::tuple< std::string, std::weak_ptr<Joint>, Math::SE3 > > _joint; ///< Link의 연결되어 있는 joint들의 리스트
-		};
 
-		static const int _NUM_OF_BANNED_CHARACTERS = 9;
-		static const char _BANNED_CHRACTERS[_NUM_OF_BANNED_CHARACTERS] = { '\\', '/', ':', '*', '?', '\"', '<', '>', '|' };
-		static bool checkName(std::string name)
-		{
-			int i;
-			for (std::string::iterator pos = name.begin(); pos != name.end(); pos++)
-			{
-				for (i = 0; i < _NUM_OF_BANNED_CHARACTERS; i++)
-				{
-					if (*pos == _BANNED_CHRACTERS[i]) return false;
-				}
-			}
-			return false;
-		}
+		public:
+			EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
+		};
 	}
 }

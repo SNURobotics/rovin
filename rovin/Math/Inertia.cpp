@@ -64,7 +64,7 @@ namespace rovin
 			return *this;
 		}
 
-		Inertia Inertia::operator + (const Inertia& I)
+		Inertia Inertia::operator + (const Inertia& I) const
 		{
 			Inertia result;
 			(Matrix<double, 6, 6>)result = (Matrix<double, 6, 6>)(*this) + (Matrix<double, 6, 6>&)I;
@@ -77,7 +77,7 @@ namespace rovin
 			return *this;
 		}
 
-		Inertia Inertia::operator * (const double constant)
+		Inertia Inertia::operator * (const double constant) const
 		{
 			Inertia result;
 			(Matrix<double, 6, 6>)result = (Matrix<double, 6, 6>)(*this) * constant;
@@ -90,7 +90,7 @@ namespace rovin
 			return *this;
 		}
 
-		Inertia Inertia::operator / (const double constant)
+		Inertia Inertia::operator / (const double constant) const
 		{
 			Inertia result;
 			(Matrix<double, 6, 6>)result = (Matrix<double, 6, 6>)(*this) / constant;

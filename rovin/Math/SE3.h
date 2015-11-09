@@ -40,7 +40,7 @@ namespace rovin
 
 			SE3& operator = (const SE3&);
 			SE3& operator = (const Eigen::Matrix4d&);
-			SE3 operator * (const SE3&);
+			SE3 operator * (const SE3&) const;
 			SE3& operator *= (const SE3&);
 			/**
 			*	\warning SE3는 SE3끼리 계산하는 것이 빠르다.matrix로 변환하는 과정에서 시간이 많이 걸림.

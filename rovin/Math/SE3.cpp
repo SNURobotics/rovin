@@ -29,7 +29,7 @@ namespace rovin
 			return *this;
 		}
 
-		SE3 SE3::operator * (const SE3& operand)
+		SE3 SE3::operator * (const SE3& operand) const
 		{
 			SE3 result;
 			result._R._e = _R._e * operand._R._e;

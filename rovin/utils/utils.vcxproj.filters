@@ -15,30 +15,10 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="GeometryInfo.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="Link.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="Assembly.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="Joint.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="GeometryInfo.h">
+    <ClInclude Include="Checker.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="Joint.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="Link.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="Assembly.h">
+    <ClInclude Include="Diagnostic.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
   </ItemGroup>
