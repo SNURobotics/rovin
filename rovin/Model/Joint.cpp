@@ -1,9 +1,11 @@
 #include "Joint.h"
 
+#include <rovin/utils/Checker.h>
+
 namespace rovin {
 	namespace Model {
 		Joint::Joint(const std::string & name, unsigned int dof)
-			:_name((checkName(name) ? (name) : (assert(0 && "Invalid name."), "")))
+			:_name((utils::checkName(name) ? (name) : (assert(0 && "Invalid name."), "")))
 			,_dof((dof>=0)?(dof): (assert(0 && "DOF of joint cannot be negative"), 0))
 		{
 			if (dof > 0)
@@ -117,7 +119,7 @@ namespace rovin {
 
 		bool Joint::setName(const std::string & otherName)
 		{
-			if (checkName(otherName) == true)
+			if (utils::checkName(otherName) == true)
 			{
 				_name = otherName;
 				return true;

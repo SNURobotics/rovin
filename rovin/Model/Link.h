@@ -13,6 +13,7 @@
 #include <memory>
 
 #include <Eigen/Dense>
+#include <rovin/utils/Checker.h>
 #include <rovin/Math/Inertia.h>
 #include <rovin/Math/LieGroup.h>
 
@@ -24,8 +25,6 @@ namespace rovin
 	{
 		class GeometryInfo;
 		class Joint;
-
-		bool checkName(std::string);
 
 		/**
 		*	\class Link
@@ -48,7 +47,7 @@ namespace rovin
 				const std::shared_ptr<GeometryInfo>& collision = NULL,
 				const std::string material = "",
 				const std::map< std::string, Math::SE3 >& marker = std::map< std::string, Math::SE3 >()
-				) : _name((checkName(name) ? (name) : (assert(0 && "링크의 이름으로 사용할 수 없는 이름이 들어왔습니다."), ""))), _inertia(I), _visual(visual), _collision(collision),
+				) : _name((utils::checkName(name) ? (name) : (assert(0 && "링크의 이름으로 사용할 수 없는 이름이 들어왔습니다."), ""))), _inertia(I), _visual(visual), _collision(collision),
 				_material(material), _marker(marker) {}
 
 			/// 관성행렬을 설정합니다.
@@ -156,20 +155,5 @@ namespace rovin
 		public:
 			EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
 		};
-
-		static const int _NUM_OF_BANNED_CHARACTERS = 9;
-		static const char _BANNED_CHRACTERS[_NUM_OF_BANNED_CHARACTERS] = { '\\', '/', ':', '*', '?', '\"', '<', '>', '|' };
-		static bool checkName(std::string name)
-		{
-			int i;
-			for (std::string::iterator pos = name.begin(); pos != name.end(); pos++)
-			{
-				for (i = 0; i < _NUM_OF_BANNED_CHARACTERS; i++)
-				{
-					if (*pos == _BANNED_CHRACTERS[i]) return false;
-				}
-			}
-			return true;
-		}
 	}
 }

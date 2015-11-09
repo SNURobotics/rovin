@@ -19,7 +19,7 @@ namespace rovin
 	{
 		void Link::addMarker(const string& marker_name, const Math::SE3& T, const bool overwrite)
 		{
-			assert(checkName(marker_name) && marker_name!=_name && "마커의 이름으로 사용할 수 없는 이름이 들어왔습니다.");
+			assert(utils::checkName(marker_name) && marker_name!=_name && "마커의 이름으로 사용할 수 없는 이름이 들어왔습니다.");
 
 			if (overwrite)
 			{

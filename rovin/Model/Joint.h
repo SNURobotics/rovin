@@ -20,13 +20,10 @@ namespace rovin
 	{
 		class Link;
 
-		bool checkName(std::string);
-
 		/**
 		*	\class Joint
 		*	\brief Joint class specify kinematic information about general mechanical joints.
 		*/
-		class Link;
 		class Joint
 		{
 			friend class Assembly;

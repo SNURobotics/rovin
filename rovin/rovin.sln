@@ -4,17 +4,24 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 VisualStudioVersion = 14.0.23107.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Math", "Math\Math.vcxproj", "{D282E6BB-331B-4A77-9088-34CF8BD0B785}"
+	ProjectSection(ProjectDependencies) = postProject
+		{DAEEAD3E-AB10-4753-9D54-448DB155BA6E} = {DAEEAD3E-AB10-4753-9D54-448DB155BA6E}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Model", "Model\Model.vcxproj", "{03A17A90-2DBA-4587-A039-1B37A0AFB1F1}"
 	ProjectSection(ProjectDependencies) = postProject
+		{DAEEAD3E-AB10-4753-9D54-448DB155BA6E} = {DAEEAD3E-AB10-4753-9D54-448DB155BA6E}
 		{D282E6BB-331B-4A77-9088-34CF8BD0B785} = {D282E6BB-331B-4A77-9088-34CF8BD0B785}
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Test", "Test\Test.vcxproj", "{BDBB41C3-5DDF-49F1-9A00-3F75F2AD1312}"
 	ProjectSection(ProjectDependencies) = postProject
+		{DAEEAD3E-AB10-4753-9D54-448DB155BA6E} = {DAEEAD3E-AB10-4753-9D54-448DB155BA6E}
 		{03A17A90-2DBA-4587-A039-1B37A0AFB1F1} = {03A17A90-2DBA-4587-A039-1B37A0AFB1F1}
 		{D282E6BB-331B-4A77-9088-34CF8BD0B785} = {D282E6BB-331B-4A77-9088-34CF8BD0B785}
 	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "utils", "utils\utils.vcxproj", "{DAEEAD3E-AB10-4753-9D54-448DB155BA6E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -48,6 +55,14 @@ Global
 		{BDBB41C3-5DDF-49F1-9A00-3F75F2AD1312}.Release|x64.Build.0 = Release|x64
 		{BDBB41C3-5DDF-49F1-9A00-3F75F2AD1312}.Release|x86.ActiveCfg = Release|Win32
 		{BDBB41C3-5DDF-49F1-9A00-3F75F2AD1312}.Release|x86.Build.0 = Release|Win32
+		{DAEEAD3E-AB10-4753-9D54-448DB155BA6E}.Debug|x64.ActiveCfg = Debug|x64
+		{DAEEAD3E-AB10-4753-9D54-448DB155BA6E}.Debug|x64.Build.0 = Debug|x64
+		{DAEEAD3E-AB10-4753-9D54-448DB155BA6E}.Debug|x86.ActiveCfg = Debug|Win32
+		{DAEEAD3E-AB10-4753-9D54-448DB155BA6E}.Debug|x86.Build.0 = Debug|Win32
+		{DAEEAD3E-AB10-4753-9D54-448DB155BA6E}.Release|x64.ActiveCfg = Release|x64
+		{DAEEAD3E-AB10-4753-9D54-448DB155BA6E}.Release|x64.Build.0 = Release|x64
+		{DAEEAD3E-AB10-4753-9D54-448DB155BA6E}.Release|x86.ActiveCfg = Release|Win32
+		{DAEEAD3E-AB10-4753-9D54-448DB155BA6E}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
