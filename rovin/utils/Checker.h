@@ -6,10 +6,11 @@ namespace rovin
 {
 	namespace utils
 	{
-		static const int _NUM_OF_BANNED_CHARACTERS = 9;
-		static const char _BANNED_CHRACTERS[_NUM_OF_BANNED_CHARACTERS] = { '\\', '/', ':', '*', '?', '\"', '<', '>', '|' };
+		
 		static bool checkName(std::string name)
 		{
+			static const int _NUM_OF_BANNED_CHARACTERS = 9;
+			static const char _BANNED_CHRACTERS[_NUM_OF_BANNED_CHARACTERS] = { '\\', '/', ':', '*', '?', '\"', '<', '>', '|' };
 			int i;
 			for (std::string::iterator pos = name.begin(); pos != name.end(); pos++)
 			{
