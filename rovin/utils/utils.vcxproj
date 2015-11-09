@@ -31,7 +31,7 @@
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
+    <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v140</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
@@ -82,8 +82,8 @@
       <AdditionalLibraryDirectories>C:\SNURobotics\include\</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
-      <Command>mkdir C:\SNURobotics\include\$(SolutionName)\$(ProjectName)\
-copy /Y $(ProjectDir)*.h C:\SNURobotics\include\$(SolutionName)\$(ProjectName)\</Command>
+      <Command>
+      </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
