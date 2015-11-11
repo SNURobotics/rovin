@@ -160,7 +160,7 @@ namespace rovin
 		Matrix<double, 6, 6> SE3::invAd(const SE3& T)
 		{
 			Matrix<double, 6, 6> result;
-			Matrix<double, 3, 3> InvR = T._R._e;
+			Matrix<double, 3, 3> InvR = T._R.inverse()._e;
 
 			result << InvR, Matrix3d::Zero(),
 				-InvR*Bracket(T._p), InvR;
