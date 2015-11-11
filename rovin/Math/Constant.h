@@ -12,18 +12,22 @@
 namespace rovin
 {
 	namespace Math {
-		//typedef float	real;
-		typedef	double	real;
+		//typedef float	Real;
+		typedef	double	Real;
 
-		typedef Eigen::Matrix<real, -1, -1>		MatrixX;
-		typedef Eigen::Matrix<real, 4, 4>		Matrix4;
-		typedef Eigen::Matrix<real, -1, 1>		VectorX;
-		typedef Eigen::Matrix<real, 3, 1>		Vector3;
-		typedef Eigen::Matrix<real, 6, 1>		Vector6;
+		typedef Eigen::Matrix<Real, -1, -1>		MatrixX;
+		typedef Eigen::Matrix<Real, 3, 3>		Matrix3;
+		typedef Eigen::Matrix<Real, 4, 4>		Matrix4;
+		typedef Eigen::Matrix<Real, 6, 6>		Matrix6;
+		typedef Eigen::Matrix<Real, -1, 1>		VectorX;
+		typedef Eigen::Matrix<Real, 2, 1>		Vector2;
+		typedef Eigen::Matrix<Real, 3, 1>		Vector3;
+		typedef Eigen::Matrix<Real, 4, 1>		Vector4;
+		typedef Eigen::Matrix<Real, 6, 1>		Vector6;
 
-		static const real	PI = 3.14159265358979323846;
-		static const real	PI_HALF = 1.57079632679489661923;
-		static const real	DEG2RAD = 0.01745329251994329577;
-		static const real	RAD2DEG = 57.2957795130823208768;
+		static const Real	PI = 3.14159265358979323846;
+		static const Real	PI_HALF = 1.57079632679489661923;
+		static const Real	DEG2RAD = 0.01745329251994329577;
+		static const Real	RAD2DEG = 57.2957795130823208768;
 	}
 }

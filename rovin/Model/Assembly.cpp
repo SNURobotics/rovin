@@ -140,7 +140,7 @@ namespace rovin
 				actionT = action_iter->second->getMarker(actionLM_name);
 			}
 
-			_connection.push_front(Connection(joint_pointer, mount_iter->second, action_iter->second, mountT*mountLM_T, actionT*actionLM_T));
+			_connection.push_back(Connection(joint_pointer, mount_iter->second, action_iter->second, mountT*mountLM_T, actionLM_T*actionT.inverse()));
 		}
 
 		void Assembly::deleteJoint(const std::shared_ptr<Joint>& joint_pointer)
@@ -215,6 +215,13 @@ namespace rovin
 			}
 
 			return flag;
+		}
+
+		Assembly Assembly::copy(const std::string& prefix) const
+		{
+			Assembly _clone = *this;
+			_clone.changeNameAll(prefix);
+			return _clone;
 		}
 	}
 }

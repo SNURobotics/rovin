@@ -9,7 +9,7 @@
 #include <io.h>
 
 using namespace std;
-using namespace Eigen;
+using namespace rovin::Math;
 
 namespace rovin
 {
@@ -17,28 +17,28 @@ namespace rovin
 	{
 		GeometryInfo::~GeometryInfo() {}
 
-		void Box::setDimension(const double& width, const double& depth, const double& height)
+		void Box::setDimension(const Real& width, const Real& depth, const Real& height)
 		{
 			_width = width;
 			_depth = depth;
 			_height = height;
 		}
 
-		void Box::setDimension(const Vector3d& config)
+		void Box::setDimension(const Vector3& config)
 		{
 			_width = config(0);
 			_depth = config(1);
 			_height = config(2);
 		}
 
-		void Box::setCube(const double& length)
+		void Box::setCube(const Real& length)
 		{
 			_width = _depth = _height = length;
 		}
 
-		Vector3d Box::getDimension() const
+		Vector3 Box::getDimension() const
 		{
-			return Vector3d(_width, _depth, _height);
+			return Vector3(_width, _depth, _height);
 		}
 
 		shared_ptr<GeometryInfo> Box::copy() const
@@ -46,12 +46,12 @@ namespace rovin
 			return shared_ptr<GeometryInfo>(new Box(*this));
 		}
 
-		void Sphere::setRadius(const double& radius)
+		void Sphere::setRadius(const Real& radius)
 		{
 			_radius = radius;
 		}
 
-		const double& Sphere::getRadius() const
+		const Real& Sphere::getRadius() const
 		{
 			return _radius;
 		}
@@ -61,21 +61,21 @@ namespace rovin
 			return shared_ptr<GeometryInfo>(new Sphere(*this));
 		}
 
-		void Capsule::setDimension(const double& radius, const double& height)
+		void Capsule::setDimension(const Real& radius, const Real& height)
 		{
 			_radius = radius;
 			_height = height;
 		}
 
-		void Capsule::setDimension(const Vector2d& config)
+		void Capsule::setDimension(const Vector2& config)
 		{
 			_radius = config(0);
 			_height = config(1);
 		}
 
-		Vector2d Capsule::getDimension() const
+		Vector2 Capsule::getDimension() const
 		{
-			return Vector2d(_radius, _height);
+			return Vector2(_radius, _height);
 		}
 
 		shared_ptr<GeometryInfo> Capsule::copy() const
@@ -83,21 +83,21 @@ namespace rovin
 			return shared_ptr<GeometryInfo>(new Capsule(*this));
 		}
 
-		void Cylinder::setDimension(const double& radius, const double& height)
+		void Cylinder::setDimension(const Real& radius, const Real& height)
 		{
 			_radius = radius;
 			_height = height;
 		}
 
-		void Cylinder::setDimension(const Vector2d& config)
+		void Cylinder::setDimension(const Vector2& config)
 		{
 			_radius = config(0);
 			_height = config(1);
 		}
 
-		Vector2d Cylinder::getDimension() const
+		Vector2 Cylinder::getDimension() const
 		{
-			return Vector2d(_radius, _height);
+			return Vector2(_radius, _height);
 		}
 
 		shared_ptr<GeometryInfo> Cylinder::copy() const
@@ -121,7 +121,7 @@ namespace rovin
 
 		void UserModel::addList(const std::shared_ptr<GeometryInfo>& shape, const Math::SE3& T)
 		{
-			_GeometryList.push_front(std::pair< std::shared_ptr<GeometryInfo>, Math::SE3 >(shape, T));
+			_GeometryList.push_back(std::pair< std::shared_ptr<GeometryInfo>, Math::SE3 >(shape, T));
 		}
 
 		shared_ptr<GeometryInfo> UserModel::copy() const

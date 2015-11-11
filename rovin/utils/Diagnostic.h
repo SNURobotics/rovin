@@ -7,7 +7,7 @@ namespace rovin
 {
 	namespace utils
 	{
-		static bool Log(const bool statement, const std::string message = (""), const bool shutdown = (false))
+		static bool Log(const bool& statement, const std::string& message, const bool& shutdown)
 		{
 			if (statement)
 			{
@@ -16,7 +16,7 @@ namespace rovin
 			return statement;
 		}
 
-		static void Log(const std::string message, const bool shutdown = (false))
+		static void Log(const std::string& message, const bool& shutdown)
 		{
 			if (shutdown)
 			{

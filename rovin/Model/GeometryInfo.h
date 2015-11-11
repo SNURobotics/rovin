@@ -10,7 +10,8 @@
 #include <string>
 #include <list>
 #include <memory>
-#include <Eigen/Dense>
+
+#include <rovin/Math/Constant.h>
 #include <rovin/Math/LieGroup.h>
 
 namespace rovin
@@ -38,7 +39,7 @@ namespace rovin
 			/// 생성자
 			GeometryInfo(const GEOMETRY_TYPE& Type, ///< Type
 				const Math::SE3& T = (Math::SE3()), ///< Frame위치
-				const Eigen::Vector4d& Color = (Eigen::Vector4d(-1, -1, -1, -1)) ///< (R, G, B, Alpha) 색
+				const Math::Vector4& Color = (Math::Vector4(-1, -1, -1, -1)) ///< (R, G, B, Alpha) 색
 				) : _Type(Type), _T(T), _Color(Color) {}
 
 			/// 소멸자, 가상 클래스로 만들어 줍니다.
@@ -55,16 +56,16 @@ namespace rovin
 				_T = T;
 			}
 			/// (R, G, B, Alpha) 색을 설정합니다.
-			void setColor(const double& R, ///< Red
-				const double& G, ///< Green
-				const double& B, ///< Blue
-				const double& Alpha = (0.0) /// Alpha
+			void setColor(const Math::Real& R, ///< Red
+				const Math::Real& G, ///< Green
+				const Math::Real& B, ///< Blue
+				const Math::Real& Alpha = (0.0) /// Alpha
 				)
 			{
 				_Color << R, G, B, Alpha;
 			}
 			/// (R, G, B, Alpha) 색을 설정합니다.
-			void setColor(const Eigen::Vector4d& Color // 색 [R; G; B; Alpha]
+			void setColor(const Math::Vector4& Color // 색 [R; G; B; Alpha]
 				)
 			{
 				_Color = Color;
@@ -76,10 +77,10 @@ namespace rovin
 				return _Type;
 			}
 			/**
-			*	\return Eigen::Vector4d [R; G; B; Alpha]
+			*	\return Math::Vector4 [R; G; B; Alpha]
 			*	\brief 현재 설정 되어있는 색을 알려줍니다.
 			*/
-			const Eigen::Vector4d& getColor() const
+			const Math::Vector4& getColor() const
 			{
 				return _Color;
 			}
@@ -98,7 +99,7 @@ namespace rovin
 		private:
 			GEOMETRY_TYPE _Type; ///< Geometry type을 저장하는 변수
 			Math::SE3 _T; ///< Frame의 위치를 저장하고 있는 변수
-			Eigen::Vector4d _Color; ///< R, G, B, Alpha 색을 저장하는 변수
+			Math::Vector4 _Color; ///< R, G, B, Alpha 색을 저장하는 변수
 
 		public:
 			EIGEN_MAKE_ALIGNED_OPERATOR_NEW
@@ -113,21 +114,21 @@ namespace rovin
 		public:
 			/// 기본 생성자, 가로=0, 세로=0, 높이=0로 초기화됩니다.
 			Box(const Math::SE3& T = (Math::SE3()), ///< Frame위치
-				const Eigen::Vector4d& Color = (Eigen::Vector4d(-1, -1, -1, -1)) ///< (R, G, B, Alpha) 색
+				const Math::Vector4& Color = (Math::Vector4(-1, -1, -1, -1)) ///< (R, G, B, Alpha) 색
 				) : GeometryInfo(GeometryInfo::_BOX, T, Color),
 				_width(0.0), _height(0.0), _depth(0.0) {}
 			/// 입력으로 들어온 가로, 세로, 높이로 초기화됩니다.
-			Box(const double& width, ///< 가로
-				const double& depth, ///< 세로
-				const double& height, ///< 높이
+			Box(const Math::Real& width, ///< 가로
+				const Math::Real& depth, ///< 세로
+				const Math::Real& height, ///< 높이
 				const Math::SE3& T = (Math::SE3()), ///< Frame위치
-				const Eigen::Vector4d& Color = (Eigen::Vector4d(-1, -1, -1, -1)) ///< (R, G, B, Alpha) 색
+				const Math::Vector4& Color = (Math::Vector4(-1, -1, -1, -1)) ///< (R, G, B, Alpha) 색
 				) : GeometryInfo(GeometryInfo::_BOX, T, Color),
 				_width(width), _height(height), _depth(depth) {}
 			/// 입력으로 들어온 config를 이용하여 초기화를 합니다.
-			Box(const Eigen::Vector3d& config, ///< [가로; 세로; 높이]
+			Box(const Math::Vector3& config, ///< [가로; 세로; 높이]
 				const Math::SE3& T = (Math::SE3()), ///< Frame위치
-				const Eigen::Vector4d& Color = (Eigen::Vector4d(-1, -1, -1, -1)) ///< (R, G, B, Alpha) 색
+				const Math::Vector4& Color = (Math::Vector4(-1, -1, -1, -1)) ///< (R, G, B, Alpha) 색
 				) : GeometryInfo(GeometryInfo::_BOX, T, Color),
 				_width(config(0)), _height(config(1)), _depth(config(2)) {}
 
@@ -135,28 +136,28 @@ namespace rovin
 			~Box() {}
 
 			/// 입력으로 들어온 가로, 세로, 높이로 값을 바꿉니다.
-			void setDimension(const double& width, ///< 가로
-				const double& depth, ///< 세로
-				const double& height ///< 높이
+			void setDimension(const Math::Real& width, ///< 가로
+				const Math::Real& depth, ///< 세로
+				const Math::Real& height ///< 높이
 				);
 			/// 입력으로 들어온 config로 가로, 세로, 높이를 바꿔줍니다.
-			void setDimension(const Eigen::Vector3d& config ///< [가로; 세로; 높이]
+			void setDimension(const Math::Vector3& config ///< [가로; 세로; 높이]
 				);
 			/// 입력으로 들어온 값을 한변의 길이로 하는 정육면체를 만듭니다.
-			void setCube(const double& length ///< 정육면체의 한변의 길이
+			void setCube(const Math::Real& length ///< 정육면체의 한변의 길이
 				);
 
 			/**
-			*	\return Eigen::Vector3d [가로; 세로; 높이]
+			*	\return Math::Vector3 [가로; 세로; 높이]
 			*	\brief 현재 설정 되어있는 가로, 세로, 높이를 알려줍니다.
 			*/
-			Eigen::Vector3d getDimension() const;
+			Math::Vector3 getDimension() const;
 
 			// 깊은 복사
 			std::shared_ptr<GeometryInfo> copy() const;
 
 		private:
-			double _width, _depth, _height;
+			Math::Real _width, _depth, _height;
 		};
 
 		/**
@@ -168,13 +169,13 @@ namespace rovin
 		public:
 			/// 기본 생성자, 반지름=0로 초기화됩니다.
 			Sphere(const Math::SE3& T = (Math::SE3()), ///< Frame위치
-				const Eigen::Vector4d& Color = (Eigen::Vector4d(-1, -1, -1, -1)) ///< (R, G, B, Alpha) 색
+				const Math::Vector4& Color = (Math::Vector4(-1, -1, -1, -1)) ///< (R, G, B, Alpha) 색
 				) : GeometryInfo(GeometryInfo::_SPHERE, T, Color),
 				_radius(0.0) {}
 			/// 입력으로 들어온 반지름으로 초기화됩니다.
-			Sphere(const double& radius, ///< 반지름
+			Sphere(const Math::Real& radius, ///< 반지름
 				const Math::SE3& T = (Math::SE3()), ///< Frame위치
-				const Eigen::Vector4d& Color = (Eigen::Vector4d(-1, -1, -1, -1)) ///< (R, G, B, Alpha) 색
+				const Math::Vector4& Color = (Math::Vector4(-1, -1, -1, -1)) ///< (R, G, B, Alpha) 색
 				) : GeometryInfo(GeometryInfo::_SPHERE, T, Color),
 				_radius(radius) {}
 
@@ -182,20 +183,20 @@ namespace rovin
 			~Sphere() {}
 
 			/// 입력으로 들어온 radius로 반지름 값을 바꿉니다.
-			void setRadius(const double& radius ///< 반지름
+			void setRadius(const Math::Real& radius ///< 반지름
 				);
 
 			/**
 			*	\return 반지름
 			*	\brief 현재 설정 되어있는 반지름 값을 알려줍니다.
 			*/
-			const double& getRadius() const;
+			const Math::Real& getRadius() const;
 
 			// 깊은 복사
 			std::shared_ptr<GeometryInfo> copy() const;
 
 		private:
-			double _radius;
+			Math::Real _radius;
 		};
 
 		/**
@@ -207,14 +208,14 @@ namespace rovin
 		public:
 			/// 기본 생성자, 반지름=0, 높이=0로 초기화됩니다.
 			Capsule(const Math::SE3& T = (Math::SE3()), ///< Frame위치
-				const Eigen::Vector4d& Color = (Eigen::Vector4d(-1, -1, -1, -1)) ///< (R, G, B, Alpha) 색
+				const Math::Vector4& Color = (Math::Vector4(-1, -1, -1, -1)) ///< (R, G, B, Alpha) 색
 				) : GeometryInfo(GeometryInfo::_CAPSULE, T, Color),
 				_radius(0.0), _height(0.0) {}
 			/// 입력으로 들어온 반지름과 높이로 초기화됩니다.
-			Capsule(const double& radius, ///< 반지름
-				const double& height, ///< 높이
+			Capsule(const Math::Real& radius, ///< 반지름
+				const Math::Real& height, ///< 높이
 				const Math::SE3& T = (Math::SE3()), ///< Frame위치
-				const Eigen::Vector4d& Color = (Eigen::Vector4d(-1, -1, -1, -1)) ///< (R, G, B, Alpha) 색
+				const Math::Vector4& Color = (Math::Vector4(-1, -1, -1, -1)) ///< (R, G, B, Alpha) 색
 				) : GeometryInfo(GeometryInfo::_CAPSULE, T, Color),
 				_radius(radius), _height(height) {}
 
@@ -222,24 +223,24 @@ namespace rovin
 			~Capsule() {}
 
 			/// 입력으로 들어온 반지름, 높이로 값을 바꿉니다.
-			void setDimension(const double& radius, ///< 가로
-				const double& height ///< 높이
+			void setDimension(const Math::Real& radius, ///< 가로
+				const Math::Real& height ///< 높이
 				);
 			/// 입력으로 들어온 config로 반지름, 높이를 바꿔줍니다.
-			void setDimension(const Eigen::Vector2d& config ///< [반지름: 높이]
+			void setDimension(const Math::Vector2& config ///< [반지름: 높이]
 				);
 
 			/**
-			*	\return Eigen::Vector2d [반지름; 높이]
+			*	\return Math::Vector2 [반지름; 높이]
 			*	\brief 현재 설정 되어있는 반지름, 높이를 알려줍니다.
 			*/
-			Eigen::Vector2d getDimension() const;
+			Math::Vector2 getDimension() const;
 
 			// 깊은 복사
 			std::shared_ptr<GeometryInfo> copy() const;
 
 		private:
-			double _radius, _height;
+			Math::Real _radius, _height;
 		};
 
 		/**
@@ -251,14 +252,14 @@ namespace rovin
 		public:
 			/// 기본 생성자, 반지름=0, 높이=0로 초기화됩니다.
 			Cylinder(const Math::SE3& T = (Math::SE3()), ///< Frame위치
-				const Eigen::Vector4d& Color = (Eigen::Vector4d(-1, -1, -1, -1)) ///< (R, G, B, Alpha) 색
+				const Math::Vector4& Color = (Math::Vector4(-1, -1, -1, -1)) ///< (R, G, B, Alpha) 색
 				) : GeometryInfo(GeometryInfo::_CYLINDER, T, Color),
 				_radius(0.0), _height(0.0) {}
 			/// 입력으로 들어온 반지름과 높이로 초기화됩니다.
-			Cylinder(const double& radius, ///< 반지름
-				const double& height, ///< 높이
+			Cylinder(const Math::Real& radius, ///< 반지름
+				const Math::Real& height, ///< 높이
 				const Math::SE3& T = (Math::SE3()), ///< Frame위치
-				const Eigen::Vector4d& Color = (Eigen::Vector4d(-1, -1, -1, -1)) ///< (R, G, B, Alpha) 색
+				const Math::Vector4& Color = (Math::Vector4(-1, -1, -1, -1)) ///< (R, G, B, Alpha) 색
 				) : GeometryInfo(GeometryInfo::_CYLINDER, T, Color),
 				_radius(radius), _height(height) {}
 
@@ -266,24 +267,24 @@ namespace rovin
 			~Cylinder() {}
 
 			/// 입력으로 들어온 반지름, 높이로 값을 바꿉니다.
-			void setDimension(const double& radius, ///< 가로
-				const double& height ///< 높이
+			void setDimension(const Math::Real& radius, ///< 가로
+				const Math::Real& height ///< 높이
 				);
 			/// 입력으로 들어온 config로 반지름, 높이를 바꿔줍니다.
-			void setDimension(const Eigen::Vector2d& config ///< [반지름: 높이]
+			void setDimension(const Math::Vector2& config ///< [반지름: 높이]
 				);
 
 			/**
-			*	\return Eigen::Vector2d [반지름; 높이]
+			*	\return Math::Vector2 [반지름; 높이]
 			*	\brief 현재 설정 되어있는 반지름, 높이를 알려줍니다.
 			*/
-			Eigen::Vector2d getDimension() const;
+			Math::Vector2 getDimension() const;
 
 			// 깊은 복사
 			std::shared_ptr<GeometryInfo> copy() const;
 
 		private:
-			double _radius, _height;
+			Math::Real _radius, _height;
 		};
 
 		/**
@@ -295,13 +296,13 @@ namespace rovin
 		public:
 			/// 기본 생성자, 주소는 NULL로 초기화 됩니다,
 			Mesh(const Math::SE3& T = (Math::SE3()), ///< Frame위치
-				const Eigen::Vector4d& Color = (Eigen::Vector4d(-1, -1, -1, -1)) ///< (R, G, B, Alpha) 색
+				const Math::Vector4& Color = (Math::Vector4(-1, -1, -1, -1)) ///< (R, G, B, Alpha) 색
 				) : GeometryInfo(GeometryInfo::_MESH, T, Color),
 				_url("") {}
 			/// Mesh 파일이 저장되어 있는 주소 값을 이용하여 초기화합니다.
 			Mesh(const std::string& url, ///< Mesh 파일이 저장되어 있는 주소
 				const Math::SE3& T = (Math::SE3()), ///< Frame위치
-				const Eigen::Vector4d& Color = (Eigen::Vector4d(-1, -1, -1, -1)) ///< (R, G, B, Alpha) 색
+				const Math::Vector4& Color = (Math::Vector4(-1, -1, -1, -1)) ///< (R, G, B, Alpha) 색
 				) : GeometryInfo(GeometryInfo::_MESH, T, Color),
 				_url(url) {}
 
@@ -341,7 +342,7 @@ namespace rovin
 		public:
 			/// 생성자
 			UserModel(const Math::SE3& T = (Math::SE3()), ///< Frame위치
-				const Eigen::Vector4d& Color = (Eigen::Vector4d(-1, -1, -1, -1)) ///< (R, G, B, Alpha) 색
+				const Math::Vector4& Color = (Math::Vector4(-1, -1, -1, -1)) ///< (R, G, B, Alpha) 색
 				) : GeometryInfo(GeometryInfo::_USERMODEL, T, Color), _GeometryList() {}
 
 			/// srGeometry주소와 SE3값을 받아서 저장합니다.
