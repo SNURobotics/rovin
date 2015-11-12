@@ -18,6 +18,7 @@ namespace rovin {
 			RevoluteJoint(const std::string& name = std::string(""), const Math::Vector3& axis = Math::Vector3::UnitZ())
 				:ScrewJoint(name, 1, axis)
 			{
+
 				// do nothing
 			}
 			RevoluteJoint(const RevoluteJoint& otherJoint)

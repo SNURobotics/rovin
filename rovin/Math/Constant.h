@@ -19,6 +19,7 @@ namespace rovin
 		typedef Eigen::Matrix<Real, 3, 3>		Matrix3;
 		typedef Eigen::Matrix<Real, 4, 4>		Matrix4;
 		typedef Eigen::Matrix<Real, 6, 6>		Matrix6;
+		typedef Eigen::Matrix<Real, 6, -1>		Matrix6X;
 		typedef Eigen::Matrix<Real, -1, 1>		VectorX;
 		typedef Eigen::Matrix<Real, 2, 1>		Vector2;
 		typedef Eigen::Matrix<Real, 3, 1>		Vector3;

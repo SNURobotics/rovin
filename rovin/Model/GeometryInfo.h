@@ -88,7 +88,7 @@ namespace rovin
 			*	\return SE3 Frame
 			*	\brief 현재 설정 되어 있는 Frame을 알려줍니다.
 			*/
-			const Math::SE3& getFrame() const
+			const Math::SE3& getTransform() const
 			{
 				return _T;
 			}
