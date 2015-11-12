@@ -19,20 +19,22 @@ namespace rovin
 			const vector< string > jointNmaeList = system.getJointList();
 			_jointState.clear();
 			_jointSystemIndex.clear();
+			_activeJoint.clear();
 			i = 0;
 			for (vector< string >::const_iterator joint_iter = jointNmaeList.begin(); joint_iter != jointNmaeList.end(); joint_iter++, i++)
 			{
 				unsigned int tmpdof = system.getAssembly().findJoint(*joint_iter)->getDOF();
 				_jointState.push_back(JointState(tmpdof));
+				_jointState[i].index = _total_dof;
 				_jointMap.insert(pair< string, unsigned int >(*joint_iter, i));
 				_jointSystemIndex.push_back(_total_dof);
 				
+				_activeJoint.push_back(false);
 				_passiveJointList.push_back(pair< string, unsigned int >(*joint_iter, i));
-				_jointState.rend()->index = _total_dof;
 
 				_total_dof += tmpdof;
 			}
-
+	
 			for (list <string>::const_iterator activeJoint_iter = activeJointList.begin(); activeJoint_iter != activeJointList.end(); activeJoint_iter++)
 			{
 				if (!addActiveJoint(*activeJoint_iter))
@@ -60,11 +62,12 @@ namespace rovin
 					_activejoint_dof += _jointState[iter->second].dof;
 
 					iter = _passiveJointList.erase(iter);
+					unsigned int deDof = _jointState[iter->second].dof;
 					for (; iter != _passiveJointList.end(); iter++)
 					{
-						_jointState[iter->second].index -= _jointState[iter->second].dof;
+						_jointState[iter->second].index -= deDof;
 					}
-					break;
+					return true;
 				}
 			}
 			utils::Log("추가하고 싶은 joint는 이미 active joint list에 들어 있습니다.", false);
@@ -99,7 +102,7 @@ namespace rovin
 			return false;
 		}
 
-		unsigned int State::getReturnDof(const System::RETURN_STATE& return_state)
+		unsigned int State::getDof(const System::RETURN_STATE& return_state)
 		{
 			if (return_state == System::SYSTEMJOINT)	return getTotalDof();
 			if (return_state == System::WHOLEJOINT)		return getTotalDof();
@@ -108,7 +111,7 @@ namespace rovin
 			return -1;
 		}
 
-		void State::makeReturnMatrix(Math::MatrixX& target, const Math::MatrixX& value, const unsigned int& row, const unsigned int& joint_num,
+		void State::writeColumns(Math::MatrixX& target, const Math::MatrixX& value, const unsigned int& row, const unsigned int& joint_num,
 			const System::RETURN_STATE& return_state)
 		{
 			unsigned int index = getTotalDof();

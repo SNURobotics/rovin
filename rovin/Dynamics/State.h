@@ -37,6 +37,7 @@ namespace rovin
 				{
 					T = Math::SE3();
 					V = Math::se3();
+					V.setZero();
 				}
 
 				Math::SE3 T;
@@ -51,11 +52,15 @@ namespace rovin
 					dof = _dof;
 
 					q = Math::VectorX(_dof);
+					q.setZero();
 					qdot = Math::VectorX(_dof);
+					qdot.setZero();
 
 					tau = Math::VectorX(_dof);
+					tau.setZero();
 
 					constraintF = Math::dse3();
+					constraintF.setZero();
 
 					index = 0;
 				}
@@ -171,9 +176,9 @@ namespace rovin
 			}
 
 			/// 리턴 행렬 또는 벡터의 크기를 정하기 위한 함수
-			unsigned int getReturnDof(const System::RETURN_STATE& return_state);
+			unsigned int getDof(const System::RETURN_STATE& return_state);
 			/// 리턴 행렬을 만들어줍니다.
-			void makeReturnMatrix(Math::MatrixX& target, const Math::MatrixX& value, const unsigned int& row, const unsigned int& joint_num, const System::RETURN_STATE& return_state);
+			void writeColumns(Math::MatrixX& target, const Math::MatrixX& value, const unsigned int& row, const unsigned int& joint_num, const System::RETURN_STATE& return_state);
 
 			/// Active joint의 q들을 설정합니다.
 			void setActiveJoint_q(const Math::VectorX& q);
@@ -186,8 +191,8 @@ namespace rovin
 			unsigned int _activejoint_dof;
 			unsigned int _total_dof;
 
-			std::vector< LinkState > _linkState;
-			std::vector< JointState > _jointState;
+			std::vector< LinkState, Eigen::aligned_allocator<LinkState> > _linkState;
+			std::vector< JointState, Eigen::aligned_allocator<JointState>  > _jointState;
 
 			std::map< std::string, unsigned int > _linkMap;
 			std::map< std::string, unsigned int > _jointMap;

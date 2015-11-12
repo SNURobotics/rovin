@@ -60,9 +60,12 @@ namespace rovin
 			};
 
 			/// 생성자
-			System(const Model::Assembly& model, const std::string& baselink);
+			System(const std::shared_ptr< Model::Assembly >& model, const std::string& baselink);
 			/// 소멸자
-			~System() {}
+			~System()
+			{
+				_model->UNLOCK();
+			}
 
 			/// 현재 system에 연결된 assembly를 가져옵니다.
 			const Model::Assembly& getAssembly() const
@@ -101,8 +104,9 @@ namespace rovin
 			Math::MatrixX Closedloop_Constraint_Jacobian(State& state, const RETURN_STATE& return_state);
 			/// Closed Loop 조건을 풀어줍니다. Active joint는 상수로 passive joint를 변수로 두고 조건을 맞는 변수 값을 구합니다.
 			void Solve_Closedloop_Constraint(State& state);
+
 		private:
-			const Model::Assembly* _model;
+			std::shared_ptr< Model::Assembly > _model;
 			std::string _baselink;
 
 			unsigned int _num_link;
@@ -119,7 +123,7 @@ namespace rovin
 
 			std::vector< std::list< _CONN >> _connectionlist;
 
-			unsigned _root;
+			unsigned _baseLinkIndex;
 			std::vector< std::list< _CONN >> _tree;
 			std::vector< std::list< _CONN >> _trace;
 

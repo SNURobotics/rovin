@@ -31,8 +31,9 @@ namespace rovin
 					{
 						T *= iter->_sj * _jointptr[iter->_joint]->getTransform(state.getJointState(iter->_joint).q).inverse() * iter->_je;
 					}
+					// T *= iter->_sj * _jointptr[iter->_joint]->getTransform(state.getJointState(iter->_joint).q, iter->_direction) * iter->_je;
 				}
-				f.block(i * 6, 0, 6, 1) = SE3::Log(T);
+				f.block<6, 1>(i * 6, 0) = SE3::Log(T);
 			}
 			
 			return f;
@@ -40,7 +41,7 @@ namespace rovin
 
 		Math::MatrixX System::Closedloop_Constraint_Jacobian(State& state, const RETURN_STATE& return_state = SYSTEMJOINT)
 		{
-			unsigned int column = state.getReturnDof(return_state);
+			unsigned int column = state.getDof(return_state);
 			MatrixX J(_closedloop.size() * 6, column);
 			SE3 T, jointT;
 			int i = 0;
@@ -51,20 +52,11 @@ namespace rovin
 				{
 					T = iter->_je * T;
 					MatrixX temp_J = SE3::invAd(T) * _jointptr[iter->_joint]->getJacobian(state.getJointState(iter->_joint).q);
-					if (!iter->_direction)
-					{
-						temp_J *= -1;
-					}
-					state.makeReturnMatrix(J, temp_J, 6 * i, iter->_joint, return_state);
+					// MatrixX temp_J = SE3::invAd(T) * _jointptr[iter->_joint]->getJacobian(state.getJointState(iter->_joint).q, iter->_direction);
+					state.writeColumns(J, temp_J, 6 * i, iter->_joint, return_state);
 
-					if (iter->_direction)
-					{
-						T = iter->_sj * _jointptr[iter->_joint]->getTransform(state.getJointState(iter->_joint).q) * T;
-					}
-					else
-					{
-						T = iter->_sj * _jointptr[iter->_joint]->getTransform(state.getJointState(iter->_joint).q).inverse() * T;
-					}
+					T = iter->_sj * _jointptr[iter->_joint]->getTransform(state.getJointState(iter->_joint).q) * T;
+					// T = iter->_sj * _jointptr[iter->_joint]->getTransform(state.getJointState(iter->_joint).q, iter->_direction) * T;
 				}
 			}
 			return J;

@@ -8,10 +8,10 @@ namespace rovin
 {
 	namespace Dynamics
 	{
-		System::System(const Model::Assembly& model, const string& baselink)
+		System::System(const std::shared_ptr< Model::Assembly >& model, const string& baselink)
 		{
-			return;
-			_model = &model;
+			_model = model;
+			_model->LOCK();
 			_baselink = baselink;
 
 			list< string > linklist = _model->getLinkNameList();
@@ -60,8 +60,8 @@ namespace rovin
 			std::vector< bool > lcheck, jcheck;
 			lcheck.resize(_num_link);
 			jcheck.resize(_num_joint);
-			que.push(pair< unsigned int, list< _CONN >>(_root = getLinkNum(_baselink), list< _CONN >()));
-			lcheck[_root] = true;
+			que.push(pair< unsigned int, list< _CONN >>(_baseLinkIndex = getLinkNum(_baselink), list< _CONN >()));
+			lcheck[_baseLinkIndex] = true;
 			while (!que.empty())
 			{
 				pair< unsigned int, list< _CONN >> item = que.front();

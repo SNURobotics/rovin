@@ -40,7 +40,7 @@ namespace rovin
 					const std::shared_ptr<Link> actionLink_pointer,
 					const Math::SE3 mountLink_T,
 					const Math::SE3 actionLink_T
-					) : _joint_pointer(_joint_pointer), _mountLink_pointer(mountLink_pointer), _actionLink_pointer(actionLink_pointer),
+					) : _joint_pointer(joint_pointer), _mountLink_pointer(mountLink_pointer), _actionLink_pointer(actionLink_pointer),
 					_mountLink_T(mountLink_T), _actionLink_T(actionLink_T) {}
 
 				std::shared_ptr<Joint> _joint_pointer; ///< 조인트 포인터
@@ -51,11 +51,11 @@ namespace rovin
 			};
 
 			/// 생성자
-			Assembly() : _link(), _joint() {}
+			Assembly() : _lock(), _link(), _joint() {}
 			/// 복사 생성자
 			Assembly(const Assembly& operand);
 
-			// 소멸자
+			/// 소멸자
 			~Assembly();
 
 			/// 대입 연산자 리스트들을 복사 합니다. copy와는 다르게 link, joint 등을 객체 복사하지는 않습니다.
@@ -67,6 +67,12 @@ namespace rovin
 			/// 현재의 assembly에 다른 어셈블리를 추가합니다.
 			Assembly& operator += (const Assembly& operand ///< 현재 assembly에 추가하고 싶은 assembly
 				);
+
+			/// LOCK
+			void LOCK();
+
+			/// UNLOCK
+			void UNLOCK();
 
 			/// Link를 추가합니다.
 			std::shared_ptr<Link>& addLink(const std::shared_ptr<Link>& link_pointer ///< 추가하고 싶은 링크의 포인터
@@ -255,6 +261,8 @@ namespace rovin
 				);
 
 		private:
+			unsigned int _lock;
+
 			std::map< std::string, std::shared_ptr<Link> > _link;
 			std::map< std::string, std::shared_ptr<Joint> > _joint;
 			std::map< std::string, std::shared_ptr<Link> > _marker;

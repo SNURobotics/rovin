@@ -1,5 +1,8 @@
 #include "ScrewJoint.h"
 
+#include <iostream>
+using namespace std;
+
 namespace rovin {
 	namespace Model {
 		ScrewJoint::ScrewJoint(const std::string & name, unsigned int dof, const Math::MatrixX & axes)
@@ -10,6 +13,7 @@ namespace rovin {
 			else if (axes.rows() == 3 && axes.cols() == _dof)
 			{
 				_axes.resize(6, dof);
+				_axes.setZero();
 				_axes.topRows<3>() = axes;
 			}
 			else
