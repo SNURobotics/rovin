@@ -18,12 +18,12 @@
 #include <rovin/Model/Link.h>
 #include <rovin/Model/Joint.h>
 
-#include "State.h"
-
 namespace rovin
 {
 	namespace Dynamics
 	{
+		class State;
+
 		/**
 		*	\class System
 		*	\brief System를 생성하고 처리하는 클래스
@@ -51,10 +51,34 @@ namespace rovin
 				Math::SE3 _je; ///< 조인트 링크 프레임에서 다음 링크의 프레임
 			};
 
+			enum RETURN_STATE
+			{
+				SYSTEMJOINT,
+				WHOLEJOINT,
+				ACTIVEJOINT,
+				PASSIVEJOINT
+			};
+
 			/// 생성자
 			System(const Model::Assembly& model, const std::string& baselink);
 			/// 소멸자
 			~System() {}
+
+			/// 현재 system에 연결된 assembly를 가져옵니다.
+			const Model::Assembly& getAssembly() const
+			{
+				return *_model;
+			}
+			/// 링크 리스트를 가져옵니다.
+			const std::vector< std::string >& getLinkList() const
+			{
+				return _link;
+			}
+			/// 링크 리스트를 가져옵니다.
+			const std::vector< std::string >& getJointList() const
+			{
+				return _joint;
+			}
 			
 			/// 링크 번호를 얻어옵니다.
 			unsigned int getLinkNum(const std::string& linkname)
@@ -71,74 +95,12 @@ namespace rovin
 				return iter->second;
 			}
 
-			void ConnectState(Dynamics::State& state)
-			{
-				if (_connectstate) DisconnectState();
-
-				_connectstate = true;
-				_state = &state;
-
-				_linkstate.resize(_num_link);
-				_jointstate.resize(_num_joint);
-
-				for (unsigned int i = 0; i < _num_link; i++)
-				{
-					_linkstate[i] = &_state->getLinkState(_link[i]);
-				}
-				for (unsigned int i = 0; i < _num_joint; i++)
-				{
-					_jointstate[i] = &_state->getJointState(_link[i]);
-				}
-
-				_activejoint.resize(_num_joint);
-				_activejoint_index.resize(_num_link);
-				unsigned int temp_index = 0;
-				const std::list< std::string > activejoint = _state->getActiveJointList();
-				for (std::list< std::string >::const_iterator iter = activejoint.begin(); iter != activejoint.end(); iter++)
-				{
-					unsigned int temp_joint = getJointNum(*iter);
-					_activejoint[temp_joint] = true;
-					_activejoint_index[temp_joint] = temp_index;
-					temp_index += _jointstate[temp_joint]->dof;
-				}
-			}
-			void DisconnectState()
-			{
-				_connectstate = false;
-				_state = NULL;
-				_linkstate.clear();
-				_jointstate.clear();
-				_activejoint.clear();
-				_activejoint_index.clear();
-			}
-
-			void stateActiveJointUpdate()
-			{
-				utils::Log(!_connectstate, "System에 state가 연결되어 있어야 합니다", true);
-
-				_activejoint.clear();
-				_activejoint_index.clear();
-				_activejoint.resize(_num_joint);
-				_activejoint_index.resize(_num_link);
-				unsigned int temp_index = 0;
-				const std::list< std::string > activejoint = _state->getActiveJointList();
-				for (std::list< std::string >::const_iterator iter = activejoint.begin(); iter != activejoint.end(); iter++)
-				{
-					unsigned int temp_joint = getJointNum(*iter);
-					_activejoint[temp_joint] = true;
-					_activejoint_index[temp_joint] = temp_index;
-					temp_index += _jointstate[temp_joint]->dof;
-				}
-			}
-
 			/// Closed Loop 조건 식의 값을 구합니다.
 			Math::VectorX Closedloop_Constraint_Function(State& state);
-			/// Closed Loop 조건 식의 값을 구합니다.
-			Math::VectorX Closedloop_Constraint_Function() const;
 			/// Closed Loop 조건 식의 Jacobian 행렬을 구합니다.
-			Math::MatrixX Closedloop_Constraint_Jacobian(State& state);
-			/// Closed Loop 조건 식의 Jacobian 행렬을 구합니다.
-			Math::MatrixX Closedloop_Constraint_Jacobian() const;
+			Math::MatrixX Closedloop_Constraint_Jacobian(State& state, const RETURN_STATE& return_state);
+			/// Closed Loop 조건을 풀어줍니다. Active joint는 상수로 passive joint를 변수로 두고 조건을 맞는 변수 값을 구합니다.
+			void Solve_Closedloop_Constraint(State& state);
 		private:
 			const Model::Assembly* _model;
 			std::string _baselink;
@@ -162,16 +124,6 @@ namespace rovin
 			std::vector< std::list< _CONN >> _trace;
 
 			std::list< std::list< _CONN >> _closedloop;
-
-			bool _connectstate;
-			State* _state;
-
-			std::vector< State::LinkState* > _linkstate;
-			std::vector< State::JointState* > _jointstate;
-
-			std::vector< bool > _activejoint;
-
-			std::vector< int > _activejoint_index;
 		};
 	}
 }

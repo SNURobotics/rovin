@@ -68,7 +68,7 @@ namespace rovin
 		SO3 SO3::inverse() const
 		{
 			SO3 result;
-			result._e = _e.transpose().eval();
+			result._e = _e.transpose();
 			return result;
 		}
 
@@ -208,11 +208,11 @@ namespace rovin
 
 			if (R.determinant() > 0)
 			{
-				result._e = svd.matrixV() * svd.matrixU().transpose().eval();
+				result._e = svd.matrixV() * svd.matrixU().transpose();
 			}
 			else
 			{
-				result._e = svd.matrixV() * Eigen::DiagonalMatrix<Real, 3>(1, 1, -1) * svd.matrixU().transpose().eval();
+				result._e = svd.matrixV() * Eigen::DiagonalMatrix<Real, 3>(1, 1, -1) * svd.matrixU().transpose();
 			}
 
 			return result;

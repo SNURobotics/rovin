@@ -8,6 +8,7 @@
 #pragma once
 
 #include <map>
+#include <vector>
 
 #include <rovin/utils/Diagnostic.h>
 
@@ -15,6 +16,8 @@
 #include <rovin/Math/LieGroup.h>
 
 #include <rovin/Model/Assembly.h>
+
+#include "System.h"
 
 namespace rovin
 {
@@ -53,6 +56,8 @@ namespace rovin
 					tau = Math::VectorX(_dof);
 
 					constraintF = Math::dse3();
+
+					index = 0;
 				}
 
 				unsigned int dof;
@@ -63,10 +68,12 @@ namespace rovin
 				Math::VectorX tau;
 
 				Math::dse3 constraintF;
+
+				unsigned int index;
 			};
 
 			/// 생성자
-			State(const Model::Assembly& model, const std::list< std::string >& activeJointList);
+			State(const System& system, const std::list< std::string >& activeJointList);
 
 			/// 총 자유도를 가지고 옵니다.
 			unsigned int getTotalDof() const
@@ -93,44 +100,103 @@ namespace rovin
 			/// Link의 상태를 가지고 옵니다.
 			LinkState& getLinkState(const std::string& link_name)
 			{
-				std::map< std::string, LinkState >::iterator iter = _linkState.find(link_name);
-				utils::Log(iter == _linkState.end(), "찾고자 하는 이름을 갖는 링크가 존재하지 않습니다.", true);
-				return iter->second;
+				std::map< std::string, unsigned int >::iterator iter = _linkMap.find(link_name);
+				utils::Log(iter == _linkMap.end(), "찾고자 하는 이름을 갖는 링크가 존재하지 않습니다.", true);
+				return _linkState[iter->second];
+			}
+			/// Link의 상태를 가지고 옵니다.
+			LinkState& getLinkState(const unsigned int& link_num)
+			{
+				return _linkState[link_num];
 			}
 			/// Joint의 상태를 가지고 옵니다.
 			JointState& getJointState(const std::string& joint_name)
 			{
-				std::map< std::string, JointState >::iterator iter = _jointState.find(joint_name);
-				utils::Log(iter == _jointState.end(), "찾고자 하는 이름을 갖는 조인트가 존재하지 않습니다.", true);
-				return iter->second;
+				std::map< std::string, unsigned int >::iterator iter = _jointMap.find(joint_name);
+				utils::Log(iter == _jointMap.end(), "찾고자 하는 이름을 갖는 조인트가 존재하지 않습니다.", true);
+				return _jointState[iter->second];
+			}
+			/// Link의 상태를 가지고 옵니다.
+			JointState& getJointState(const unsigned int& joint_num)
+			{
+				return _jointState[joint_num];
+			}
+			/// Link의 상태를 가지고 옵니다.
+			const LinkState& getLinkState(const std::string& link_name) const
+			{
+				std::map< std::string, unsigned int >::const_iterator iter = _linkMap.find(link_name);
+				utils::Log(iter == _linkMap.end(), "찾고자 하는 이름을 갖는 링크가 존재하지 않습니다.", true);
+				return _linkState[iter->second];
+			}
+			/// Link의 상태를 가지고 옵니다.
+			const LinkState& getLinkState(const unsigned int& link_num) const
+			{
+				return _linkState[link_num];
+			}
+			/// Joint의 상태를 가지고 옵니다.
+			const JointState& getJointState(const std::string& joint_name) const
+			{
+				std::map< std::string, unsigned int >::const_iterator iter = _jointMap.find(joint_name);
+				utils::Log(iter == _jointMap.end(), "찾고자 하는 이름을 갖는 조인트가 존재하지 않습니다.", true);
+				return _jointState[iter->second];
+			}
+			/// Link의 상태를 가지고 옵니다.
+			const JointState& getJointState(const unsigned int& joint_num) const
+			{
+				return _jointState[joint_num];
+			}
+
+			/// Active joint인지 확인합니다.
+			bool isActiveJoint(const std::string& joint_name)
+			{
+				std::map< std::string, unsigned int >::iterator iter = _jointMap.find(joint_name);
+				utils::Log(iter == _jointMap.end(), "찾고자 하는 이름을 갖는 조인트가 존재하지 않습니다.", true);
+				return _activeJoint[iter->second];
+			}
+			/// Active joint인지 확인합니다.
+			bool isActiveJoint(const unsigned int& joint_num) const
+			{
+				return _activeJoint[joint_num];
 			}
 
 			/// Active joint의 리스트를 가지고 옵니다.
-			const std::list< std::string >& getActiveJointList()
+			const std::list< std::pair< std::string, unsigned int >>& getActiveJointList()
 			{
 				return _activeJointList;
 			}
+			/// Passive joint의 리스트를 가지고 옵니다.
+			const std::list< std::pair< std::string, unsigned int >>& getPassiveJointList()
+			{
+				return _passiveJointList;
+			}
 
-			/// 조인트 입력(VectorX)를 (list)로 변환합니다. ex) 1, 2, 3, 4, 5 -> 1, 2 / 3 / 4, 5 (2dof, 1dof, 2dof)
-			std::list< Math::VectorX > vector2list(const Math::VectorX& _q);
-			/// 조인트 입력(list)를 VectorX로 변환합니다. ex) 1, 2 / 3 / 4, 5 (2dof, 1dof, 2dof) -> 1, 2, 3, 4, 5
-			Math::VectorX list2vector(const std::list< Math::VectorX >& _q);
+			/// 리턴 행렬 또는 벡터의 크기를 정하기 위한 함수
+			unsigned int getReturnDof(const System::RETURN_STATE& return_state);
+			/// 리턴 행렬을 만들어줍니다.
+			void makeReturnMatrix(Math::MatrixX& target, const Math::MatrixX& value, const unsigned int& row, const unsigned int& joint_num, const System::RETURN_STATE& return_state);
 
-			/// Joint에 q를 설정합니다.
-			void setJoint_q(const Math::VectorX& _q);
-			/// Joint에 q를 설정합니다.
-			void setJoint_qdot(const Math::VectorX& _qdot);
-			/// Joint에 tau를 설정합니다.
-			void setJoint_tau(const Math::VectorX& _tau);
+			/// Active joint의 q들을 설정합니다.
+			void setActiveJoint_q(const Math::VectorX& q);
+			/// Passive joint의 q들을 설정합니다.
+			void setPassiveJoint_q(const Math::VectorX& q);
+			/// Passive joint의 q들을 더합니다.
+			void addPassiveJoint_q(const Math::VectorX& q);
 
 		private:
 			unsigned int _activejoint_dof;
 			unsigned int _total_dof;
 
-			std::map< std::string, LinkState > _linkState;
-			std::map< std::string, JointState > _jointState;
+			std::vector< LinkState > _linkState;
+			std::vector< JointState > _jointState;
 
-			std::list< std::string > _activeJointList;
+			std::map< std::string, unsigned int > _linkMap;
+			std::map< std::string, unsigned int > _jointMap;
+
+			std::vector< unsigned int > _jointSystemIndex;
+
+			std::vector< bool > _activeJoint;
+			std::list< std::pair< std::string, unsigned int >> _activeJointList;
+			std::list< std::pair< std::string, unsigned int >> _passiveJointList;
 		};
 	}
 }

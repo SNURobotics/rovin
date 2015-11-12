@@ -21,14 +21,14 @@ namespace rovin
 
 		Inertia::Inertia(const Matrix3& I, const Real& m)
 		{
-			assert(I.isApprox(I.transpose().eval()));
+			assert(I.isApprox(I.transpose()));
 			(*this) << I, Matrix3::Zero(),
 				Matrix3::Zero(), Matrix3::Identity()*m;
 		}
 
 		Inertia::Inertia(const Matrix3& I, const Vector3& p, const Real& m)
 		{
-			assert(I.isApprox(I.transpose().eval()));
+			assert(I.isApprox(I.transpose()));
 			(*this) << I, -Bracket(p),
 				Bracket(p), Matrix3::Identity()*m;
 		}

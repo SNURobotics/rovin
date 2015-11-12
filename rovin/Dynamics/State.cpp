@@ -6,18 +6,30 @@ namespace rovin
 {
 	namespace Dynamics
 	{
-		State::State(const Model::Assembly& model, const list< string >& activeJointList) : _activejoint_dof(0)
+		State::State(const System& system, const list< string >& activeJointList) : _activejoint_dof(0)
 		{
-			list< string > linkNameList = model.getLinkNameList();
-			for (list< string >::iterator link_iter = linkNameList.begin(); link_iter != linkNameList.end(); link_iter++)
+			const vector< string > linkNameList = system.getLinkList();
+			_linkState.clear();
+			int i = 0;
+			for (vector< string >::const_iterator link_iter = linkNameList.begin(); link_iter != linkNameList.end(); link_iter++, i++)
 			{
-				_linkState.insert(pair< string, LinkState >(*link_iter, LinkState()));
+				_linkState.push_back(LinkState());
+				_linkMap.insert(pair< string, unsigned int >(*link_iter, i));
 			}
-			list< string > jointNmaeList = model.getLinkNameList();
-			for (list< string >::iterator joint_iter = jointNmaeList.begin(); joint_iter != jointNmaeList.end(); joint_iter++)
+			const vector< string > jointNmaeList = system.getJointList();
+			_jointState.clear();
+			_jointSystemIndex.clear();
+			i = 0;
+			for (vector< string >::const_iterator joint_iter = jointNmaeList.begin(); joint_iter != jointNmaeList.end(); joint_iter++, i++)
 			{
-				unsigned int tmpdof = model.findJoint(*joint_iter)->getDOF();
-				_jointState.insert(pair< string, JointState >(*joint_iter, JointState(tmpdof)));
+				unsigned int tmpdof = system.getAssembly().findJoint(*joint_iter)->getDOF();
+				_jointState.push_back(JointState(tmpdof));
+				_jointMap.insert(pair< string, unsigned int >(*joint_iter, i));
+				_jointSystemIndex.push_back(_total_dof);
+				
+				_passiveJointList.push_back(pair< string, unsigned int >(*joint_iter, i));
+				_jointState.rend()->index = _total_dof;
+
 				_total_dof += tmpdof;
 			}
 
@@ -30,110 +42,136 @@ namespace rovin
 			}
 		}
 
-		bool State::addActiveJoint(const string& activeJoint)
+		bool State::addActiveJoint(const string& joint_name)
 		{
-			for (list< string >::iterator iter = _activeJointList.begin(); iter != _activeJointList.end(); iter++)
-			{
-				if (*iter == activeJoint)
-				{
-					utils::Log("추가하고 싶은 joint는 이미 active joint list에 들어 있습니다.", false);
-					return false;
-				}
-			}
-			if (utils::Log(_jointState.find(activeJoint) == _jointState.end(), "추가 하고 싶은 이름을 갖는 joint는 존재 하지 않습니다.", false))
+			if (utils::Log(_jointMap.find(joint_name) == _jointMap.end(), "추가 하고 싶은 이름을 갖는 joint는 존재 하지 않습니다.", false))
 			{
 				return false;
 			}
-			_activeJointList.push_back(activeJoint);
-			_activejoint_dof += getJointState(activeJoint).dof;
-			return true;
+			
+			for (list< pair< string, unsigned int >>::iterator iter = _passiveJointList.begin(); iter != _passiveJointList.end(); iter++)
+			{
+				if (iter->first == joint_name)
+				{
+					_activeJoint[iter->second] = true;
+
+					_activeJointList.push_back(pair< string, unsigned int >(joint_name, iter->second));
+					_jointState[iter->second].index = _activejoint_dof;
+					_activejoint_dof += _jointState[iter->second].dof;
+
+					iter = _passiveJointList.erase(iter);
+					for (; iter != _passiveJointList.end(); iter++)
+					{
+						_jointState[iter->second].index -= _jointState[iter->second].dof;
+					}
+					break;
+				}
+			}
+			utils::Log("추가하고 싶은 joint는 이미 active joint list에 들어 있습니다.", false);
+			return false;
 		}
 
-		bool State::eraseActiveJoint(const string& activeJoint)
+		bool State::eraseActiveJoint(const string& joint_name)
 		{
-			for (list< string >::iterator iter = _activeJointList.begin(); iter != _activeJointList.end(); iter++)
+			if (utils::Log(_jointMap.find(joint_name) == _jointMap.end(), "추가 하고 싶은 이름을 갖는 joint는 존재 하지 않습니다.", false))
 			{
-				if (*iter == activeJoint)
+				return false;
+			}
+			for (list< pair< string, unsigned int >>::iterator iter = _activeJointList.begin(); iter != _activeJointList.end(); iter++)
+			{
+				if (iter->first == joint_name)
 				{
-					_activeJointList.erase(iter);
-					_activejoint_dof -= getJointState(activeJoint).dof;
+					_activeJoint[iter->second] = false;
+
+					_passiveJointList.push_back(pair< string, unsigned int >(joint_name, iter->second));
+					_jointState[iter->second].index = _total_dof - _activejoint_dof;
+					_activejoint_dof -= _jointState[iter->second].dof;
+
+					iter = _activeJointList.erase(iter);
+					for (; iter != _activeJointList.end(); iter++)
+					{
+						_jointState[iter->second].index -= _jointState[iter->second].dof;
+					}
 					return true;
 				}
 			}
 			utils::Log("추가하고 싶은 joint는 active joint list에 들어 있지 않습니다.", false);
 			return false;
 		}
-		
-		std::list< Math::VectorX > State::vector2list(const Math::VectorX& _q)
-		{
-			utils::Log(_q.size() != _activejoint_dof, "State의 자유도와 q의 총 자유도가 다릅니다.", true);
 
-			unsigned int index = 0, dof;
-			std::list< Math::VectorX > tmp = std::list< Math::VectorX >();
-			for (list< string >::iterator iter = _activeJointList.begin(); iter != _activeJointList.end(); iter++)
-			{
-				dof = getJointState(*iter).dof;
-				tmp.push_back(_q.block(index, 0, dof, 1));
-				index += dof;
-			}
-			return tmp;
+		unsigned int State::getReturnDof(const System::RETURN_STATE& return_state)
+		{
+			if (return_state == System::SYSTEMJOINT)	return getTotalDof();
+			if (return_state == System::WHOLEJOINT)		return getTotalDof();
+			if (return_state == System::ACTIVEJOINT)	return getActiveJointDof();
+			if (return_state == System::PASSIVEJOINT)	return getTotalDof() - getActiveJointDof();
+			return -1;
 		}
-		
-		Math::VectorX State::list2vector(const std::list< Math::VectorX >& _q)
+
+		void State::makeReturnMatrix(Math::MatrixX& target, const Math::MatrixX& value, const unsigned int& row, const unsigned int& joint_num,
+			const System::RETURN_STATE& return_state)
 		{
-			utils::Log(_q.size() != _jointState.size(), "State의 갯수와 q의 갯수가 다릅니다.", true);
-
-			unsigned int dof = 0;
-			Math::VectorX tmp(_activejoint_dof);
-
-			for (list< Math::VectorX >::const_iterator iter = _q.begin(); iter != _q.end(); iter++)
+			unsigned int index = getTotalDof();
+			if (return_state == System::SYSTEMJOINT)
 			{
-				for (int i = 0; i < (*iter).size(); i++, dof++)
+				index = _jointSystemIndex[joint_num];
+			}
+			else if (return_state == System::WHOLEJOINT)
+			{
+				if (isActiveJoint(joint_num))
 				{
-					tmp(dof) = (*iter)(i);
+					index = getJointState(joint_num).index;
+				}
+				else
+				{
+					index = getJointState(joint_num).index + getActiveJointDof();
+				}
+			}
+			else if (return_state == System::ACTIVEJOINT)
+			{
+				if (isActiveJoint(joint_num))
+				{
+					index = getJointState(joint_num).index;
+				}
+			}
+			else if (return_state == System::PASSIVEJOINT)
+			{
+				if (!isActiveJoint(joint_num))
+				{
+					index = getJointState(joint_num).index;
 				}
 			}
 
-			utils::Log(dof != _activejoint_dof, "State의 자유도와 q의 총 자유도가 다릅니다.", true);
-			return tmp;
-		}
-		
-		void State::setJoint_q(const Math::VectorX& _q)
-		{
-			utils::Log(_q.size() != _activejoint_dof, "State의 갯수와 q의 갯수가 다릅니다.", true);
-
-			list< Math::VectorX > _qlist = vector2list(_q);
-			list< string >::iterator iter;
-			list< Math::VectorX >::iterator _qiter;
-			for (iter = _activeJointList.begin(), _qiter = _qlist.begin(); iter != _activeJointList.end(); iter++, _qiter++)
+			if (index < getTotalDof())
 			{
-				getJointState(*iter).q = *_qiter;
+				int valuecol = value.cols();
+				int valuerow = value.rows();
+
+				target.block(row, index, valuerow, valuecol) = value;
 			}
 		}
 
-		void State::setJoint_qdot(const Math::VectorX& _qdot)
+		void State::setActiveJoint_q(const Math::VectorX& q)
 		{
-			utils::Log(_qdot.size() != _activejoint_dof, "State의 갯수와 qdot의 갯수가 다릅니다.", true);
-
-			list< Math::VectorX > _qdotlist = vector2list(_qdot);
-			list< string >::iterator iter;
-			list< Math::VectorX >::iterator _qdotiter;
-			for (iter = _activeJointList.begin(), _qdotiter = _qdotlist.begin(); iter != _activeJointList.end(); iter++, _qdotiter++)
+			for (list< pair< string, unsigned int >>::iterator iter = _activeJointList.begin(); iter != _activeJointList.end(); iter++)
 			{
-				getJointState(*iter).qdot = *_qdotiter;
+				_jointState[iter->second].q = q.block(_jointState[iter->second].index, 0, _jointState[iter->second].dof, 1);
 			}
 		}
 
-		void State::setJoint_tau(const Math::VectorX& _tau)
+		void State::setPassiveJoint_q(const Math::VectorX& q)
 		{
-			utils::Log(_tau.size() != _activejoint_dof, "State의 갯수와 tau의 갯수가 다릅니다.", true);
-
-			list< Math::VectorX > _taulist = vector2list(_tau);
-			list< string >::iterator iter;
-			list< Math::VectorX >::iterator _tauiter;
-			for (iter = _activeJointList.begin(), _tauiter = _taulist.begin(); iter != _activeJointList.end(); iter++, _tauiter++)
+			for (list< pair< string, unsigned int >>::iterator iter = _passiveJointList.begin(); iter != _passiveJointList.end(); iter++)
 			{
-				getJointState(*iter).tau = *_tauiter;
+				_jointState[iter->second].q = q.block(_jointState[iter->second].index, 0, _jointState[iter->second].dof, 1);
+			}
+		}
+
+		void State::addPassiveJoint_q(const Math::VectorX& q)
+		{
+			for (list< pair< string, unsigned int >>::iterator iter = _passiveJointList.begin(); iter != _passiveJointList.end(); iter++)
+			{
+				_jointState[iter->second].q += q.block(_jointState[iter->second].index, 0, _jointState[iter->second].dof, 1);
 			}
 		}
 	}
