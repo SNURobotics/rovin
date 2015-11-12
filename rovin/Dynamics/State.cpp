@@ -6,7 +6,7 @@ namespace rovin
 {
 	namespace Dynamics
 	{
-		State::State(const Model::Assembly& model, const list< string >& activeJointList) : _dof(0)
+		State::State(const Model::Assembly& model, const list< string >& activeJointList) : _activejoint_dof(0)
 		{
 			list< string > linkNameList = model.getLinkNameList();
 			for (list< string >::iterator link_iter = linkNameList.begin(); link_iter != linkNameList.end(); link_iter++)
@@ -16,7 +16,7 @@ namespace rovin
 			list< string > jointNmaeList = model.getLinkNameList();
 			for (list< string >::iterator joint_iter = jointNmaeList.begin(); joint_iter != jointNmaeList.end(); joint_iter++)
 			{
-				unsigned int tmpdof = model.findJoint(*joint_iter)->getDOF;
+				unsigned int tmpdof = model.findJoint(*joint_iter)->getDOF();
 				_jointState.insert(pair< string, JointState >(*joint_iter, JointState(tmpdof)));
 				_total_dof += tmpdof;
 			}
@@ -45,7 +45,7 @@ namespace rovin
 				return false;
 			}
 			_activeJointList.push_back(activeJoint);
-			_dof += getJointState(activeJoint).dof;
+			_activejoint_dof += getJointState(activeJoint).dof;
 			return true;
 		}
 
@@ -56,7 +56,7 @@ namespace rovin
 				if (*iter == activeJoint)
 				{
 					_activeJointList.erase(iter);
-					_dof -= getJointState(activeJoint).dof;
+					_activejoint_dof -= getJointState(activeJoint).dof;
 					return true;
 				}
 			}
@@ -66,7 +66,7 @@ namespace rovin
 		
 		std::list< Math::VectorX > State::vector2list(const Math::VectorX& _q)
 		{
-			utils::Log(_q.size() != _dof, "State의 자유도와 q의 총 자유도가 다릅니다.", true);
+			utils::Log(_q.size() != _activejoint_dof, "State의 자유도와 q의 총 자유도가 다릅니다.", true);
 
 			unsigned int index = 0, dof;
 			std::list< Math::VectorX > tmp = std::list< Math::VectorX >();
@@ -84,7 +84,7 @@ namespace rovin
 			utils::Log(_q.size() != _jointState.size(), "State의 갯수와 q의 갯수가 다릅니다.", true);
 
 			unsigned int dof = 0;
-			Math::VectorX tmp(_dof);
+			Math::VectorX tmp(_activejoint_dof);
 
 			for (list< Math::VectorX >::const_iterator iter = _q.begin(); iter != _q.end(); iter++)
 			{
@@ -94,13 +94,13 @@ namespace rovin
 				}
 			}
 
-			utils::Log(dof != _dof, "State의 자유도와 q의 총 자유도가 다릅니다.", true);
+			utils::Log(dof != _activejoint_dof, "State의 자유도와 q의 총 자유도가 다릅니다.", true);
 			return tmp;
 		}
 		
 		void State::setJoint_q(const Math::VectorX& _q)
 		{
-			utils::Log(_q.size() != _dof, "State의 갯수와 q의 갯수가 다릅니다.", true);
+			utils::Log(_q.size() != _activejoint_dof, "State의 갯수와 q의 갯수가 다릅니다.", true);
 
 			list< Math::VectorX > _qlist = vector2list(_q);
 			list< string >::iterator iter;
@@ -113,7 +113,7 @@ namespace rovin
 
 		void State::setJoint_qdot(const Math::VectorX& _qdot)
 		{
-			utils::Log(_qdot.size() != _dof, "State의 갯수와 qdot의 갯수가 다릅니다.", true);
+			utils::Log(_qdot.size() != _activejoint_dof, "State의 갯수와 qdot의 갯수가 다릅니다.", true);
 
 			list< Math::VectorX > _qdotlist = vector2list(_qdot);
 			list< string >::iterator iter;
@@ -126,7 +126,7 @@ namespace rovin
 
 		void State::setJoint_tau(const Math::VectorX& _tau)
 		{
-			utils::Log(_tau.size() != _dof, "State의 갯수와 tau의 갯수가 다릅니다.", true);
+			utils::Log(_tau.size() != _activejoint_dof, "State의 갯수와 tau의 갯수가 다릅니다.", true);
 
 			list< Math::VectorX > _taulist = vector2list(_tau);
 			list< string >::iterator iter;

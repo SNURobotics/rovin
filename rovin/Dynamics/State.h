@@ -34,14 +34,10 @@ namespace rovin
 				{
 					T = Math::SE3();
 					V = Math::se3();
-
-					internalF = Math::dse3();
 				}
 
 				Math::SE3 T;
 				Math::se3 V;
-
-				Math::dse3 internalF;
 			};
 
 			class JointState
@@ -71,6 +67,17 @@ namespace rovin
 
 			/// 생성자
 			State(const Model::Assembly& model, const std::list< std::string >& activeJointList);
+
+			/// 총 자유도를 가지고 옵니다.
+			unsigned int getTotalDof() const
+			{
+				return _total_dof;
+			}
+			/// Active joint 자유도를 가지고 옵니다.
+			unsigned int getActiveJointDof() const
+			{
+				return _activejoint_dof;
+			}
 
 			/**
 			*	\return 추가에 성공하면 true, 추가에 실패하면 false
@@ -117,7 +124,7 @@ namespace rovin
 			void setJoint_tau(const Math::VectorX& _tau);
 
 		private:
-			unsigned int _dof;
+			unsigned int _activejoint_dof;
 			unsigned int _total_dof;
 
 			std::map< std::string, LinkState > _linkState;

@@ -162,7 +162,6 @@ namespace rovin
 		{
 			Matrix6 result;
 			Matrix3 InvR = T._R.inverse()._e;
-
 			result << InvR, Matrix3::Zero(),
 				-InvR*Bracket(T._p), InvR;
 

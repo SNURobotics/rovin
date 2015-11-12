@@ -135,14 +135,12 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="Constraint.cpp" />
     <ClCompile Include="Inertia.cpp" />
     <ClCompile Include="SE3.cpp" />
     <ClCompile Include="SO3.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Constant.h" />
-    <ClInclude Include="Constraint.h" />
     <ClInclude Include="Inertia.h" />
     <ClInclude Include="LieGroup.h" />
     <ClInclude Include="SE3.h" />

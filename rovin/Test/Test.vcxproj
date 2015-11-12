@@ -138,6 +138,9 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\Dynamics\Dynamics.vcxproj">
+      <Project>{47043c7f-cba7-43e7-880c-ba951f83b645}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\Math\Math.vcxproj">
       <Project>{d282e6bb-331b-4a77-9088-34cf8bd0b785}</Project>
     </ProjectReference>

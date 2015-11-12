@@ -4,8 +4,8 @@
 #include <time.h>
 
 #include <rovin/Math/LieGroup.h>
-#include <rovin/Math/Constraint.h>
 #include <rovin/Model/Assembly.h>
+#include <rovin/Dynamics/System.h>
 
 using namespace std;
 using namespace Eigen;
@@ -22,6 +22,8 @@ int afunc(int c)
 
 int main()
 {
+	VectorXd a(1, 0);
+
 	_getch();
 	return 0;
 }

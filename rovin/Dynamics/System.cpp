@@ -10,6 +10,7 @@ namespace rovin
 	{
 		System::System(const Model::Assembly& model, const string& baselink)
 		{
+			return;
 			_model = &model;
 			_baselink = baselink;
 
@@ -19,18 +20,18 @@ namespace rovin
 			_num_link = linklist.size();
 			_num_joint = jointlist.size();
 
-			_link = new string[_num_link];
-			_joint = new string[_num_joint];
+			_link.resize(_num_link);
+			_joint.resize(_num_joint);
 
-			_linkptr = new shared_ptr< Model::Link >[_num_link];
-			_jointptr = new shared_ptr< Model::Joint >[_num_joint];
+			_linkptr.resize(_num_link);
+			_jointptr.resize(_num_joint);
 
-			_connectionlist = new list< _CONN >[_num_link];
+			_connectionlist.resize(_num_link);
 
-			_tree = new list< _CONN >[_num_link];
-			_trace = new list< _CONN >[_num_link];
+			_tree.resize(_num_link);
+			_trace.resize(_num_link);
 
-			int i;
+			unsigned int i;
 			list< string >::iterator iter;
 			for (i = 0, iter = linklist.begin(); i < _num_link; i++, iter++)
 			{
@@ -55,28 +56,26 @@ namespace rovin
 				_connectionlist[e].push_back(_CONN(e, coniter->_actionLink_T.inverse(), j, coniter->_mountLink_T.inverse(), s, false));
 			}
 
-			queue<pair< unsigned int, list< _CONN >>> que;
-			bool *check = new bool[_num_link];
+			queue< pair< unsigned int, list< _CONN >>> que;
+			std::vector< bool > lcheck, jcheck;
+			lcheck.resize(_num_link);
+			jcheck.resize(_num_joint);
 			que.push(pair< unsigned int, list< _CONN >>(_root = getLinkNum(_baselink), list< _CONN >()));
-			check[_root] = true;
+			lcheck[_root] = true;
 			while (!que.empty())
 			{
 				pair< unsigned int, list< _CONN >> item = que.front();
 				que.pop();
 
-				unsigned int lastj;
-				if (item.second.size() == 0) lastj = _num_joint + 1;
-				else
-				{
-					list< _CONN >::iterator tmp = item.second.end();
-					tmp--;
-					lastj = tmp->_joint;
-				}
 				for (list< _CONN >::iterator iter = _connectionlist[item.first].begin(); iter != _connectionlist[item.first].end(); iter++)
 				{
-					if (lastj == iter->_joint) continue;
+					if (jcheck[iter->_joint])
+					{
+						continue;
+					}
+					jcheck[iter->_joint] = true;
 
-					if (check[iter->_elink])
+					if (lcheck[iter->_elink])
 					{
 						list< _CONN >::iterator n1;
 						list< _CONN >::iterator n2;
@@ -112,7 +111,8 @@ namespace rovin
 					}
 					else
 					{
-						check[iter->_elink] = true;
+						_tree[iter->_slink].push_back(*iter);
+						lcheck[iter->_elink] = true;
 
 						list< _CONN > nexttrace = item.second;
 						nexttrace.push_back(*iter);

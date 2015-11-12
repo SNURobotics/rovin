@@ -10,6 +10,7 @@
 #include <string>
 #include <memory>
 #include <map>
+#include <vector>
 
 #include <rovin/utils/Diagnostic.h>
 #include <rovin/Math/LieGroup.h>
@@ -52,23 +53,8 @@ namespace rovin
 
 			/// 생성자
 			System(const Model::Assembly& model, const std::string& baselink);
-
 			/// 소멸자
-			~System()
-			{
-				delete _link;
-				delete _joint;
-
-				delete _activejoint;
-
-				delete _linkptr;
-				delete _jointptr;
-
-				delete _connectionlist;
-
-				delete _tree;
-				delete _trace;
-			}
+			~System() {}
 			
 			/// 링크 번호를 얻어옵니다.
 			unsigned int getLinkNum(const std::string& linkname)
@@ -85,53 +71,74 @@ namespace rovin
 				return iter->second;
 			}
 
-			void stateLock(Dynamics::State& state)
+			void ConnectState(Dynamics::State& state)
 			{
-				_statelock = true;
+				if (_connectstate) DisconnectState();
+
+				_connectstate = true;
 				_state = &state;
 
-				_linkstate = new State::LinkState*[_num_link];
-				_jointstate = new State::JointState*[_num_joint];
+				_linkstate.resize(_num_link);
+				_jointstate.resize(_num_joint);
 
-				for (int i = 0; i < _num_link; i++)
+				for (unsigned int i = 0; i < _num_link; i++)
 				{
 					_linkstate[i] = &_state->getLinkState(_link[i]);
 				}
-				for (int i = 0; i < _num_joint; i++)
+				for (unsigned int i = 0; i < _num_joint; i++)
 				{
 					_jointstate[i] = &_state->getJointState(_link[i]);
 				}
 
-				_activejoint = new bool[_num_joint];
+				_activejoint.resize(_num_joint);
+				_activejoint_index.resize(_num_link);
+				unsigned int temp_index = 0;
 				const std::list< std::string > activejoint = _state->getActiveJointList();
 				for (std::list< std::string >::const_iterator iter = activejoint.begin(); iter != activejoint.end(); iter++)
 				{
-					_activejoint[getJointNum(*iter)] = true;
+					unsigned int temp_joint = getJointNum(*iter);
+					_activejoint[temp_joint] = true;
+					_activejoint_index[temp_joint] = temp_index;
+					temp_index += _jointstate[temp_joint]->dof;
 				}
 			}
-			void stateUnlock()
+			void DisconnectState()
 			{
-				_statelock = false;
+				_connectstate = false;
 				_state = NULL;
-
-				delete *_linkstate;
-				delete *_jointstate;
-
-				delete _activejoint;
+				_linkstate.clear();
+				_jointstate.clear();
+				_activejoint.clear();
+				_activejoint_index.clear();
 			}
 
 			void stateActiveJointUpdate()
 			{
-				utils::Log(!_statelock, "System에 state가 lock되어 있어야 합니다", true);
+				utils::Log(!_connectstate, "System에 state가 연결되어 있어야 합니다", true);
 
-				delete _activejoint;
-				_activejoint = new bool[_num_joint];
+				_activejoint.clear();
+				_activejoint_index.clear();
+				_activejoint.resize(_num_joint);
+				_activejoint_index.resize(_num_link);
+				unsigned int temp_index = 0;
 				const std::list< std::string > activejoint = _state->getActiveJointList();
 				for (std::list< std::string >::const_iterator iter = activejoint.begin(); iter != activejoint.end(); iter++)
 				{
-					_activejoint[getJointNum(*iter)] = true;
+					unsigned int temp_joint = getJointNum(*iter);
+					_activejoint[temp_joint] = true;
+					_activejoint_index[temp_joint] = temp_index;
+					temp_index += _jointstate[temp_joint]->dof;
 				}
 			}
+
+			/// Closed Loop 조건 식의 값을 구합니다.
+			Math::VectorX Closedloop_Constraint_Function(State& state);
+			/// Closed Loop 조건 식의 값을 구합니다.
+			Math::VectorX Closedloop_Constraint_Function() const;
+			/// Closed Loop 조건 식의 Jacobian 행렬을 구합니다.
+			Math::MatrixX Closedloop_Constraint_Jacobian(State& state);
+			/// Closed Loop 조건 식의 Jacobian 행렬을 구합니다.
+			Math::MatrixX Closedloop_Constraint_Jacobian() const;
 		private:
 			const Model::Assembly* _model;
 			std::string _baselink;
@@ -139,30 +146,32 @@ namespace rovin
 			unsigned int _num_link;
 			unsigned int _num_joint;
 
-			std::string *_link;
-			std::string *_joint;
+			std::vector< std::string > _link;
+			std::vector< std::string > _joint;
 
-			std::shared_ptr<Model::Link> *_linkptr;
-			std::shared_ptr<Model::Joint> *_jointptr;
+			std::vector< std::shared_ptr< Model::Link >> _linkptr;
+			std::vector< std::shared_ptr< Model::Joint >> _jointptr;
 
 			std::map< std::string, unsigned int > _linkmap;
 			std::map< std::string, unsigned int > _jointmap;
 
-			std::list< _CONN > *_connectionlist;
+			std::vector< std::list< _CONN >> _connectionlist;
 
 			unsigned _root;
-			std::list< _CONN > *_tree;
-			std::list< _CONN > *_trace;
+			std::vector< std::list< _CONN >> _tree;
+			std::vector< std::list< _CONN >> _trace;
 
 			std::list< std::list< _CONN >> _closedloop;
 
-			bool _statelock;
+			bool _connectstate;
 			State* _state;
 
-			State::LinkState **_linkstate;
-			State::JointState **_jointstate;
+			std::vector< State::LinkState* > _linkstate;
+			std::vector< State::JointState* > _jointstate;
 
-			bool *_activejoint;
+			std::vector< bool > _activejoint;
+
+			std::vector< int > _activejoint_index;
 		};
 	}
 }
