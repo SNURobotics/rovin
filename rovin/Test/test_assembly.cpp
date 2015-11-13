@@ -43,19 +43,18 @@ int main()
 	//fourBar->Solve_Closedloop_Constraint(state);
 	fourBar->Forward_Kinematics(state);
 
-	//PERFORM_TEST(fourBar->Forward_Kinematics(state), 1e+6);
+	PERFORM_TEST(fourBar->Forward_Kinematics(state), 1e+6);
 
 	MatrixX A(6, 6), B(6, 6);
 	A.setRandom();
 
-	PERFORM_TEST(B = pInv(A), 1e+5);
-	PERFORM_TEST(B = pinv(A), 1e+5);
+	//PERFORM_TEST(B = pinv(A), 1e+5);
 	
 
 	//cout << state.getJointState("J1").q << endl;
 	//cout << state.getJointState("J2").q << endl;
 	//cout << state.getJointState("J3").q << endl;
-	//cout << state.getLinkState("L4").T << endl;
+	cout << state.getLinkState("L4").T << endl;
 	//cout << state.getJointState("J4").q << endl;
 
 	return 0;
