@@ -56,7 +56,7 @@ namespace rovin
 				_connectionlist[e].push_back(_CONN(e, coniter->_actionLink_T.inverse(), j, coniter->_mountLink_T.inverse(), s, true));
 			}
 
-			_BFS.clear();
+			_BFSIdx.clear();
 			queue< pair< unsigned int, list< _CONN >>> que;
 			std::vector< bool > lcheck, jcheck;
 			lcheck.resize(_num_link);
@@ -114,7 +114,7 @@ namespace rovin
 					{
 						_tree[iter->_slink].push_back(*iter);
 						lcheck[iter->_elink] = true;
-						_BFS.push_back(*iter);
+						_BFSIdx.push_back(*iter);
 
 						list< _CONN > nexttrace = item.second;
 						nexttrace.push_back(*iter);

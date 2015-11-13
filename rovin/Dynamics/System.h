@@ -124,7 +124,7 @@ namespace rovin
 			std::vector< std::list< _CONN >> _connectionlist;
 
 			unsigned _baseLinkIndex;
-			std::vector< _CONN > _BFS;
+			std::vector< _CONN > _BFSIdx;
 			std::vector< std::list< _CONN >> _tree;
 			std::vector< std::list< _CONN >> _trace;
 
