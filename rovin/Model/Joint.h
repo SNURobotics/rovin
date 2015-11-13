@@ -13,6 +13,7 @@
 #include <Eigen/Dense>
 #include <rovin/Math/Inertia.h>
 #include <rovin/Math/LieGroup.h>
+#include <rovin/Math/Constant.h>
 
 namespace rovin
 {
@@ -29,46 +30,40 @@ namespace rovin
 			friend class Assembly;
 
 		public:
-			typedef double						real;
-			typedef Eigen::Matrix<real, -1, 1>	vec;
-			typedef Eigen::Matrix<real, 6, -1>	jacobian;
-			typedef std::weak_ptr<Link>			linkPtr;
-			typedef std::weak_ptr<Joint>		jointPtr_weak;
-			typedef std::shared_ptr<Joint>		jointPtr_shared;
-			typedef rovin::Math::SE3			SE3;
-			
 			Joint(const std::string& name = std::string(""), unsigned int dof = 0);
 			Joint(const Joint& otherJoint);
 			virtual ~Joint() = default;
 
 			Joint& operator=(const Joint& otherJoint);
-			const jointPtr_shared	copy();
-
-			bool	setLimitPos(const vec& lower, const vec& upper);
-			bool	setLimitVel(const vec& lower, const vec& upper);
-			bool	setLimitAcc(const vec& lower, const vec& upper);
-			bool	setLimitInput(const vec& lower, const vec& upper);
-			bool	setConstSpring(const vec& values);
-			bool	setConstDamper(const vec& values);
-			bool	setConstFriction(const vec& values);
+			
+			bool	setLimitPos(const Math::VectorX& lower, const Math::VectorX& upper);
+			bool	setLimitVel(const Math::VectorX& lower, const Math::VectorX& upper);
+			bool	setLimitAcc(const Math::VectorX& lower, const Math::VectorX& upper);
+			bool	setLimitInput(const Math::VectorX& lower, const Math::VectorX& upper);
+			bool	setConstSpring(const Math::VectorX& values);
+			bool	setConstDamper(const Math::VectorX& values);
+			bool	setConstFriction(const Math::VectorX& values);
 
 			const std::string&	getName() const		{ return _name; }
 			unsigned int		getDOF() const		{ return _dof; }
 
-			const vec&	getLimitPosLower() const	{ return _LimitPosLower; }
-			const vec&	getLimitPosUpper() const	{ return _LimitPosUpper; }
-			const vec&	getLimitVelLower() const	{ return _LimitVelLower; }
-			const vec&	getLimitVelUpper() const	{ return _LimitVelUpper; }
-			const vec&	getLimitAccLower() const	{ return _LimitAccLower; }
-			const vec&	getLimitAccupper() const	{ return _LimitAccUpper; }
-			const vec&	getConstSpring() const		{ return _ConstantSpring; }
-			const vec&	getConstDamper() const		{ return _ConstantDamper; }
-			const vec&	getConstFriction() const	{ return _ConstantFriction; }
+			const Math::VectorX&	getLimitPosLower() const	{ return _LimitPosLower; }
+			const Math::VectorX&	getLimitPosUpper() const	{ return _LimitPosUpper; }
+			const Math::VectorX&	getLimitVelLower() const	{ return _LimitVelLower; }
+			const Math::VectorX&	getLimitVelUpper() const	{ return _LimitVelUpper; }
+			const Math::VectorX&	getLimitAccLower() const	{ return _LimitAccLower; }
+			const Math::VectorX&	getLimitAccupper() const	{ return _LimitAccUpper; }
+			const Math::VectorX&	getConstSpring() const		{ return _ConstantSpring; }
+			const Math::VectorX&	getConstDamper() const		{ return _ConstantDamper; }
+			const Math::VectorX&	getConstFriction() const	{ return _ConstantFriction; }
 
 			
+			virtual std::shared_ptr<Joint> copy() const = 0;
+			virtual Math::SE3	getTransform(const Math::VectorX& state, bool isReversed = false) const = 0;
+			virtual Math::se3	getVelocity(const Math::VectorX& state, bool isReversed = false) const = 0;
 			///	Return static jacobian matrix (6 by DOF). Derived class should implement this.
-			//virtual const jacobian& getJacobianStatic(const vec& state) const = 0;
-			//virtual const jacobian& getJacobianTimeDerivStatic(const vec& state) const = 0;
+			virtual Math::Matrix6X getJacobian(const Math::VectorX& state, bool isReversed = false) const = 0;
+			virtual Math::Matrix6X getJacobianDot(const Math::VectorX& state) const = 0;
 
 
 		protected:
@@ -79,18 +74,18 @@ namespace rovin
 			///	Degree of freedom of joint. It can not be changed after construction.
 			unsigned int	_dof;
 			
-			vec				_LimitPosLower;
-			vec				_LimitPosUpper;
-			vec				_LimitVelLower;
-			vec				_LimitVelUpper;
-			vec				_LimitAccLower;
-			vec				_LimitAccUpper;
-			vec				_LimitInputLower;
-			vec				_LimitInputUpper;
+			Math::VectorX				_LimitPosLower;
+			Math::VectorX				_LimitPosUpper;
+			Math::VectorX				_LimitVelLower;
+			Math::VectorX				_LimitVelUpper;
+			Math::VectorX				_LimitAccLower;
+			Math::VectorX				_LimitAccUpper;
+			Math::VectorX				_LimitInputLower;
+			Math::VectorX				_LimitInputUpper;
 
-			vec				_ConstantSpring;
-			vec				_ConstantDamper;
-			vec				_ConstantFriction;
+			Math::VectorX				_ConstantSpring;
+			Math::VectorX				_ConstantDamper;
+			Math::VectorX				_ConstantFriction;
 		};
 
 	}

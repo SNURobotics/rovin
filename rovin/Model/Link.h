@@ -12,10 +12,9 @@
 #include <map>
 #include <memory>
 
-#include <Eigen/Dense>
 #include <rovin/utils/Checker.h>
-#include <rovin/Math/Inertia.h>
 #include <rovin/Math/LieGroup.h>
+#include <rovin/Math/Inertia.h>
 
 #include "GeometryInfo.h"
 

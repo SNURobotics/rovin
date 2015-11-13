@@ -81,6 +81,7 @@
       <SDLCheck>true</SDLCheck>
       <AdditionalIncludeDirectories>..\..\;C:\SNURobotics\include\</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -109,6 +110,7 @@
       <SDLCheck>true</SDLCheck>
       <AdditionalIncludeDirectories>..\..\;C:\SNURobotics\include\</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -139,12 +141,16 @@
     <ClCompile Include="Joint.cpp" />
     <ClCompile Include="Link.cpp" />
     <ClCompile Include="Assembly.cpp" />
+    <ClCompile Include="ScrewJoint.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="GeometryInfo.h" />
     <ClInclude Include="Joint.h" />
     <ClInclude Include="Link.h" />
     <ClInclude Include="Assembly.h" />
+    <ClInclude Include="PrismaticJoint.h" />
+    <ClInclude Include="RevoluteJoint.h" />
+    <ClInclude Include="ScrewJoint.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
