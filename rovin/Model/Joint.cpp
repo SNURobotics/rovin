@@ -56,7 +56,7 @@ namespace rovin {
 		bool Joint::setLimitPos(const Math::VectorX & lower, const Math::VectorX & upper)
 		{
 			assert((lower.size() == _dof&&upper.size() == _dof) && "Size of limit must equal to DOF of joint");
-			for (auto i = 0; i < _dof; i++)
+			for (unsigned i = 0; i < _dof; i++)
 				assert(lower[i] <= upper[i] && "Lower limit should be smaller than upper one.");
 			_LimitPosLower = lower;
 			_LimitPosUpper = upper;
@@ -66,7 +66,7 @@ namespace rovin {
 		bool Joint::setLimitVel(const Math::VectorX & lower, const Math::VectorX & upper)
 		{
 			assert((lower.size() == _dof&&upper.size() == _dof) && "Size of limit must equal to DOF of joint");
-			for (auto i = 0; i < _dof; i++)
+			for (unsigned i = 0; i < _dof; i++)
 				assert(lower[i] <= upper[i] && "Lower limit should be smaller than upper one.");
 			_LimitVelLower = lower;
 			_LimitVelUpper = upper;
@@ -76,7 +76,7 @@ namespace rovin {
 		bool Joint::setLimitAcc(const Math::VectorX & lower, const Math::VectorX & upper)
 		{
 			assert((lower.size() == _dof&&upper.size() == _dof) && "Size of limit must equal to DOF of joint");
-			for (auto i = 0; i < _dof; i++)
+			for (unsigned i = 0; i < _dof; i++)
 				assert(lower[i] <= upper[i] && "Lower limit should be smaller than upper one.");
 			_LimitAccLower = lower;
 			_LimitAccUpper = upper;
@@ -86,7 +86,7 @@ namespace rovin {
 		bool Joint::setLimitInput(const Math::VectorX & lower, const Math::VectorX & upper)
 		{
 			assert((lower.size() == _dof&&upper.size() == _dof) && "Size of limit must equal to DOF of joint");
-			for (auto i = 0; i < _dof; i++)
+			for (unsigned i = 0; i < _dof; i++)
 				assert(lower[i] <= upper[i] && "Lower limit should be smaller than upper one.");
 			_LimitInputLower = lower;
 			_LimitInputUpper = upper;

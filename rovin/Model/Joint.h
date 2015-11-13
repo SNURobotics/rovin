@@ -59,10 +59,11 @@ namespace rovin
 
 			
 			virtual std::shared_ptr<Joint> copy() const = 0;
-			virtual Math::SE3	getTransform(const Math::VectorX& state) const = 0;
+			virtual Math::SE3	getTransform(const Math::VectorX& state, bool isReversed = false) const = 0;
+			virtual Math::se3	getVelocity(const Math::VectorX& state, bool isReversed = false) const = 0;
 			///	Return static jacobian matrix (6 by DOF). Derived class should implement this.
-			virtual Math::MatrixX getJacobian(const Math::VectorX& state) const = 0;
-			virtual Math::MatrixX getJacobianDot(const Math::VectorX& state) const = 0;
+			virtual Math::Matrix6X getJacobian(const Math::VectorX& state, bool isReversed = false) const = 0;
+			virtual Math::Matrix6X getJacobianDot(const Math::VectorX& state) const = 0;
 
 
 		protected:

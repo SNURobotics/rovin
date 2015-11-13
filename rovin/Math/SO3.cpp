@@ -147,7 +147,7 @@ namespace rovin
 		{
 			SO3 result;
 
-			if (Vector3::Zero().isApprox(w * angle))
+			if ((w * angle).norm() < Eigen::NumTraits<Real>::dummy_precision())
 			{
 				result._e = Matrix3::Identity();
 			}
@@ -172,7 +172,7 @@ namespace rovin
 		{
 			so3 result;
 
-			if (Matrix3::Zero().isApprox(R._e - R._e.transpose()))
+			if (R._e.isApprox(R._e.transpose()))
 			{
 				if (Matrix3::Identity().isApprox(R._e))
 				{

@@ -38,8 +38,8 @@ namespace rovin
 
 		SE3& SE3::operator *= (const SE3& operand)
 		{
-			_R._e = _R._e * operand._R._e;
 			_p = _R._e * operand._p + _p;
+			_R._e = _R._e * operand._R._e;
 			return *this;
 		}
 

@@ -35,18 +35,18 @@ namespace rovin
 			{
 			public:
 				_CONN(const unsigned int& slink, const Math::SE3& sj, const unsigned int& joint, const Math::SE3& je,
-					const unsigned int& elink, const bool direction) :
-					_slink(slink), _sj(sj), _joint(joint), _je(je), _elink(elink), _direction(direction) {}
+					const unsigned int& elink, const bool isReverse) :
+					_slink(slink), _sj(sj), _joint(joint), _je(je), _elink(elink), _isReverse(isReverse) {}
 
 				_CONN flip()
 				{
-					return _CONN(_elink, _je.inverse(), _joint, _sj.inverse(), _slink, !_direction);
+					return _CONN(_elink, _je.inverse(), _joint, _sj.inverse(), _slink, !_isReverse);
 				}
 
 				unsigned int _slink; ///< 시작 링크의 번호
 				unsigned int _elink; ///< 다음 링크의 번호
 				unsigned int _joint; ///< 연결시켜주는 조인트의 번호
-				bool _direction; ///< true 인 경우는 mount에서 action, false인 경우에는 action에서 mount
+				bool _isReverse; ///< false 인 경우는 mount에서 action, true인 경우에는 action에서 mount
 				Math::SE3 _sj; ///< 시작 링크 프레임에서 조인트 링크 프레임
 				Math::SE3 _je; ///< 조인트 링크 프레임에서 다음 링크의 프레임
 			};
@@ -124,6 +124,7 @@ namespace rovin
 			std::vector< std::list< _CONN >> _connectionlist;
 
 			unsigned _baseLinkIndex;
+			std::vector< _CONN > _BFS;
 			std::vector< std::list< _CONN >> _tree;
 			std::vector< std::list< _CONN >> _trace;
 

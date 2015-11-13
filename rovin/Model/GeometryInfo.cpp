@@ -129,7 +129,7 @@ namespace rovin
 			UserModel *clone = new UserModel();
 			clone->setType(this->getType());
 			clone->setColor(this->getColor());
-			clone->setFrame(this->getFrame());
+			clone->setFrame(this->getTransform());
 			for (list< pair <shared_ptr<GeometryInfo>, Math::SE3> >::const_iterator iterPos = _GeometryList.begin(); iterPos != _GeometryList.end(); iterPos++)
 			{
 				clone->addList(iterPos->first->copy(), iterPos->second);

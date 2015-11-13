@@ -5,6 +5,7 @@
 #include <vector>
 
 #include <rovin/Math/Constant.h>
+#include <rovin/Math/LinearAlgebra.h>
 
 using namespace std;
 using namespace rovin::Math;
@@ -23,15 +24,7 @@ namespace rovin
 				T = SE3();
 				for (list< _CONN >::const_iterator iter = (*coniter).begin(); iter != (*coniter).end(); iter++)
 				{
-					if (iter->_direction)
-					{
-						T *= iter->_sj * _jointptr[iter->_joint]->getTransform(state.getJointState(iter->_joint).q) * iter->_je;
-					}
-					else
-					{
-						T *= iter->_sj * _jointptr[iter->_joint]->getTransform(state.getJointState(iter->_joint).q).inverse() * iter->_je;
-					}
-					// T *= iter->_sj * _jointptr[iter->_joint]->getTransform(state.getJointState(iter->_joint).q, iter->_direction) * iter->_je;
+					T *= iter->_sj * _jointptr[iter->_joint]->getTransform(state.getJointState(iter->_joint).q, iter->_isReverse) * iter->_je;
 				}
 				f.block<6, 1>(i * 6, 0) = SE3::Log(T);
 			}
@@ -48,15 +41,13 @@ namespace rovin
 			for (list< list< _CONN >>::const_iterator coniter = _closedloop.begin(); coniter != _closedloop.end(); coniter++, i++)
 			{
 				T = SE3();
-				for (list< _CONN >::const_reverse_iterator iter = (*coniter).rbegin(); iter != (*coniter).rend(); iter--)
+				for (list< _CONN >::const_reverse_iterator iter = (*coniter).rbegin(); iter != (*coniter).rend(); iter++)
 				{
 					T = iter->_je * T;
-					MatrixX temp_J = SE3::invAd(T) * _jointptr[iter->_joint]->getJacobian(state.getJointState(iter->_joint).q);
-					// MatrixX temp_J = SE3::invAd(T) * _jointptr[iter->_joint]->getJacobian(state.getJointState(iter->_joint).q, iter->_direction);
+					MatrixX temp_J = SE3::invAd(T) * _jointptr[iter->_joint]->getJacobian(state.getJointState(iter->_joint).q, iter->_isReverse);
 					state.writeColumns(J, temp_J, 6 * i, iter->_joint, return_state);
 
-					T = iter->_sj * _jointptr[iter->_joint]->getTransform(state.getJointState(iter->_joint).q) * T;
-					// T = iter->_sj * _jointptr[iter->_joint]->getTransform(state.getJointState(iter->_joint).q, iter->_direction) * T;
+					T = iter->_sj * _jointptr[iter->_joint]->getTransform(state.getJointState(iter->_joint).q, iter->_isReverse) * T;
 				}
 			}
 			return J;
@@ -67,10 +58,10 @@ namespace rovin
 			if (_closedloop.size() == 0) return;
 
 			VectorX S, dtheta;
-			while ((S = Closedloop_Constraint_Function(state)).norm() >= Eigen::NumTraits<double>::dummy_precision())
+			while ((S = Closedloop_Constraint_Function(state)).norm() >= Eigen::NumTraits<Real>::dummy_precision())
 			{
 				MatrixX J = Closedloop_Constraint_Jacobian(state, System::PASSIVEJOINT);
-				state.setPassiveJoint_q(-J.inverse()*S);
+				state.addPassiveJoint_q(-pinv(J) * S);
 			}
 		}
 	}

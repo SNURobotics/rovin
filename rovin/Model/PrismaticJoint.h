@@ -18,9 +18,9 @@ namespace rovin {
 			PrismaticJoint(const std::string& name = std::string(""), const Math::Vector3& axis = Math::Vector3::UnitZ())
 				:ScrewJoint::ScrewJoint(name, 1)
 			{
-				Math::Vector6	axis6 = Math::Vector6::Zero();
-				axis6.tail<3>() = axis;
-				_axes = axis6;
+				Math::Vector6 screw = Math::Vector6::Zero();
+				screw.tail<3>() = axis;
+				setAxis(screw, 0);
 			}
 			PrismaticJoint(const PrismaticJoint& otherJoint)
 				:ScrewJoint(otherJoint) {}

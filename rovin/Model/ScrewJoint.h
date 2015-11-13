@@ -17,28 +17,30 @@ namespace rovin {
 		class ScrewJoint : public Joint
 		{
 		public:
-			ScrewJoint(const std::string& name = std::string(""), unsigned int dof = 1, const Math::MatrixX& axes = Math::MatrixX());
+			ScrewJoint(const std::string& name = std::string(""), unsigned int dof = 1, const Math::MatrixX& axes = Math::Matrix6X());
 			ScrewJoint(const ScrewJoint& otherJoint);
 			virtual ~ScrewJoint() = default;
+			ScrewJoint& operator=(const ScrewJoint& otherJoint);
 
-			const Math::MatrixX&	getAxes() const { return _axes; }
+			const Math::Matrix6X&	getAxes() const { return _axes; }
 
 			void					setAxis(const Math::Vector3& axis, unsigned int index);
 			void					setAxis(const Math::Vector6& axis, unsigned int index);
 
-
-			ScrewJoint& operator=(const ScrewJoint& otherJoint);
+			void	normalizeAxes();
+			
 
 			virtual std::shared_ptr<Joint> copy() const;
 
-			virtual Math::SE3	getTransform(const Math::VectorX& state) const override;
-			virtual Math::MatrixX getJacobian(const Math::VectorX& state) const override;
-			virtual Math::MatrixX getJacobianDot(const Math::VectorX& state) const override;
+			virtual Math::SE3	getTransform(const Math::VectorX& state, bool isReversed = false) const override;
+			virtual Math::se3	getVelocity(const Math::VectorX& state, bool isReversed = false) const override;
+			virtual Math::Matrix6X getJacobian(const Math::VectorX& state, bool isReversed = false) const override;
+			virtual Math::Matrix6X getJacobianDot(const Math::VectorX& state) const override;
 
 
 		protected:
-			///	3 by DOF matrix. i-th column contatin rotation axis of i-th joint
-			Math::MatrixX		_axes;
+			///	Vector of Math::se3 which contatin rotation axis of each joint
+			Math::Matrix6X		_axes;
 		};
 	}
 }
