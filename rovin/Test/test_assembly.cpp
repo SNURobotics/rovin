@@ -4,6 +4,7 @@
 
 #include <rovin/Math/Inertia.h>
 #include <rovin/Math/Constant.h>
+#include <rovin/Math/LinearAlgebra.h>
 #include <rovin/Math/LieGroup.h>
 #include <rovin/Model/Assembly.h>
 #include <rovin/Model/RevoluteJoint.h>
@@ -26,27 +27,37 @@ int main()
 
 	list< string > activeJoint;
 	activeJoint.push_back("J1");
+	activeJoint.push_back("J2");
+	activeJoint.push_back("J3");
 
 	State state(*fourBar, activeJoint);
 
 	////////////////////////
-	state.getJointState("J1").q << 0.5;
-	////////////////////////
-
-	////////////////////////
-	VectorX q(1);
-	q << 0.5;
+	VectorX q(3);
+	q << PI / 2, 
+		PI / 2,
+		PI / 2;
 	state.setActiveJoint_q(q);
 	////////////////////////
 
-	fourBar->Solve_Closedloop_Constraint(state);
+	//fourBar->Solve_Closedloop_Constraint(state);
+	fourBar->Forward_Kinematics(state);
 
-	cout << state.getJointState("J1").q << endl;
-	cout << state.getJointState("J2").q << endl;
-	cout << state.getJointState("J3").q << endl;
-	cout << state.getJointState("J4").q << endl;
-		
-	_getch();
+	//PERFORM_TEST(fourBar->Forward_Kinematics(state), 1e+6);
+
+	MatrixX A(6, 6), B(6, 6);
+	A.setRandom();
+
+	PERFORM_TEST(B = pInv(A), 1e+5);
+	PERFORM_TEST(B = pinv(A), 1e+5);
+	
+
+	//cout << state.getJointState("J1").q << endl;
+	//cout << state.getJointState("J2").q << endl;
+	//cout << state.getJointState("J3").q << endl;
+	//cout << state.getLinkState("L4").T << endl;
+	//cout << state.getJointState("J4").q << endl;
+
 	return 0;
 }
 
@@ -69,7 +80,7 @@ void Modeling()
 	asem->addJoint(shared_ptr< Joint >(new RevoluteJoint("J1")), "L1", "L2", SE3(Vector3(-6, 0, 0)), SE3(Vector3(0, 4, 0)));
 	asem->addJoint(shared_ptr< Joint >(new RevoluteJoint("J2")), "L2", "L3", SE3(Vector3(0, 4, 0)), SE3(Vector3(6, 0, 0)));
 	asem->addJoint(shared_ptr< Joint >(new RevoluteJoint("J3")), "L3", "L4", SE3(Vector3(6, 0, 0)), SE3(Vector3(0, -4, 0)));
-	asem->addJoint(shared_ptr< Joint >(new RevoluteJoint("J4")), "L1", "L4", SE3(Vector3(6, 0, 0)), SE3(Vector3(0, 4, 0)));
+	//asem->addJoint(shared_ptr< Joint >(new RevoluteJoint("J4")), "L1", "L4", SE3(Vector3(6, 0, 0)), SE3(Vector3(0, 4, 0)));
 
 	fourBar = shared_ptr< System >(new System(asem, "L1"));
 }

@@ -105,6 +105,9 @@ namespace rovin
 			/// Closed Loop 조건을 풀어줍니다. Active joint는 상수로 passive joint를 변수로 두고 조건을 맞는 변수 값을 구합니다.
 			void Solve_Closedloop_Constraint(State& state);
 
+			void Forward_Kinematics(State& state);
+			void Forward_Diff_Kinematics(State& state);
+
 		private:
 			std::shared_ptr< Model::Assembly > _model;
 			std::string _baselink;

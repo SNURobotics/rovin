@@ -61,8 +61,8 @@ namespace rovin
 					_jointState[iter->second].index = _activejoint_dof;
 					_activejoint_dof += _jointState[iter->second].dof;
 
-					iter = _passiveJointList.erase(iter);
 					unsigned int deDof = _jointState[iter->second].dof;
+					iter = _passiveJointList.erase(iter);
 					for (; iter != _passiveJointList.end(); iter++)
 					{
 						_jointState[iter->second].index -= deDof;

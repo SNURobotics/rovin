@@ -30,5 +30,9 @@ namespace rovin
 		static const Real	PI_HALF = 1.57079632679489661923;
 		static const Real	DEG2RAD = 0.01745329251994329577;
 		static const Real	RAD2DEG = 57.2957795130823208768;
+
+		static const Real	RealEps = std::numeric_limits<Real>::epsilon();
+		static const Real	RealMax = std::numeric_limits<Real>::max();
+		static const Real	RealMin = std::numeric_limits<Real>::min();
 	}
 }

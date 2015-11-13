@@ -28,7 +28,7 @@ namespace rovin
 				}
 				f.block<6, 1>(i * 6, 0) = SE3::Log(T);
 			}
-			
+
 			return f;
 		}
 
@@ -64,5 +64,32 @@ namespace rovin
 				state.addPassiveJoint_q(-pinv(J) * S);
 			}
 		}
+
+		void System::Forward_Kinematics(State & state)
+		{
+			Solve_Closedloop_Constraint(state);
+			for (unsigned i = 0; i < _BFSIdx.size(); i++)
+			{
+				state.getLinkState(_BFSIdx[i]._elink).T =
+					state.getLinkState(_BFSIdx[i]._slink).T
+					* _BFSIdx[i]._sj
+					* _jointptr[_BFSIdx[i]._joint]->getTransform(state.getJointState(_BFSIdx[i]._joint).q, _BFSIdx[i]._isReverse)
+					* _BFSIdx[i]._je;
+			}
+		}
+
+		void System::Forward_Diff_Kinematics(State & state)
+		{
+			//	update qdot
+			for (unsigned i = 0; i < _BFSIdx.size(); i++)
+			{
+				state.getLinkState(_BFSIdx[i]._elink).V =
+					Math::SE3::Ad(state.getLinkState(_BFSIdx[i]._elink).T.inverse()*state.getLinkState(_BFSIdx[i]._slink).T)
+					* state.getLinkState(_BFSIdx[i]._slink).V
+					+ Math::SE3::invAd(_BFSIdx[i]._je)
+					* _jointptr[_BFSIdx[i]._joint]->getJacobian(state.getJointState(_BFSIdx[i]._joint).q, _BFSIdx[i]._isReverse) * state.getJointState(_BFSIdx[i]._joint).qdot;
+			}
+		}
+
 	}
 }
