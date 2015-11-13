@@ -2,6 +2,8 @@
 
 #include <list>
 
+#include <rovin/utils/Diagnostic.h>
+
 using namespace std;
 
 namespace rovin
@@ -30,6 +32,8 @@ namespace rovin
 				_marker.clear();
 				_connection.clear();
 
+				_lock = 0;
+
 				for (map< string, shared_ptr<Link> >::const_iterator iter = operand._link.begin(); iter != operand._link.end(); iter++)
 				{
 					this->addLink(iter->second->copy());
@@ -55,6 +59,8 @@ namespace rovin
 
 		Assembly& Assembly::operator += (const Assembly& operand)
 		{
+			utils::Log(_lock > 0, "이 어셈블리는 이미 System에 들어가있습니다. 구조를 수정할 수 없습니다.", true);
+
 			for (map< string, shared_ptr<Link> >::const_iterator iter = operand._link.begin(); iter != operand._link.end(); iter++)
 			{
 				this->addLink(iter->second->copy());
@@ -68,8 +74,20 @@ namespace rovin
 			return *this;
 		}
 
+		void Assembly::LOCK()
+		{
+			_lock++;
+		}
+
+		void Assembly::UNLOCK()
+		{
+			_lock--;
+		}
+
 		shared_ptr<Link>& Assembly::addLink(const shared_ptr<Link>& link_pointer)
 		{
+			utils::Log(_lock > 0, "이 어셈블리는 이미 System에 들어가있습니다. 구조를 수정할 수 없습니다.", true);
+
 			map< string, shared_ptr<Link> >::iterator iter = _link.find(link_pointer->getName());
 			if (iter != _link.end())
 			{
@@ -97,6 +115,8 @@ namespace rovin
 
 		void Assembly::deleteLink(const std::shared_ptr<Link>& link_pointer)
 		{
+			utils::Log(_lock > 0, "이 어셈블리는 이미 System에 들어가있습니다. 구조를 수정할 수 없습니다.", true);
+
 			assert(isLink(link_pointer->getName()) && "삭제하고 싶은 링크가 어셈블리에 없습니다.");
 			map< string, shared_ptr<Link> >::iterator link_iter = _link.find(link_pointer->getName());
 			assert(link_iter->second == link_pointer && "삭제하고 싶은 링크의 이름을 갖는 링크는 존재하지만 실제로는 다른 링크입니다. 확인바랍니다.");
@@ -120,6 +140,8 @@ namespace rovin
 
 		void Assembly::addJoint(const std::shared_ptr<Joint>& joint_pointer, const std::string& mountLM_name, const std::string& actionLM_name, const Math::SE3& mountLM_T, const Math::SE3& actionLM_T)
 		{
+			utils::Log(_lock > 0, "이 어셈블리는 이미 System에 들어가있습니다. 구조를 수정할 수 없습니다.", true);
+
 			assert(!findNameList(joint_pointer->getName()) && "주어진 조인트의 이름과 같은 이름을 갖는 컴포넌트가 이미 어셈블리에 있습니다.");
 			assert((isLink(mountLM_name) || isMarker(mountLM_name)) && "mountLM_name은 링크 또는 마커의 이름이어야 합니다.");
 			assert((isLink(actionLM_name) || isMarker(actionLM_name)) && "actionLM_name은 링크 또는 마커의 이름이어야 합니다.");
@@ -140,11 +162,13 @@ namespace rovin
 				actionT = action_iter->second->getMarker(actionLM_name);
 			}
 
-			_connection.push_front(Connection(joint_pointer, mount_iter->second, action_iter->second, mountT*mountLM_T, actionT*actionLM_T));
+			_connection.push_back(Connection(joint_pointer, mount_iter->second, action_iter->second, mountT*mountLM_T, actionLM_T*actionT.inverse()));
 		}
 
 		void Assembly::deleteJoint(const std::shared_ptr<Joint>& joint_pointer)
 		{
+			utils::Log(_lock > 0, "이 어셈블리는 이미 System에 들어가있습니다. 구조를 수정할 수 없습니다.", true);
+
 			assert(isJoint(joint_pointer->getName()) && "삭제하고 싶은 조인트가 어셈블리에 없습니다.");
 			map< string, shared_ptr<Joint> >::iterator link_iter = _joint.find(joint_pointer->getName());
 			assert(link_iter->second == joint_pointer && "삭제하고 싶은 조인트의 이름을 갖는 링크는 존재하지만 실제로는 다른 조인트입니다. 확인바랍니다.");
@@ -163,6 +187,8 @@ namespace rovin
 
 		bool Assembly::changeName(const std::string& old_name, const std::string& new_name)
 		{
+			utils::Log(_lock > 0, "이 어셈블리는 이미 System에 들어가있습니다. 구조를 수정할 수 없습니다.", true);
+
 			if (isLink(new_name) | isJoint(new_name) | isMarker(new_name))
 			{
 				return false;
@@ -195,6 +221,8 @@ namespace rovin
 
 		bool Assembly::changeNameAll(const std::string& prefix)
 		{
+			utils::Log(_lock > 0, "이 어셈블리는 이미 System에 들어가있습니다. 구조를 수정할 수 없습니다.", true);
+
 			bool flag = true;
 
 			list<string> linklist = getLinkNameList();
@@ -215,6 +243,13 @@ namespace rovin
 			}
 
 			return flag;
+		}
+
+		Assembly Assembly::copy(const std::string& prefix) const
+		{
+			Assembly _clone = *this;
+			_clone.changeNameAll(prefix);
+			return _clone;
 		}
 	}
 }

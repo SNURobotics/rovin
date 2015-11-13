@@ -24,9 +24,6 @@
     <ClCompile Include="SO3.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="Constraint.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Inertia.h">
@@ -41,10 +38,10 @@
     <ClInclude Include="LieGroup.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="Constraint.h">
+    <ClInclude Include="Constant.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="Constant.h">
+    <ClInclude Include="LinearAlgebra.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
   </ItemGroup>

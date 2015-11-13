@@ -1,38 +1,28 @@
 #include <iostream>
 #include <conio.h>
 #include <cmath>
+#include <time.h>
 
 #include <rovin/Math/LieGroup.h>
-#include <rovin/Math/Constraint.h>
 #include <rovin/Model/Assembly.h>
+#include <rovin/Dynamics/System.h>
 
 using namespace std;
 using namespace Eigen;
 using namespace rovin;
 
-class userConstraint : public Math::Constraint
-{
-public:
-	userConstraint() : Constraint(2, 2) {}
+typedef int(*a)(int);
+typedef int(*aa)(int, int);
 
-	VectorXd func(const VectorXd& q)
-	{
-		VectorXd f(2);
-		f(0) = sin(q(0)) + cos(q(0)) - 1;
-		f(1) = q(0) + q(1) - 3.1415926535;
-		return f;
-	}
-};
+int afunc(int c)
+{
+	return c + 1;
+}
+
 
 int main()
 {
-	cout << "ROVIN È­ÀÌÆÃ!" << endl;
-
-	rovin::Math::SE3 T(rovin::Math::SO3::RotX(3.141592));
-	cout << T << endl;
-	
-	userConstraint A;
-	cout << A.sovleEq(Eigen::Vector2d(0, 2)) << endl;
+	VectorXd a(1, 0);
 
 	_getch();
 	return 0;

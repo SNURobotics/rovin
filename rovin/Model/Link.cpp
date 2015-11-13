@@ -10,7 +10,6 @@
 #include <cassert>
 
 using namespace std;
-using namespace Eigen;
 using namespace rovin::Model;
 
 namespace rovin

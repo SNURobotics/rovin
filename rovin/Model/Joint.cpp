@@ -10,21 +10,21 @@ namespace rovin {
 		{
 			if (dof > 0)
 			{
-				_LimitPosLower = vec::Ones(dof) * std::numeric_limits<real>::min();
-				_LimitPosUpper = vec::Ones(dof) * std::numeric_limits<real>::max();
+				_LimitPosLower = Math::VectorX::Ones(dof) * std::numeric_limits<Math::Real>::min();
+				_LimitPosUpper = Math::VectorX::Ones(dof) * std::numeric_limits<Math::Real>::max();
 
-				_LimitVelLower = vec::Ones(dof) * std::numeric_limits<real>::min();
-				_LimitVelUpper = vec::Ones(dof) * std::numeric_limits<real>::max();
+				_LimitVelLower = Math::VectorX::Ones(dof) * std::numeric_limits<Math::Real>::min();
+				_LimitVelUpper = Math::VectorX::Ones(dof) * std::numeric_limits<Math::Real>::max();
 
-				_LimitAccLower = vec::Ones(dof) * std::numeric_limits<real>::min();
-				_LimitAccUpper = vec::Ones(dof) * std::numeric_limits<real>::max();
+				_LimitAccLower = Math::VectorX::Ones(dof) * std::numeric_limits<Math::Real>::min();
+				_LimitAccUpper = Math::VectorX::Ones(dof) * std::numeric_limits<Math::Real>::max();
 
-				_LimitInputLower = vec::Ones(dof) * std::numeric_limits<real>::min();
-				_LimitInputUpper = vec::Ones(dof) * std::numeric_limits<real>::max();
+				_LimitInputLower = Math::VectorX::Ones(dof) * std::numeric_limits<Math::Real>::min();
+				_LimitInputUpper = Math::VectorX::Ones(dof) * std::numeric_limits<Math::Real>::max();
 
-				_ConstantSpring = vec::Zero(dof);
-				_ConstantDamper = vec::Zero(dof);
-				_ConstantFriction = vec::Zero(dof);
+				_ConstantSpring = Math::VectorX::Zero(dof);
+				_ConstantDamper = Math::VectorX::Zero(dof);
+				_ConstantFriction = Math::VectorX::Zero(dof);
 			}
 			return;
 		}
@@ -34,83 +34,80 @@ namespace rovin {
 		}
 		Joint & Joint::operator=(const Joint & otherJoint)
 		{
-			_name = std::string("_") + otherJoint.getName();
-			_dof = otherJoint.getDOF();
+			if (this != &otherJoint)
+			{
+				_name = /*std::string("_") +*/ otherJoint.getName();
+				_dof = otherJoint.getDOF();
 
-			_LimitPosLower = otherJoint.getLimitPosLower();
-			_LimitPosUpper = otherJoint.getLimitPosUpper();
-			_LimitVelLower = otherJoint.getLimitVelLower();
-			_LimitVelUpper = otherJoint.getLimitVelUpper();
-			_LimitAccLower = otherJoint.getLimitAccLower();
-			_LimitAccUpper = otherJoint.getLimitAccupper();
+				_LimitPosLower = otherJoint.getLimitPosLower();
+				_LimitPosUpper = otherJoint.getLimitPosUpper();
+				_LimitVelLower = otherJoint.getLimitVelLower();
+				_LimitVelUpper = otherJoint.getLimitVelUpper();
+				_LimitAccLower = otherJoint.getLimitAccLower();
+				_LimitAccUpper = otherJoint.getLimitAccupper();
 
-			_ConstantSpring = otherJoint.getConstSpring();
-			_ConstantDamper = otherJoint.getConstDamper();
-			_ConstantFriction = otherJoint.getConstFriction();
-
+				_ConstantSpring = otherJoint.getConstSpring();
+				_ConstantDamper = otherJoint.getConstDamper();
+				_ConstantFriction = otherJoint.getConstFriction();
+			}
 			return *this;
 		}
 
-		const Joint::jointPtr_shared Joint::copy()
-		{
-			return std::shared_ptr<Joint>(new Joint(*this));
-		}
-
-		bool Joint::setLimitPos(const vec & lower, const vec & upper)
+		bool Joint::setLimitPos(const Math::VectorX & lower, const Math::VectorX & upper)
 		{
 			assert((lower.size() == _dof&&upper.size() == _dof) && "Size of limit must equal to DOF of joint");
-			for (auto i = 0; i < _dof; i++)
+			for (unsigned i = 0; i < _dof; i++)
 				assert(lower[i] <= upper[i] && "Lower limit should be smaller than upper one.");
 			_LimitPosLower = lower;
 			_LimitPosUpper = upper;
 			return true;
 		}
 
-		bool Joint::setLimitVel(const vec & lower, const vec & upper)
+		bool Joint::setLimitVel(const Math::VectorX & lower, const Math::VectorX & upper)
 		{
 			assert((lower.size() == _dof&&upper.size() == _dof) && "Size of limit must equal to DOF of joint");
-			for (auto i = 0; i < _dof; i++)
+			for (unsigned i = 0; i < _dof; i++)
 				assert(lower[i] <= upper[i] && "Lower limit should be smaller than upper one.");
 			_LimitVelLower = lower;
 			_LimitVelUpper = upper;
 			return true;
 		}
 
-		bool Joint::setLimitAcc(const vec & lower, const vec & upper)
+		bool Joint::setLimitAcc(const Math::VectorX & lower, const Math::VectorX & upper)
 		{
 			assert((lower.size() == _dof&&upper.size() == _dof) && "Size of limit must equal to DOF of joint");
-			for (auto i = 0; i < _dof; i++)
+			for (unsigned i = 0; i < _dof; i++)
 				assert(lower[i] <= upper[i] && "Lower limit should be smaller than upper one.");
 			_LimitAccLower = lower;
 			_LimitAccUpper = upper;
 			return true;
 		}
 
-		bool Joint::setLimitInput(const vec & lower, const vec & upper)
+		bool Joint::setLimitInput(const Math::VectorX & lower, const Math::VectorX & upper)
 		{
 			assert((lower.size() == _dof&&upper.size() == _dof) && "Size of limit must equal to DOF of joint");
-			for (auto i = 0; i < _dof; i++)
+			for (unsigned i = 0; i < _dof; i++)
 				assert(lower[i] <= upper[i] && "Lower limit should be smaller than upper one.");
 			_LimitInputLower = lower;
 			_LimitInputUpper = upper;
 			return false;
 		}
 
-		bool Joint::setConstSpring(const vec & values)
+		bool Joint::setConstSpring(const Math::VectorX & values)
 		{
 			assert(values.size() == _dof && "Size of constant must equal to DOF of joint");
 			_ConstantSpring = values;
 			return true;
 		}
 
-		bool Joint::setConstDamper(const vec & values)
+		bool Joint::setConstDamper(const Math::VectorX & values)
 		{
 			assert(values.size() == _dof && "Size of constant must equal to DOF of joint");
 			_ConstantDamper = values;
 			return true;
 		}
 
-		bool Joint::setConstFriction(const vec & values)
+		bool Joint::setConstFriction(const Math::VectorX & values)
 		{
 			assert(values.size() == _dof && "Size of constant must equal to DOF of joint");
 			_ConstantFriction = values;

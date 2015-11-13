@@ -21,5 +21,8 @@
     <ClCompile Include="test_joint.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
+    <ClCompile Include="test_assembly.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>
