@@ -143,27 +143,19 @@ namespace rovin
 			return Vector3(atan2(R._e(1, 2), R._e(0, 2)), atan2(sqrt(R._e(0, 2)*R._e(0, 2) + R._e(1, 2)*R._e(1, 2)), R._e(2, 2)), atan2(R._e(2, 1), -R._e(2, 0)));
 		}
 
-		SO3 SO3::Exp(const so3& w, const Real angle)
+		SO3 SO3::Exp(so3 w, Real angle)
 		{
 			SO3 result;
 
-			if ((w * angle).norm() < Eigen::NumTraits<Real>::dummy_precision())
-			{
-				result._e = Matrix3::Identity();
-			}
-			else
-			{
-				so3 w_temp;
-				Real angle_temp = angle;
+			angle *= w.norm();
+			w.normalize();
 
-				Real norm_w = w.norm();
-				w_temp = w / norm_w;
-				angle_temp = angle * norm_w;
-				
-				Matrix3 _bracket = Bracket(w_temp);
+			double w1 = w(0), w2 = w(1), w3 = w(2);
+			double c = cos(angle), s = sin(angle);
 
-				result._e = Matrix3::Identity() + sin(angle_temp)*_bracket + (1 - cos(angle_temp))*_bracket*_bracket;
-			}
+			result._e << c + w1*w1*(1 - c), w1*w2*(1 - c) - w3*s, w1*w3*(1 - c) + w2*s,
+				w1*w2*(1 - c) + w3*s, c + w2*w2*(1 - c), w2*w3*(1 - c) - w1*s,
+				w1*w3*(1 - c) - w2*s, w2*w3*(1 - c) + w1*s, c + w3*w3*(1 - c);
 
 			return result;
 		}

@@ -66,9 +66,9 @@ namespace rovin
 			SE3 inverse() const;
 
 			/// se3인 S를 이용하여 exponential mapping을 해줍니다.
-			static SE3 Exp(const se3& S, const Real angle = (1.0));
+			static SE3 Exp(const se3& S, Real angle = (1.0));
 			/// se3를 두 부분 (w, v)으로 입력을 받아 exponential mapping을 해줍니다.
-			static SE3 Exp(const so3& w, const Vector3& v, const Real angle = (1.0));
+			static SE3 Exp(so3 w, Vector3 v, Real angle = (1.0));
 
 			/// Log 값을 계산해줍니다. 결과는 6x1 se3로 돌려줍니다.
 			static se3 Log(const SE3&);

@@ -90,41 +90,51 @@ namespace rovin
 			return result;
 		}
 
-		SE3 SE3::Exp(const se3& S, const Real angle)
-		{
-			so3 w = S.block(0, 0, 3, 1);
-			Vector3 v = S.block(3, 0, 3, 1);
-			return Exp(w, v, angle);
-		}
-
-		SE3 SE3::Exp(const so3& w, const Vector3& v, const Real angle)
+		SE3 SE3::Exp(const se3& S, Real angle)
 		{
 			SE3 result;
 
-			if (Vector3::Zero().isApprox(w * angle))
-			{
-				result._R._e = Matrix3::Identity();
-				result._p = v * angle;
-			}
-			else
-			{
-				so3 w_temp;
-				Vector3 v_temp;
-				Real angle_temp;
+			so3 w = S.block(0, 0, 3, 1);
+			Vector3 v = S.block(3, 0, 3, 1);
 
-				Real norm_w = w.norm();
-				w_temp = w / norm_w;
-				v_temp = v / norm_w;
-				angle_temp = angle * norm_w;
+			angle *= w.norm();
+			v /= w.norm();
+			w.normalize();
 
-				Matrix3 _bracket = Bracket(w_temp);
+			double w1 = w(0), w2 = w(1), w3 = w(2);
+			double v1 = v(0), v2 = v(1), v3 = v(2);
+			double c = cos(angle), s = sin(angle);
 
-				Matrix3 G;
-				G = Matrix3::Identity()*angle_temp + (1 - cos(angle_temp))*_bracket + (angle_temp - sin(angle_temp))*_bracket*_bracket;
+			result._R._e << c + w1*w1*(1 - c), w1*w2*(1 - c) - w3*s, w1*w3*(1 - c) + w2*s,
+				w1*w2*(1 - c) + w3*s, c + w2*w2*(1 - c), w2*w3*(1 - c) - w1*s,
+				w1*w3*(1 - c) - w2*s, w2*w3*(1 - c) + w1*s, c + w3*w3*(1 - c);
 
-				result._R._e = SO3::Exp(w_temp, angle_temp)._e;
-				result._p = G * v_temp;
-			}
+			result._p << (angle - (angle - s)*(w2*w2 + w3*w3))*v1 + (-(1 - c)*w3 + (angle - s)*w1*w2)*v2 + ((1 - c)*w2 + (angle - s)*w1*w3)*v3,
+				((1 - c)*w3 + (angle - s)*w1*w2)*v1 + (angle - (angle - s)*(w1*w1 + w3*w3))*v2 + (-(1 - c)*w1 + (angle - s)*w2*w3)*v3,
+				(-(1 - c)*w2 + (angle - s)*w1*w3)*v1 + ((1 - c)*w1 + (angle - s)*w2*w3)*v2 + (angle - (angle - s)*(w1*w1 + w2*w2))*v3;
+
+			return result;
+		}
+
+		SE3 SE3::Exp(so3 w, Vector3 v, Real angle)
+		{
+			SE3 result;
+
+			angle *= w.norm();
+			v /= w.norm();
+			w.normalize();
+
+			double w1 = w(0), w2 = w(1), w3 = w(2);
+			double v1 = v(0), v2 = v(1), v3 = v(2);
+			double c = cos(angle), s = sin(angle);
+
+			result._R._e << c + w1*w1*(1 - c), w1*w2*(1 - c) - w3*s, w1*w3*(1 - c) + w2*s,
+				w1*w2*(1 - c) + w3*s, c + w2*w2*(1 - c), w2*w3*(1 - c) - w1*s,
+				w1*w3*(1 - c) - w2*s, w2*w3*(1 - c) + w1*s, c + w3*w3*(1 - c);
+
+			result._p << (angle - (angle - s)*(w2*w2 + w3*w3))*v1 + (-(1 - c)*w3 + (angle - s)*w1*w2)*v2 + ((1 - c)*w2 + (angle - s)*w1*w3)*v3,
+				((1 - c)*w3 + (angle - s)*w1*w2)*v1 + (angle - (angle - s)*(w1*w1 + w3*w3))*v2 + (-(1 - c)*w1 + (angle - s)*w2*w3)*v3,
+				(-(1 - c)*w2 + (angle - s)*w1*w3)*2 + ((1 - c)*w1 + (angle - s)*w2*w3)*v2 + (angle - (angle - s)*(w1*w1 + w2*w2))*v3;
 
 			return result;
 		}
