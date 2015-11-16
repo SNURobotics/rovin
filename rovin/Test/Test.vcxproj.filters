@@ -27,5 +27,8 @@
     <ClCompile Include="test_performance.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
+    <ClCompile Include="LieGroup\LieGroup.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>
