@@ -92,49 +92,47 @@ namespace rovin
 
 		SE3 SE3::Exp(const se3& S, Real angle)
 		{
-			SE3 result;
-
-			so3 w = S.block(0, 0, 3, 1);
-			Vector3 v = S.block(3, 0, 3, 1);
-
-			angle *= w.norm();
-			v /= w.norm();
-			w.normalize();
-
-			double w1 = w(0), w2 = w(1), w3 = w(2);
-			double v1 = v(0), v2 = v(1), v3 = v(2);
-			double c = cos(angle), s = sin(angle);
-
-			result._R._e << c + w1*w1*(1 - c), w1*w2*(1 - c) - w3*s, w1*w3*(1 - c) + w2*s,
-				w1*w2*(1 - c) + w3*s, c + w2*w2*(1 - c), w2*w3*(1 - c) - w1*s,
-				w1*w3*(1 - c) - w2*s, w2*w3*(1 - c) + w1*s, c + w3*w3*(1 - c);
-
-			result._p << (angle - (angle - s)*(w2*w2 + w3*w3))*v1 + (-(1 - c)*w3 + (angle - s)*w1*w2)*v2 + ((1 - c)*w2 + (angle - s)*w1*w3)*v3,
-				((1 - c)*w3 + (angle - s)*w1*w2)*v1 + (angle - (angle - s)*(w1*w1 + w3*w3))*v2 + (-(1 - c)*w1 + (angle - s)*w2*w3)*v3,
-				(-(1 - c)*w2 + (angle - s)*w1*w3)*v1 + ((1 - c)*w1 + (angle - s)*w2*w3)*v2 + (angle - (angle - s)*(w1*w1 + w2*w2))*v3;
-
-			return result;
+			return Exp(S.head<3>(), S.tail<3>(), angle);
 		}
 
 		SE3 SE3::Exp(so3 w, Vector3 v, Real angle)
 		{
+			w *= angle;
+			v *= angle;
+
+			Real sq0 = w(0)*w(0), sq1 = w(1)*w(1), sq2 = w(2)*w(2);
+			Real theta = sqrt(sq0 + sq1 + sq2);
+			Real st_t, ct_t, vt_t;
+
+			if (theta < RealEps)
+			{
+				st_t = 1.0 - theta * theta/6.0;
+				ct_t = 0.5 - theta * theta/24.0;
+				vt_t = (w(0)*v(1) + w(1)*v(1) + w(2)*v(2))*(1.0 - theta*theta/20.0)/6.0;
+			}
+			else
+			{
+				Real itheta = 1.0 / theta;
+				st_t = sin(theta)*itheta;
+				itheta *= itheta;
+				ct_t = (1.0 - cos(theta))*itheta;
+				vt_t = (w(0)*v(1) + w(1)*v(1) + w(2)*v(2))*(1.0 - st_t)*itheta;
+			}
+
 			SE3 result;
 
-			angle *= w.norm();
-			v /= w.norm();
-			w.normalize();
-
-			double w1 = w(0), w2 = w(1), w3 = w(2);
-			double v1 = v(0), v2 = v(1), v3 = v(2);
-			double c = cos(angle), s = sin(angle);
-
-			result._R._e << c + w1*w1*(1 - c), w1*w2*(1 - c) - w3*s, w1*w3*(1 - c) + w2*s,
-				w1*w2*(1 - c) + w3*s, c + w2*w2*(1 - c), w2*w3*(1 - c) - w1*s,
-				w1*w3*(1 - c) - w2*s, w2*w3*(1 - c) + w1*s, c + w3*w3*(1 - c);
-
-			result._p << (angle - (angle - s)*(w2*w2 + w3*w3))*v1 + (-(1 - c)*w3 + (angle - s)*w1*w2)*v2 + ((1 - c)*w2 + (angle - s)*w1*w3)*v3,
-				((1 - c)*w3 + (angle - s)*w1*w2)*v1 + (angle - (angle - s)*(w1*w1 + w3*w3))*v2 + (-(1 - c)*w1 + (angle - s)*w2*w3)*v3,
-				(-(1 - c)*w2 + (angle - s)*w1*w3)*2 + ((1 - c)*w1 + (angle - s)*w2*w3)*v2 + (angle - (angle - s)*(w1*w1 + w2*w2))*v3;
+			result._R._e(0, 0) = 1.0 - ct_t*(sq1 + sq2);
+			result._R._e(0, 1) = ct_t * w(0) * w(1) - st_t * w(2);
+			result._R._e(0, 2) = ct_t * w(0) * w(2) + st_t * w(1);
+			result._R._e(1, 0) = ct_t * w(0) * w(1) + st_t * w(2);
+			result._R._e(1, 1) = 1.0 - ct_t*(sq0 + sq2);
+			result._R._e(1, 2) = ct_t * w(1) * w(2) - st_t * w(0);
+			result._R._e(2, 0) = ct_t * w(0) * w(2) - st_t * w(1);
+			result._R._e(2, 1) = ct_t * w(1) * w(2) + st_t * w(0);
+			result._R._e(2, 2) = 1.0 - ct_t*(sq0 + sq1);
+			result._p(0) = st_t * v(0) + vt_t * w(0) + ct_t * (w(1) * v(2) - w(2) * v(1));
+			result._p(1) = st_t * v(1) + vt_t * w(1) + ct_t * (w(2) * v(0) - w(0) * v(2));
+			result._p(2) = st_t * v(2) + vt_t * w(2) + ct_t * (w(0) * v(1) - w(1) * v(0));
 
 			return result;
 		}
