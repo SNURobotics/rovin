@@ -151,25 +151,36 @@ namespace rovin
 
 		SO3 SO3::Exp(so3 w, Real angle)
 		{
+			w *= angle;
+
+			Real sq0 = w(0)*w(0), sq1 = w(1)*w(1), sq2 = w(2)*w(2);
+			Real theta = sqrt(sq0 + sq1 + sq2);
+			Real st_t, ct_t;
+
+			if (theta < RealEps)
+			{
+				st_t = 1.0 - theta*theta / 6.0;
+				ct_t = 0.5 - theta*theta / 24.0;
+			}
+			else
+			{
+				Real itheta = 1.0 / theta;
+				st_t = sin(theta)*itheta;
+				itheta *= itheta;
+				ct_t = (1.0 - cos(theta))*itheta;
+			}
+
 			SO3 result;
 
-			angle *= w.norm();
-			w.normalize();
-
-			double w1 = w(0), w2 = w(1), w3 = w(2);
-			double c = cos(angle), s = sin(angle);
-
-			result._e(0, 0) = c + w1*w1*(1 - c);
-			result._e(0, 1) = w1*w2*(1 - c) - w3*s;
-			result._e(0, 2) = w1*w3*(1 - c) + w2*s;
-
-			result._e(1, 0) = w1*w2*(1 - c) + w3*s;
-			result._e(1, 1) = c + w2*w2*(1 - c);
-			result._e(1, 2) = w2*w3*(1 - c) - w1*s;
-
-			result._e(2, 0) = w1*w3*(1 - c) - w2*s;
-			result._e(2, 1) = w2*w3*(1 - c) + w1*s;
-			result._e(2, 2) = c + w3*w3*(1 - c);
+			result._e(0, 0) = 1.0 - ct_t*(sq1 + sq2);
+			result._e(0, 1) = ct_t * w(0) * w(1) - st_t * w(2);
+			result._e(0, 2) = ct_t * w(0) * w(2) + st_t * w(1);
+			result._e(1, 0) = ct_t * w(0) * w(1) + st_t * w(2);
+			result._e(1, 1) = 1.0 - ct_t*(sq0 + sq2);
+			result._e(1, 2) = ct_t * w(1) * w(2) - st_t * w(0);
+			result._e(2, 0) = ct_t * w(0) * w(2) - st_t * w(1);
+			result._e(2, 1) = ct_t * w(1) * w(2) + st_t * w(0);
+			result._e(2, 2) = 1.0 - ct_t*(sq0 + sq1);
 
 			return result;
 		}

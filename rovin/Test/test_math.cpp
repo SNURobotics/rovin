@@ -42,7 +42,15 @@ int main()
 	//PERFORM_TEST(RMatrix D(4, 4), 1e+7);
 	//PERFORM_TEST(Math::SE3 eD, 1e+7);
 
-	se3 se3_1(1,2,3,4,5,6);
+
+	SE3	A, B, C;
+	Math::SE3 AA, BB, CC;
+	PERFORM_TEST(C = A*B*A*B*A, 1e+7);
+	PERFORM_TEST(CC = AA*BB*AA*BB*AA, 1e+7);
+	cout << C << endl;
+	cout << CC << endl;
+
+	/*se3 se3_1(1,2,3,4,5,6);
 	SE3 SE3_1;
 	Math::se3 se3_rovin;
 	se3_rovin << 1, 2, 3, 4, 5, 6;
@@ -63,7 +71,7 @@ int main()
 	PERFORM_TEST(SO3_rovin = Math::SO3::Exp(so3_rovin), 1e+7);
 
 	cout << SO3_srLib(0,0) << endl;
-	cout << SO3_rovin << endl;
+	cout << SO3_rovin << endl;*/
 
 	return 0;
 }

@@ -18,6 +18,10 @@ namespace rovin
 {
 	namespace Model
 	{
+		class GeometryInfo;
+
+		typedef std::shared_ptr< Model::GeometryInfo > GeometryInfoPtr;
+
 		/**
 		*	\class GeometryInfo
 		*	\brief Geometry의 Type을 저장하고 대표하는 가상 클래스
@@ -94,7 +98,7 @@ namespace rovin
 			}
 
 			/// Geometry 깊은 복사, 자식 클래스가 생길경우 copy함수 수정이 필요합니다.
-			virtual std::shared_ptr<GeometryInfo> copy() const = 0;
+			virtual GeometryInfoPtr copy() const = 0;
 
 		private:
 			GEOMETRY_TYPE _Type; ///< Geometry type을 저장하는 변수
@@ -154,7 +158,7 @@ namespace rovin
 			Math::Vector3 getDimension() const;
 
 			// 깊은 복사
-			std::shared_ptr<GeometryInfo> copy() const;
+			GeometryInfoPtr copy() const;
 
 		private:
 			Math::Real _width, _depth, _height;
@@ -193,7 +197,7 @@ namespace rovin
 			const Math::Real& getRadius() const;
 
 			// 깊은 복사
-			std::shared_ptr<GeometryInfo> copy() const;
+			GeometryInfoPtr copy() const;
 
 		private:
 			Math::Real _radius;
@@ -237,7 +241,7 @@ namespace rovin
 			Math::Vector2 getDimension() const;
 
 			// 깊은 복사
-			std::shared_ptr<GeometryInfo> copy() const;
+			GeometryInfoPtr copy() const;
 
 		private:
 			Math::Real _radius, _height;
@@ -281,7 +285,7 @@ namespace rovin
 			Math::Vector2 getDimension() const;
 
 			// 깊은 복사
-			std::shared_ptr<GeometryInfo> copy() const;
+			GeometryInfoPtr copy() const;
 
 		private:
 			Math::Real _radius, _height;
@@ -326,7 +330,7 @@ namespace rovin
 			bool isValid() const;
 
 			// 깊은 복사
-			std::shared_ptr<GeometryInfo> copy() const;
+			GeometryInfoPtr copy() const;
 
 		private:
 			std::string _url;
@@ -346,19 +350,19 @@ namespace rovin
 				) : GeometryInfo(GeometryInfo::_USERMODEL, T, Color), _GeometryList() {}
 
 			/// srGeometry주소와 SE3값을 받아서 저장합니다.
-			void addList(const std::shared_ptr<GeometryInfo>& shape, const Math::SE3& T);
+			void addList(const GeometryInfoPtr& shape, const Math::SE3& T);
 
 			/// List로부터 값을 찾거나 설정을 바꾸고 싶을 때 사용합니다.
-			std::list< std::pair< std::shared_ptr<GeometryInfo>, Math::SE3 > >& getList()
+			std::list< std::pair< GeometryInfoPtr, Math::SE3 > >& getList()
 			{
 				return _GeometryList;
 			}
 
 			// 깊은 복사
-			std::shared_ptr<GeometryInfo> copy() const;
+			GeometryInfoPtr copy() const;
 
 		private:
-			std::list< std::pair< std::shared_ptr<GeometryInfo>, Math::SE3 > > _GeometryList; ///< Geometry를 저장하고 있는 list 변수
+			std::list< std::pair< GeometryInfoPtr, Math::SE3 > > _GeometryList; ///< Geometry를 저장하고 있는 list 변수
 		};
 	}
 }

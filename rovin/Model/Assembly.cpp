@@ -1,6 +1,7 @@
 #include "Assembly.h"
 
 #include <list>
+#include <queue>
 
 #include <rovin/utils/Diagnostic.h>
 
@@ -10,6 +11,13 @@ namespace rovin
 {
 	namespace Model
 	{
+		pair< unsigned int, Model::JointDirection > reverseDirection(const pair< unsigned int, Model::JointDirection >& target)
+		{
+			if (target.second == Model::JointDirection::REGULAR)
+				return pair< unsigned int, Model::JointDirection >(target.first, Model::JointDirection::REVERSE);
+			return pair< unsigned int, Model::JointDirection >(target.first, Model::JointDirection::REVERSE);
+		}
+
 		Assembly::Assembly(const Assembly& operand)
 		{
 			*this = operand;
@@ -17,239 +25,483 @@ namespace rovin
 
 		Assembly::~Assembly()
 		{
-			_link.clear();
-			_joint.clear();
-			_marker.clear();
-			_connection.clear();
+			_complete = false;
+			_linkPtr.clear();
+			_linkIndexMap.clear();
+			_mateIndexMap.clear();
+			_markerIndexMap.clear();
+			_Mate.clear();
+			_Tree.clear();
 		}
 
-		Assembly& Assembly::operator = (const Assembly& operand)
+		State Assembly::makeState() const
 		{
-			if (this != &operand)
+			vector< string > linkNameList;
+			vector< pair< string, unsigned int >> jointNameList;
+
+			for (unsigned int i = 0; i < _linkPtr.size(); i++)
 			{
-				_link.clear();
-				_joint.clear();
-				_marker.clear();
-				_connection.clear();
+				linkNameList.push_back(_linkPtr[i]->getName());
+			}
+			for (unsigned int i = 0; i < _linkPtr.size(); i++)
+			{
+				linkNameList.push_back(_linkPtr[i]->getName());
+			}
+		}
 
-				_lock = 0;
+		Assembly& Assembly::operator = (const Assembly& target)
+		{
+			if (this != &target)
+			{
+				_complete = false;
+				_linkPtr.clear();
+				_linkIndexMap.clear();
+				_mateIndexMap.clear();
+				_markerIndexMap.clear();
+				_Mate.clear();
+				_Tree.clear();
 
-				for (map< string, shared_ptr<Link> >::const_iterator iter = operand._link.begin(); iter != operand._link.end(); iter++)
+				for (unsigned int i = 0; i < target._linkPtr.size(); i++)
 				{
-					this->addLink(iter->second->copy());
+					this->addLink(target._linkPtr[i]->copy());
 				}
-				for (list< Connection >::const_iterator iter = operand._connection.begin(); iter != operand._connection.end(); iter++)
+				for (unsigned int i = 0; i < target._Mate.size(); i++)
 				{
-					this->addJoint(iter->_joint_pointer->copy(), iter->_mountLink_pointer->getName(), iter->_actionLink_pointer->getName(),
-						iter->_mountLink_T, iter->_actionLink_T);
+					this->addMate(target._Mate[i]._joint->copy(), target._linkPtr[target._Mate[i]._mountLinkIdx]->getName(),
+						target._linkPtr[target._Mate[i]._actionLinkIdx]->getName(), target._Mate[i]._Tmj, target._Mate[i]._Tja);
 				}
 			}
 			return *this;
 		}
 
-		Assembly Assembly::operator + (const Assembly& operand)
+		Assembly Assembly::operator + (const Assembly& target)
 		{
-			Assembly result;
-
-			result = *this;
-			result += operand;
-
+			Assembly result(this->getName() + "ADD" + target.getName());
+			result = (*this);
+			result += target;
 			return result;
 		}
 
-		Assembly& Assembly::operator += (const Assembly& operand)
+		Assembly& Assembly::operator += (const Assembly& target)
 		{
-			utils::Log(_lock > 0, "이 어셈블리는 이미 System에 들어가있습니다. 구조를 수정할 수 없습니다.", true);
-
-			for (map< string, shared_ptr<Link> >::const_iterator iter = operand._link.begin(); iter != operand._link.end(); iter++)
+			utils::Log(isCompleted(), "수정하고 싶으면 Assembly 모드로 작업하십시오.", true);
+			for (unsigned int i = 0; i < target._linkPtr.size(); i++)
 			{
-				this->addLink(iter->second->copy());
+				this->addLink(target._linkPtr[i]->copy());
 			}
-			for (list< Connection >::const_iterator iter = operand._connection.begin(); iter != operand._connection.end(); iter++)
+			for (unsigned int i = 0; i < target._Mate.size(); i++)
 			{
-				this->addJoint(iter->_joint_pointer->copy(), iter->_mountLink_pointer->getName(), iter->_actionLink_pointer->getName(),
-					iter->_mountLink_T, iter->_actionLink_T);
+				this->addMate(target._Mate[i]._joint->copy(), target._linkPtr[target._Mate[i]._mountLinkIdx]->getName(),
+					target._linkPtr[target._Mate[i]._actionLinkIdx]->getName(), target._Mate[i]._Tmj, target._Mate[i]._Tja);
 			}
-
 			return *this;
 		}
 
-		void Assembly::LOCK()
+		string Assembly::getName() const
 		{
-			_lock++;
+			return _assemblyName;
 		}
 
-		void Assembly::UNLOCK()
+		void Assembly::setName(const string assemblyName)
 		{
-			_lock--;
+			utils::Log(!utils::checkName(assemblyName), "Assembly의 이름으로 설정 할 수 없습니다.", true);
+			_assemblyName = assemblyName;
 		}
 
-		shared_ptr<Link>& Assembly::addLink(const shared_ptr<Link>& link_pointer)
+		const vector< LinkPtr >& Assembly::getLinkList() const
 		{
-			utils::Log(_lock > 0, "이 어셈블리는 이미 System에 들어가있습니다. 구조를 수정할 수 없습니다.", true);
+			return _linkPtr;
+		}
 
-			map< string, shared_ptr<Link> >::iterator iter = _link.find(link_pointer->getName());
-			if (iter != _link.end())
+		const vector< Assembly::Mate >& Assembly::getMateList() const
+		{
+			return _Mate;
+		}
+
+		unsigned int Assembly::getLinkIndex(const std::string& linkName) const
+		{
+			std::map< std::string, unsigned int >::const_iterator iter = _linkIndexMap.find(linkName);
+			if (iter == _linkIndexMap.end())
 			{
-				assert(iter->second == link_pointer && "중복되는 이름을 갖는 링크가 이미 어셈블리에 존재합니다");
-			}
-			else
-			{
-				assert(!findNameList(link_pointer->getName()) && "중복되는 이름이 이미 어셈블리에 존재합니다");
-				map< string, Math::SE3 >  marker_map = link_pointer->getMarkerMap();
-				for (map< string, Math::SE3 >::iterator miter = marker_map.begin(); miter != marker_map.end(); miter++)
-				{
-					assert(!findNameList(miter->first) && "링크에 포함되어 있는 마커의 이름 중에 어셈블리에 이미 존재하는 이름이 있습니다.");
-				}
-
-				_link.insert(pair< string, shared_ptr<Link> >(link_pointer->getName(), link_pointer));
-				iter = _link.find(link_pointer->getName());
-
-				for (map< string, Math::SE3 >::iterator miter = marker_map.begin(); miter != marker_map.end(); miter++)
-				{
-					_marker.insert(pair< string, shared_ptr<Link> >(miter->first, iter->second));
-				}
+				return -1;
 			}
 			return iter->second;
 		}
 
-		void Assembly::deleteLink(const std::shared_ptr<Link>& link_pointer)
+		unsigned int Assembly::getLinkIndexByMarkerName(const std::string& markerName) const
 		{
-			utils::Log(_lock > 0, "이 어셈블리는 이미 System에 들어가있습니다. 구조를 수정할 수 없습니다.", true);
-
-			assert(isLink(link_pointer->getName()) && "삭제하고 싶은 링크가 어셈블리에 없습니다.");
-			map< string, shared_ptr<Link> >::iterator link_iter = _link.find(link_pointer->getName());
-			assert(link_iter->second == link_pointer && "삭제하고 싶은 링크의 이름을 갖는 링크는 존재하지만 실제로는 다른 링크입니다. 확인바랍니다.");
-
-			for (std::list< Connection >::iterator iter = _connection.begin(); iter != _connection.end(); )
+			std::map< std::string, unsigned int >::const_iterator iter = _markerIndexMap.find(markerName);
+			if (iter == _markerIndexMap.end())
 			{
-				if (iter->_mountLink_pointer == link_pointer || iter->_actionLink_pointer == link_pointer)
+				return -1;
+			}
+			return iter->second;
+		}
+
+		unsigned int Assembly::getMateIndexByJointName(const std::string& jointName) const
+		{
+			std::map< std::string, unsigned int >::const_iterator iter = _mateIndexMap.find(jointName);
+			if (iter == _mateIndexMap.end())
+			{
+				return -1;
+			}
+			return iter->second;
+		}
+
+		LinkPtr Assembly::getLinkPtr(const std::string& linkName) const
+		{
+			utils::Log(getLinkIndex(linkName) == -1, "찾고자 하는 Link가 존재하지 않습니다.", true);
+			return _linkPtr[getLinkIndex(linkName)];
+		}
+
+		JointPtr Assembly::getJointPtr(const std::string& jointName) const
+		{
+			utils::Log(getMateIndexByJointName(jointName) == -1, "찾고자 하는 Joint가 존재하지 않습니다.", true);
+			return _Mate[getMateIndexByJointName(jointName)]._joint;
+		}
+
+		LinkPtr Assembly::getLinkPtr(const unsigned int linkIndex) const
+		{
+			return _linkPtr[linkIndex];
+		}
+
+		JointPtr Assembly::getJointPtrByMateIndex(const unsigned int mateIndex) const
+		{
+			return _Mate[mateIndex]._joint;
+		}
+
+		void Assembly::addLink(const Model::LinkPtr& linkPtr)
+		{
+			utils::Log(isCompleted(), "수정하고 싶으면 Assembly 모드로 작업하십시오.", true);
+			utils::Log(getLinkIndex(linkPtr->getName()) != -1 || getLinkIndexByMarkerName(linkPtr->getName()) != -1 || getMateIndexByJointName(linkPtr->getName()) != -1,
+				"Link의 이름이 이미 Assembly에 존재합니다.", true);
+			std::map< std::string, Math::SE3 > marker = linkPtr->getMarkerMap();
+			for (std::map< std::string, Math::SE3 >::const_iterator iter = marker.begin(); iter != marker.end(); iter++)
+			{
+				utils::Log(getLinkIndex(iter->first) != -1 || getLinkIndexByMarkerName(iter->first) != -1 || getMateIndexByJointName(iter->first) != -1,
+					"Marker의 이름이 이미 Assembly에 존재합니다.", true);
+			}
+
+			unsigned int Idx = _linkPtr.size();
+			_linkPtr.push_back(linkPtr);
+			_linkIndexMap.insert(std::pair< std::string, unsigned int >(linkPtr->getName(), Idx));
+			for (std::map< std::string, Math::SE3 >::const_iterator iter = marker.begin(); iter != marker.end(); iter++)
+			{
+				_linkIndexMap.insert(pair< string, unsigned int >(iter->first, Idx));
+			}
+		}
+
+		void Assembly::addMate(const Model::JointPtr& jointPtr, const Model::LinkPtr& mountLinkPtr, const Model::LinkPtr& actionLinkPtr,
+			const Math::SE3& Tmj, const Math::SE3& Tja)
+		{
+			if (getLinkIndex(mountLinkPtr->getName()) == -1) addLink(mountLinkPtr);
+			if (getLinkIndex(actionLinkPtr->getName()) == -1) addLink(actionLinkPtr);
+
+			addMate(jointPtr, mountLinkPtr->getName(), actionLinkPtr->getName(), Tmj, Tja);
+		}
+
+		void Assembly::addMate(const Model::JointPtr& jointPtr, const std::string& mountLinkMarkerName, const Model::LinkPtr& actionLinkPtr,
+			const Math::SE3& Tmj, const Math::SE3& Tja)
+		{
+			std::string new_mountLinkMarkerName = mountLinkMarkerName;
+			Math::SE3 new_Tmj = Tmj;
+
+			if (getLinkIndex(new_mountLinkMarkerName) != -1);
+			else if (getLinkIndexByMarkerName(new_mountLinkMarkerName) != -1)
+			{
+				unsigned int linkIdx = getLinkIndexByMarkerName(new_mountLinkMarkerName);
+				new_Tmj = _linkPtr[linkIdx]->getMarker(new_mountLinkMarkerName) * new_Tmj;
+				new_mountLinkMarkerName = _linkPtr[linkIdx]->getName();
+			}
+			else
+			{
+				utils::Log("해당하는 Link 또는 Marker가 존재하지 않습니다.", true);
+			}
+			if (getLinkIndex(actionLinkPtr->getName()) == -1) addLink(actionLinkPtr);
+
+			addMate(jointPtr, new_mountLinkMarkerName, actionLinkPtr->getName(), new_Tmj, Tja);
+		}
+
+		void Assembly::addMate(const Model::JointPtr& jointPtr, const Model::LinkPtr& mountLinkPtr, const std::string& actionLinkMarkerName,
+			const Math::SE3& Tmj, const Math::SE3& Tja)
+		{
+			std::string new_actionLinkMarkerName = actionLinkMarkerName;
+			Math::SE3 new_Tja = Tja;
+
+			if (getLinkIndex(mountLinkPtr->getName()) == -1) addLink(mountLinkPtr);
+			if (getLinkIndex(new_actionLinkMarkerName) != -1);
+			else if (getLinkIndexByMarkerName(new_actionLinkMarkerName) != -1)
+			{
+				unsigned int linkIdx = getLinkIndexByMarkerName(new_actionLinkMarkerName);
+				new_Tja = new_Tja * _linkPtr[linkIdx]->getMarker(new_actionLinkMarkerName);
+				new_actionLinkMarkerName = _linkPtr[linkIdx]->getName();
+			}
+			else
+			{
+				utils::Log("해당하는 Link 또는 Marker가 존재하지 않습니다.", true);
+			}
+
+			addMate(jointPtr, mountLinkPtr->getName(), new_actionLinkMarkerName, Tmj, new_Tja);
+		}
+
+		void Assembly::addMate(const Model::JointPtr& jointPtr, const std::string& mountLinkMarkerName, const std::string& actionLinkMarkerName,
+			const Math::SE3& Tmj, const Math::SE3& Tja)
+		{
+			utils::Log(isCompleted(), "수정하고 싶으면 Assembly 모드로 작업하십시오.", true);
+			utils::Log(getMateIndexByJointName(jointPtr->getName()) != -1 || getLinkIndex(jointPtr->getName()) != -1 || getLinkIndexByMarkerName(jointPtr->getName()) != -1,
+				"Joint의 이름이 이미 Assembly에 존재합니다.", true);
+
+			unsigned int mountLinkIdx;
+			unsigned int actionLinkIdx;
+
+			Math::SE3 new_Tmj = Tmj;
+			Math::SE3 new_Tja = Tja;
+
+			if ((mountLinkIdx = getLinkIndex(mountLinkMarkerName)) != -1);
+			else if ((mountLinkIdx = getLinkIndexByMarkerName(mountLinkMarkerName)) != -1)
+			{
+				new_Tmj = _linkPtr[mountLinkIdx]->getMarker(mountLinkMarkerName) * new_Tmj;
+			}
+			if ((actionLinkIdx = getLinkIndex(actionLinkMarkerName)) != -1);
+			else if ((actionLinkIdx = getLinkIndexByMarkerName(actionLinkMarkerName)) != -1)
+			{
+				new_Tja = new_Tja * _linkPtr[actionLinkIdx]->getMarker(actionLinkMarkerName);
+			}
+
+			unsigned int Idx = _Mate.size();
+			_Mate.push_back(Mate(jointPtr, mountLinkIdx, actionLinkIdx, new_Tmj, new_Tja));
+			_mateIndexMap.insert(pair< string, unsigned int>(jointPtr->getName(), Idx));
+		}
+
+		void Assembly::deleteLink(const string& linkName)
+		{
+			utils::Log(isCompleted(), "수정하고 싶으면 Assembly 모드로 작업하십시오.", true);
+
+			unsigned int Idx = getLinkIndex(linkName);
+			vector< string > nameList;
+			for (unsigned int i = 0; i < _Mate.size(); i++)
+			{
+				if (_Mate[i]._mountLinkIdx == Idx || _Mate[i]._actionLinkIdx == Idx)
 				{
-					_joint.erase(iter->_joint_pointer->getName());
-					iter = _connection.erase(iter);
+					nameList.push_back(_Mate[i]._joint->getName());
 				}
-				else iter++;
 			}
-			map< string, Math::SE3 >  marker_map = link_pointer->getMarkerMap();
-			for (map< string, Math::SE3 >::iterator miter = marker_map.begin(); miter != marker_map.end(); miter++)
+			for (unsigned int i = 0; i < nameList.size(); i++)
 			{
-				_marker.erase(miter->first);
+				deleteMateByJointName(nameList[i]);
 			}
-			_link.erase(link_pointer->getName());
-		}
-
-		void Assembly::addJoint(const std::shared_ptr<Joint>& joint_pointer, const std::string& mountLM_name, const std::string& actionLM_name, const Math::SE3& mountLM_T, const Math::SE3& actionLM_T)
-		{
-			utils::Log(_lock > 0, "이 어셈블리는 이미 System에 들어가있습니다. 구조를 수정할 수 없습니다.", true);
-
-			assert(!findNameList(joint_pointer->getName()) && "주어진 조인트의 이름과 같은 이름을 갖는 컴포넌트가 이미 어셈블리에 있습니다.");
-			assert((isLink(mountLM_name) || isMarker(mountLM_name)) && "mountLM_name은 링크 또는 마커의 이름이어야 합니다.");
-			assert((isLink(actionLM_name) || isMarker(actionLM_name)) && "actionLM_name은 링크 또는 마커의 이름이어야 합니다.");
-
-			_joint.insert(pair< string, shared_ptr<Joint> >(joint_pointer->getName(), joint_pointer));
-
-			Math::SE3 mountT, actionT;
-			map< string, shared_ptr<Link> >::iterator mount_iter = _link.find(mountLM_name);
-			map< string, shared_ptr<Link> >::iterator action_iter = _link.find(actionLM_name);
-			if (mount_iter == _link.end())
+			std::map< std::string, Math::SE3 > marker = _linkPtr[Idx]->getMarkerMap();
+			for (std::map< std::string, Math::SE3 >::iterator iter = marker.begin(); iter != marker.end(); iter++)
 			{
-				mount_iter = _marker.find(mountLM_name);
-				mountT = mount_iter->second->getMarker(mountLM_name);
+				_markerIndexMap.erase(iter->first);
 			}
-			if (action_iter == _link.end())
+			_linkPtr.erase(_linkPtr.begin() + Idx);
+			_linkIndexMap.clear();
+			for (unsigned int i = 0; i < _linkPtr.size(); i++)
 			{
-				action_iter = _marker.find(actionLM_name);
-				actionT = action_iter->second->getMarker(actionLM_name);
+				_linkIndexMap.insert(pair< string, unsigned int >(_linkPtr[i]->getName(), i));
 			}
 
-			_connection.push_back(Connection(joint_pointer, mount_iter->second, action_iter->second, mountT*mountLM_T, actionLM_T*actionT.inverse()));
-		}
-
-		void Assembly::deleteJoint(const std::shared_ptr<Joint>& joint_pointer)
-		{
-			utils::Log(_lock > 0, "이 어셈블리는 이미 System에 들어가있습니다. 구조를 수정할 수 없습니다.", true);
-
-			assert(isJoint(joint_pointer->getName()) && "삭제하고 싶은 조인트가 어셈블리에 없습니다.");
-			map< string, shared_ptr<Joint> >::iterator link_iter = _joint.find(joint_pointer->getName());
-			assert(link_iter->second == joint_pointer && "삭제하고 싶은 조인트의 이름을 갖는 링크는 존재하지만 실제로는 다른 조인트입니다. 확인바랍니다.");
-
-			for (std::list< Connection >::iterator iter = _connection.begin(); iter != _connection.end(); )
+			for (unsigned int i = 0; i < _Mate.size(); i++)
 			{
-				if (iter->_joint_pointer == joint_pointer)
+				if (_Mate[i]._mountLinkIdx > Idx)
 				{
-					iter = _connection.erase(iter);
-					break;
+					_Mate[i]._mountLinkIdx--;
+				}
+				if (_Mate[i]._actionLinkIdx > Idx)
+				{
+					_Mate[i]._actionLinkIdx--;
 				}
 			}
-
-			_joint.erase(joint_pointer->getName());
 		}
 
-		bool Assembly::changeName(const std::string& old_name, const std::string& new_name)
+		void Assembly::deleteMateByJointName(const string& jointName)
 		{
-			utils::Log(_lock > 0, "이 어셈블리는 이미 System에 들어가있습니다. 구조를 수정할 수 없습니다.", true);
+			utils::Log(isCompleted(), "수정하고 싶으면 Assembly 모드로 작업하십시오.", true);
 
-			if (isLink(new_name) | isJoint(new_name) | isMarker(new_name))
+			unsigned int Idx = getMateIndexByJointName(jointName);
+			_Mate.erase(_Mate.begin() + Idx);
+			_mateIndexMap.clear();
+			for (unsigned int i = 0; i < _linkPtr.size(); i++)
 			{
-				return false;
+				_mateIndexMap.insert(pair< string, unsigned int >(_Mate[i]._joint->getName(), i));
 			}
-
-			if (isLink(old_name))
-			{
-				shared_ptr<Link> link = findLink(old_name);
-				link->_name = new_name;
-				_link.erase(old_name);
-				_link.insert(pair< string, shared_ptr<Link> >(new_name, link));
-			}
-			else if (isJoint(old_name))
-			{
-				shared_ptr<Joint> joint = findJoint(old_name);
-				joint->_name = new_name;
-				_joint.erase(old_name);
-				_joint.insert(pair< string, shared_ptr<Joint> >(new_name, joint));
-			}
-			else if (isMarker(old_name))
-			{
-				shared_ptr<Link> link = findMarker(old_name);
-				Math::SE3 marker_T = link->getMarker(old_name);
-				link->addMarker(new_name, marker_T);
-				_marker.erase(old_name);
-				_marker.insert(pair< string, shared_ptr<Link> >(new_name, link));
-			}
-			return false;
 		}
 
-		bool Assembly::changeNameAll(const std::string& prefix)
+		void Assembly::changeName(const string& oldName, const string& newName)
 		{
-			utils::Log(_lock > 0, "이 어셈블리는 이미 System에 들어가있습니다. 구조를 수정할 수 없습니다.", true);
+			utils::Log(isCompleted(), "수정하고 싶으면 Assembly 모드로 작업하십시오.", true);
 
-			bool flag = true;
+			unsigned int Idx;
 
-			list<string> linklist = getLinkNameList();
-			list<string> jointlist = getJointNameList();
-			list<string> markerlist = getMarkerNameList();
+			if (oldName.compare(newName) == 0) return;
 
-			for (list<string>::iterator iter = linklist.begin(); iter != linklist.end(); iter++)
+			map< string, unsigned int >::iterator iter = _linkIndexMap.find(oldName);
+			if (iter != _linkIndexMap.end())
 			{
-				flag &= changeName(*iter, prefix + (*iter));
-			}
-			for (list<string>::iterator iter = jointlist.begin(); iter != jointlist.end(); iter++)
-			{
-				flag &= changeName(*iter, prefix + (*iter));
-			}
-			for (list<string>::iterator iter = markerlist.begin(); iter != markerlist.end(); iter++)
-			{
-				flag &= changeName(*iter, prefix + (*iter));
+				_linkPtr[iter->second]->_name = newName;
+				_linkIndexMap.insert(pair< string, unsigned int >(newName, iter->second));
+				_linkIndexMap.erase(oldName);
 			}
 
-			return flag;
+			map< string, unsigned int >::iterator iter = _mateIndexMap.find(oldName);
+			if (iter != _mateIndexMap.end())
+			{
+				_Mate[iter->second]._joint->_name = newName;
+				_mateIndexMap.insert(pair< string, unsigned int >(newName, iter->second));
+				_mateIndexMap.erase(oldName);
+			}
+
+			map< string, unsigned int >::iterator iter = _markerIndexMap.find(oldName);
+			if (iter != _markerIndexMap.end())
+			{
+				Math::SE3 T = _linkPtr[iter->second]->getMarker(oldName);
+				_linkPtr[iter->second]->eraseMarker(oldName);
+				_linkPtr[iter->second]->addMarker(newName, T);
+				_markerIndexMap.insert(pair< string, unsigned int >(newName, iter->second));
+				_linkIndexMap.erase(oldName);
+			}
 		}
 
-		Assembly Assembly::copy(const std::string& prefix) const
+		void Assembly::changeNameAll(const string& prefix)
 		{
-			Assembly _clone = *this;
-			_clone.changeNameAll(prefix);
-			return _clone;
+			utils::Log(isCompleted(), "수정하고 싶으면 Assembly 모드로 작업하십시오.", true);
+
+			vector< string > nameList;
+			for (map< string, unsigned int >::iterator iter = _linkIndexMap.begin(); iter != _linkIndexMap.end(); iter++)
+			{
+				nameList.push_back(iter->first);
+			}
+			for (map< string, unsigned int >::iterator iter = _mateIndexMap.begin(); iter != _mateIndexMap.end(); iter++)
+			{
+				nameList.push_back(iter->first);
+			}
+			for (map< string, unsigned int >::iterator iter = _markerIndexMap.begin(); iter != _markerIndexMap.end(); iter++)
+			{
+				nameList.push_back(iter->first);
+			}
+			for (unsigned int i = 0; i < nameList.size(); i++)
+			{
+				changeName(nameList[i], prefix + nameList[i]);
+			}
+		}
+
+		AssemblyPtr Assembly::copy(const string& prefix) const
+		{
+			AssemblyPtr clone = AssemblyPtr(new Assembly("copy" + _assemblyName));
+			clone->operator=(*this);
+			clone->changeNameAll(prefix);
+			return clone;
+		}
+
+		bool Assembly::isCompleted() const
+		{
+			return _complete;
+		}
+
+		void Assembly::setAssemblyMode()
+		{
+			_complete = false;
+		}
+
+		void Assembly::completeAssembling(const string& baseLinkName)
+		{
+			utils::Log(getLinkIndex(baseLinkName) == -1, "입력한 이름을 갖는 Link가 존재하지 않습니다.", true);
+
+			_Tree.clear();
+			_ClosedLoopConstraint.clear();
+
+			_complete = true;
+			_baseLink = getLinkIndex(baseLinkName);
+
+			vector< vector< pair< unsigned int, Model::JointDirection >>> adjacencyList(_linkPtr.size());
+			for (unsigned int i = 0; i < _Mate.size();i++)
+			{
+				adjacencyList[_Mate[i]._mountLinkIdx].push_back(pair< unsigned int, Model::JointDirection >(i, JointDirection::REGULAR));
+				adjacencyList[_Mate[i]._actionLinkIdx].push_back(pair< unsigned int, Model::JointDirection >(i, JointDirection::REVERSE));
+			}
+
+			vector< pair< unsigned int, Model::JointDirection >> parent(_linkPtr.size());
+			vector< unsigned int > depth(_linkPtr.size());
+			vector< bool > checkLinkVisit(_linkPtr.size()), checkMateVisit(_Mate.size());
+			queue< unsigned int > que;
+			que.push(_baseLink);
+			checkLinkVisit[_baseLink] = true;
+			depth[_baseLink] = 0;
+			while (!que.empty())
+			{
+				unsigned int currentIdx = que.front();
+				que.pop();
+
+				for (unsigned int i = 0; i < adjacencyList[currentIdx].size(); i++)
+				{
+					unsigned int nextIdx;
+
+					if (checkMateVisit[adjacencyList[currentIdx][i].first]) continue;
+					checkMateVisit[adjacencyList[currentIdx][i].first] = true;
+
+					if (adjacencyList[currentIdx][i].second == Model::JointDirection::REGULAR)
+					{
+						nextIdx = _Mate[adjacencyList[currentIdx][i].first]._actionLinkIdx;
+					}
+					else
+					{
+						nextIdx = _Mate[adjacencyList[currentIdx][i].first]._mountLinkIdx;
+					}
+					
+					if (checkLinkVisit[nextIdx])
+					{
+						list< pair< unsigned int, Model::JointDirection >> closedloop;
+						closedloop.push_back(adjacencyList[currentIdx][i]);
+						unsigned int Idx1 = currentIdx;
+						unsigned int Idx2 = nextIdx;
+						unsigned int depth1 = depth[Idx1];
+						unsigned int depth2 = depth[Idx2];
+						while (depth1 > depth2)
+						{
+							closedloop.push_front(parent[Idx1]);
+							if (parent[Idx1].second == Model::JointDirection::REGULAR)
+								Idx1 = _Mate[parent[Idx1].first]._mountLinkIdx;
+							else Idx1 = _Mate[parent[Idx1].first]._actionLinkIdx;
+							depth1--;
+						}
+						while (depth1 < depth2)
+						{
+							closedloop.push_back(reverseDirection(parent[Idx2]));
+							if (parent[Idx2].second == Model::JointDirection::REGULAR)
+								Idx2 = _Mate[parent[Idx2].first]._mountLinkIdx;
+							else Idx2 = _Mate[parent[Idx2].first]._actionLinkIdx;
+							depth2--;
+						}
+						while (Idx1 != Idx2)
+						{
+							closedloop.push_front(parent[Idx1]);
+							closedloop.push_back(reverseDirection(parent[Idx2]));
+							if (parent[Idx1].second == Model::JointDirection::REGULAR)
+								Idx1 = _Mate[parent[Idx1].first]._mountLinkIdx;
+							else Idx1 = _Mate[parent[Idx1].first]._actionLinkIdx;
+							if (parent[Idx2].second == Model::JointDirection::REGULAR)
+								Idx2 = _Mate[parent[Idx2].first]._mountLinkIdx;
+							else Idx2 = _Mate[parent[Idx2].first]._actionLinkIdx;
+							depth1--;
+							depth2--;
+						}
+						_ClosedLoopConstraint.push_back(vector< pair< unsigned int, Model::JointDirection >>());
+						for (list< pair< unsigned int, Model::JointDirection >>::iterator iter = closedloop.begin(); iter != closedloop.end(); iter++)
+						{
+							_ClosedLoopConstraint[_ClosedLoopConstraint.size() - 1].push_back(*iter);
+						}
+					}
+					else
+					{
+						checkLinkVisit[nextIdx] = true;
+						depth[nextIdx] = depth[currentIdx] + 1;
+						parent[nextIdx] = adjacencyList[currentIdx][i];
+						que.push(nextIdx);
+						_Tree.push_back(adjacencyList[currentIdx][i]);
+					}
+				}
+			}
 		}
 	}
 }

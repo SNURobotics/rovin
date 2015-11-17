@@ -106,17 +106,17 @@ namespace rovin
 
 			if (theta < RealEps)
 			{
-				st_t = 1.0 - theta * theta/6.0;
-				ct_t = 0.5 - theta * theta/24.0;
-				vt_t = (w(0)*v(1) + w(1)*v(1) + w(2)*v(2))*(1.0 - theta*theta/20.0)/6.0;
+				st_t = 1.0 - theta*theta/6.0;
+				ct_t = 0.5 - theta*theta/24.0;
+				vt_t = (w(0)*v(0) + w(1)*v(1) + w(2)*v(2))*(1.0 - theta*theta/20.0)/6.0;
 			}
 			else
 			{
-				Real itheta = 1.0 / theta;
+				Real itheta = 1.0/theta;
 				st_t = sin(theta)*itheta;
 				itheta *= itheta;
 				ct_t = (1.0 - cos(theta))*itheta;
-				vt_t = (w(0)*v(1) + w(1)*v(1) + w(2)*v(2))*(1.0 - st_t)*itheta;
+				vt_t = (w(0)*v(0) + w(1)*v(1) + w(2)*v(2))*(1.0 - st_t)*itheta;
 			}
 
 			SE3 result;

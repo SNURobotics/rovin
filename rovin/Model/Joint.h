@@ -20,6 +20,11 @@ namespace rovin
 	namespace Model
 	{
 		class Link;
+		class Joint;
+
+		typedef std::shared_ptr< Joint > JointPtr;
+
+		enum JointDirection {REGULAR, REVERSE};
 
 		/**
 		*	\class Joint
@@ -58,7 +63,7 @@ namespace rovin
 			const Math::VectorX&	getConstFriction() const	{ return _ConstantFriction; }
 
 			
-			virtual std::shared_ptr<Joint> copy() const = 0;
+			virtual JointPtr copy() const = 0;
 			virtual Math::SE3	getTransform(const Math::VectorX& state, bool isReversed = false) const = 0;
 			virtual Math::se3	getVelocity(const Math::VectorX& state, bool isReversed = false) const = 0;
 			///	Return static jacobian matrix (6 by DOF). Derived class should implement this.

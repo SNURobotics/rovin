@@ -130,13 +130,10 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="State.h" />
-    <ClInclude Include="System.h" />
+    <ClCompile Include="Kinematics.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Kinematics.cpp" />
-    <ClCompile Include="State.cpp" />
-    <ClCompile Include="System.cpp" />
+    <ClInclude Include="Kinematics.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

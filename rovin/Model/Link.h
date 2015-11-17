@@ -22,8 +22,10 @@ namespace rovin
 {
 	namespace Model
 	{
-		class GeometryInfo;
+		class Link;
 		class Joint;
+
+		typedef std::shared_ptr< Model::Link > LinkPtr;
 
 		/**
 		*	\class Link
@@ -42,8 +44,8 @@ namespace rovin
 			*/
 			Link(const std::string name,
 				const Math::Inertia& I = Math::Inertia(),
-				const std::shared_ptr<GeometryInfo>& visual = NULL,
-				const std::shared_ptr<GeometryInfo>& collision = NULL,
+				const GeometryInfoPtr& visual = NULL,
+				const GeometryInfoPtr& collision = NULL,
 				const std::string material = "",
 				const std::map< std::string, Math::SE3 >& marker = std::map< std::string, Math::SE3 >()
 				) : _name((utils::checkName(name) ? (name) : (assert(0 && "링크의 이름으로 사용할 수 없는 이름이 들어왔습니다."), ""))), _inertia(I), _visual(visual), _collision(collision),
@@ -81,12 +83,12 @@ namespace rovin
 				return _inertia;
 			}
 			/// 보여지는 geometry를 가져옵니다.
-			const std::shared_ptr<GeometryInfo>& getVisualGeometry()
+			const GeometryInfoPtr& getVisualGeometry()
 			{
 				return _visual;
 			}
 			/// 충돌 검사를 위한 geometry를 가져옵니다.
-			const std::shared_ptr<GeometryInfo>& getCollisionGeometry()
+			const GeometryInfoPtr& getCollisionGeometry()
 			{
 				return _collision;
 			}
@@ -110,7 +112,7 @@ namespace rovin
 				bool overwrite = (false) ///< true: 덮어씁니다. false: 건너뜁니다.
 				);
 			/// Marker를 제거합니다.
-			void deleteMarker(const std::string& marker_name ///< Marker의 이름
+			void eraseMarker(const std::string& marker_name ///< Marker의 이름
 				);
 			/// Marker를 모두 제거합니다.
 			void clearMarker()
@@ -136,16 +138,16 @@ namespace rovin
 				) const;
 
 			/// 깊은 복사 - joint와 관련된 정보는 복사하지 않는다.
-			std::shared_ptr<Link> copy() const
+			LinkPtr copy() const
 			{
-				return std::shared_ptr<Link>(new Link(_name, _inertia, (*_visual).copy(), (*_collision).copy(), _material, _marker));
+				return LinkPtr(new Link(_name, _inertia, (*_visual).copy(), (*_collision).copy(), _material, _marker));
 			}
 
 		private:
 			std::string _name; ///< Link의 이름, identity로 쓰이므로 system 내부에서는 유일해야한다.
 			Math::Inertia _inertia; ///< Inertia를 저장하고 있는 변수
-			std::shared_ptr<GeometryInfo> _visual; ///< 보여지는 geometry를 저장하는 변수
-			std::shared_ptr<GeometryInfo> _collision; ///< 충돌 검사를 위한 geometry를 저장하는 변수
+			GeometryInfoPtr _visual; ///< 보여지는 geometry를 저장하는 변수
+			GeometryInfoPtr _collision; ///< 충돌 검사를 위한 geometry를 저장하는 변수
 
 			std::string _material; ///< Link의 물성을 나타내는 변수(재료 이름), 탄성계수와 마찰계수를 정의하기 위해서 쓰인다.
 
