@@ -84,7 +84,6 @@ namespace rovin {
 
 		Math::SE3 ScrewJoint::getTransform(const Math::VectorX & state, bool isReversed) const
 		{
-			//	TODO: optimize this function
 			if (_dof == 0)
 				return Math::SE3();
 			else if (_dof != state.size())
@@ -92,14 +91,22 @@ namespace rovin {
 				assert(0 && "Input dimension mismatch.");
 				return Math::SE3();
 			}
-			Math::SE3 T = Math::SE3::Exp(_axes.col(0), state[0]);
-			for (unsigned int i = 1; i < _dof; i++)
-				T *= Math::SE3::Exp(_axes.col(i), state[i]);
 
-			if (isReversed)
-				return T.inverse();
+			//	In most case, it has regular direction and single DOF.
+			Math::SE3 T = Math::SE3::Exp(_axes.col(0), state[0]);
+			if (!isReversed)
+			{
+				for (unsigned int i = 1; i < _dof; i++)
+					T *= Math::SE3::Exp(_axes.col(i), state[i]);
+			}
 			else
-				return T;
+			{
+				T = Math::SE3::Exp(_axes.col(_dof-1), -state[0]);
+				for (unsigned int i = _dof - 2; i >= 0; i--)
+					T *= Math::SE3::Exp(_axes.col(i), -state[i]);
+			}
+			
+			return T;
 		}
 
 		Math::se3 ScrewJoint::getVelocity(const Math::VectorX & state, bool isReversed) const

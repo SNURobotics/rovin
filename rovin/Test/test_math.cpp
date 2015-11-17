@@ -44,26 +44,36 @@ int main()
 
 	se3 se3_1(1,2,3,4,5,6);
 	SE3 SE3_1;
-	Math::se3 se3_rovin;
-	se3_rovin << 1, 2, 3, 4, 5, 6;
+	Math::so3 se3_rovin1(1, 2, 3);
+	Math::so3 se3_rovin2(1, 2, 3);
 	Math::SE3 SE3_rovin;
 	PERFORM_TEST(SE3_1 = Exp(se3_1), 1e+7);
-	PERFORM_TEST(SE3_rovin = Math::SE3::Exp(se3_rovin), 1e+7);
+	PERFORM_TEST(SE3_rovin = Math::SE3::Exp(se3_rovin1, se3_rovin2), 1e+7);
 	cout << SE3_1 << endl;
 	cout << SE3_rovin << endl;
 
 
-	Vec3 so3_srLib(1, 2, 3);
-	SO3 SO3_srLib;
+	//Vec3 so3_srLib(1, 2, 3);
+	//SO3 SO3_srLib;
 
-	Math::so3 so3_rovin(1, 2, 3);
-	Math::SO3 SO3_rovin;
+	//Math::so3 so3_rovin(1, 2, 3);
+	//Math::SO3 SO3_rovin;
 
-	PERFORM_TEST(SO3_srLib = Exp(so3_srLib), 1e+7);
-	PERFORM_TEST(SO3_rovin = Math::SO3::Exp(so3_rovin), 1e+7);
+	//PERFORM_TEST(SO3_srLib = Exp(so3_srLib), 1e+7);
+	//PERFORM_TEST(SO3_rovin = Math::SO3::Exp(so3_rovin), 1e+7);
 
-	cout << SO3_srLib(0,0) << endl;
-	cout << SO3_rovin << endl;
+	//cout << SO3_srLib(0,0) << endl;
+	//cout << SO3_rovin << endl;
 
+	//Matrix4d A, B, C, D;
+	//A.setRandom();
+	//B.setRandom();
+	//C.setRandom();
+	//D.setRandom();
+
+	//PERFORM_TEST(A = B*C*D*D, 1e+6);
+	//cout << A << endl;
+	//PERFORM_TEST(A = (((B*C).eval()*D).eval()*D).eval(), 1e+6);
+	//cout << A << endl;
 	return 0;
 }
