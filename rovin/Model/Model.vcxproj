@@ -143,6 +143,7 @@
     <ClCompile Include="Link.cpp" />
     <ClCompile Include="Assembly.cpp" />
     <ClCompile Include="ScrewJoint.cpp" />
+    <ClCompile Include="State.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="GeometryInfo.h" />
@@ -152,6 +153,7 @@
     <ClInclude Include="PrismaticJoint.h" />
     <ClInclude Include="RevoluteJoint.h" />
     <ClInclude Include="ScrewJoint.h" />
+    <ClInclude Include="State.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

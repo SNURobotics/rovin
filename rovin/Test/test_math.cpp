@@ -5,10 +5,10 @@
 
 #include <rovin/Math/LieGroup.h>
 #include <rovin/Model/Assembly.h>
-#include <rovin/Dynamics/System.h>
+#include <rovin/utils/Diagnostic.h>
 
-#include "Rmatrix\rmatrix3.h"
-#include "LieGroup\LieGroup.h"
+#include "Rmatrix/rmatrix3.h"
+#include "LieGroup/LieGroup.h"
 
 using namespace std;
 using namespace Eigen;
@@ -42,6 +42,14 @@ int main()
 	//PERFORM_TEST(RMatrix D(4, 4), 1e+7);
 	//PERFORM_TEST(Math::SE3 eD, 1e+7);
 
+
+	SE3	A, B, C;
+	Math::SE3 AA, BB, CC;
+	PERFORM_TEST(C = A*B*A*B*A, 1e+7);
+	PERFORM_TEST(CC = AA*BB*AA*BB*AA, 1e+7);
+	cout << C << endl;
+	cout << CC << endl;
+
 	se3 se3_1(1,2,3,4,5,6);
 	SE3 SE3_1;
 	Math::so3 se3_rovin1(1, 2, 3);
@@ -64,6 +72,7 @@ int main()
 
 	//cout << SO3_srLib(0,0) << endl;
 	//cout << SO3_rovin << endl;
+
 
 	//Matrix4d A, B, C, D;
 	//A.setRandom();

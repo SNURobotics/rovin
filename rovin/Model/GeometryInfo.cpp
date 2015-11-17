@@ -41,9 +41,9 @@ namespace rovin
 			return Vector3(_width, _depth, _height);
 		}
 
-		shared_ptr<GeometryInfo> Box::copy() const
+		GeometryInfoPtr Box::copy() const
 		{
-			return shared_ptr<GeometryInfo>(new Box(*this));
+			return GeometryInfoPtr(new Box(*this));
 		}
 
 		void Sphere::setRadius(const Real& radius)
@@ -56,9 +56,9 @@ namespace rovin
 			return _radius;
 		}
 
-		shared_ptr<GeometryInfo> Sphere::copy() const
+		GeometryInfoPtr Sphere::copy() const
 		{
-			return shared_ptr<GeometryInfo>(new Sphere(*this));
+			return GeometryInfoPtr(new Sphere(*this));
 		}
 
 		void Capsule::setDimension(const Real& radius, const Real& height)
@@ -78,9 +78,9 @@ namespace rovin
 			return Vector2(_radius, _height);
 		}
 
-		shared_ptr<GeometryInfo> Capsule::copy() const
+		GeometryInfoPtr Capsule::copy() const
 		{
-			return shared_ptr<GeometryInfo>(new Capsule(*this));
+			return GeometryInfoPtr(new Capsule(*this));
 		}
 
 		void Cylinder::setDimension(const Real& radius, const Real& height)
@@ -100,9 +100,9 @@ namespace rovin
 			return Vector2(_radius, _height);
 		}
 
-		shared_ptr<GeometryInfo> Cylinder::copy() const
+		GeometryInfoPtr Cylinder::copy() const
 		{
-			return shared_ptr<GeometryInfo>(new Cylinder(*this));
+			return GeometryInfoPtr(new Cylinder(*this));
 		}
 
 		bool Mesh::isValid() const
@@ -114,27 +114,27 @@ namespace rovin
 			return false;
 		}
 
-		shared_ptr<GeometryInfo> Mesh::copy() const
+		GeometryInfoPtr Mesh::copy() const
 		{
-			return shared_ptr<GeometryInfo>(new Mesh(*this));
+			return GeometryInfoPtr(new Mesh(*this));
 		}
 
-		void UserModel::addList(const std::shared_ptr<GeometryInfo>& shape, const Math::SE3& T)
+		void UserModel::addList(const GeometryInfoPtr& shape, const Math::SE3& T)
 		{
-			_GeometryList.push_back(std::pair< std::shared_ptr<GeometryInfo>, Math::SE3 >(shape, T));
+			_GeometryList.push_back(std::pair< GeometryInfoPtr, Math::SE3 >(shape, T));
 		}
 
-		shared_ptr<GeometryInfo> UserModel::copy() const
+		GeometryInfoPtr UserModel::copy() const
 		{
 			UserModel *clone = new UserModel();
 			clone->setType(this->getType());
 			clone->setColor(this->getColor());
 			clone->setFrame(this->getTransform());
-			for (list< pair <shared_ptr<GeometryInfo>, Math::SE3> >::const_iterator iterPos = _GeometryList.begin(); iterPos != _GeometryList.end(); iterPos++)
+			for (list< pair <GeometryInfoPtr, Math::SE3> >::const_iterator iterPos = _GeometryList.begin(); iterPos != _GeometryList.end(); iterPos++)
 			{
 				clone->addList(iterPos->first->copy(), iterPos->second);
 			}
-			return shared_ptr<GeometryInfo>(clone);
+			return GeometryInfoPtr(clone);
 		}
 	}
 }

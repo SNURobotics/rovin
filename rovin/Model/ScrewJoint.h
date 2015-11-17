@@ -30,7 +30,7 @@ namespace rovin {
 			void	normalizeAxes();
 			
 
-			virtual std::shared_ptr<Joint> copy() const;
+			virtual JointPtr copy() const;
 
 			virtual Math::SE3	getTransform(const Math::VectorX& state, bool isReversed = false) const override;
 			virtual Math::se3	getVelocity(const Math::VectorX& state, bool isReversed = false) const override;

@@ -77,9 +77,9 @@ namespace rovin {
 			return *this;
 		}
 
-		std::shared_ptr<Joint> ScrewJoint::copy() const
+		JointPtr ScrewJoint::copy() const
 		{
-			return std::shared_ptr<Joint>(new ScrewJoint(*this));
+			return JointPtr(new ScrewJoint(*this));
 		}
 
 		Math::SE3 ScrewJoint::getTransform(const Math::VectorX & state, bool isReversed) const
