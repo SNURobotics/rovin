@@ -11,16 +11,17 @@
 #include <memory>
 
 #include <Eigen/Dense>
-#include <rovin/Math/Inertia.h>
 #include <rovin/Math/LieGroup.h>
 #include <rovin/Math/Constant.h>
+#include <rovin/Model/State.h>
 
 namespace rovin
 {
 	namespace Model
 	{
-		class Link;
-		class Joint;
+		//class Link;
+		//class Joint;
+		//class JointState;
 
 		typedef std::shared_ptr< Joint > JointPtr;
 
@@ -69,6 +70,8 @@ namespace rovin
 			///	Return static jacobian matrix (6 by DOF). Derived class should implement this.
 			virtual Math::Matrix6X getJacobian(const Math::VectorX& state, bool isReversed = false) const = 0;
 			virtual Math::Matrix6X getJacobianDot(const Math::VectorX& state) const = 0;
+
+			virtual void	updateForwardKinematics(State::JointState& state, JointDirection direction = REGULAR, bool position = true, bool velocity = false, bool acceleration = false) const = 0;
 
 
 		protected:

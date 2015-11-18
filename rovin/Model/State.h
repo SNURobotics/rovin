@@ -47,6 +47,8 @@ namespace rovin
 				Math::dse3 _constraintF;
 
 				std::vector< Math::SE3 > _T;
+				Math::se3 _v;
+
 			};
 
 			unsigned int getTotalJointDof() const;
