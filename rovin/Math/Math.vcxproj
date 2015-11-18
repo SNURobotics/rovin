@@ -147,6 +147,7 @@
     <ClInclude Include="Inertia.h" />
     <ClInclude Include="LieGroup.h" />
     <ClInclude Include="LinearAlgebra.h" />
+    <ClInclude Include="Numeric.h" />
     <ClInclude Include="SE3.h" />
     <ClInclude Include="SO3.h" />
   </ItemGroup>

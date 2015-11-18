@@ -1,5 +1,7 @@
 #include "SE3.h"
 
+#include "Numeric.h"
+
 using namespace std;
 
 namespace rovin
@@ -138,26 +140,28 @@ namespace rovin
 			else
 			{
 				Real itheta = 1.0/theta;
-				st_t = sin(theta)*itheta;
+				st_t = fsin(theta)*itheta;
 				itheta *= itheta;
-				ct_t = (1.0 - cos(theta))*itheta;
+				ct_t = (1.0 - fcos(theta))*itheta;
 				vt_t = (w(0)*v(0) + w(1)*v(1) + w(2)*v(2))*(1.0 - st_t)*itheta;
 			}
 
 			SE3 result;
 
-			result._R._e(0, 0) = 1.0 - ct_t*(sq1 + sq2);
-			result._R._e(0, 1) = ct_t * w(0) * w(1) - st_t * w(2);
-			result._R._e(0, 2) = ct_t * w(0) * w(2) + st_t * w(1);
-			result._R._e(1, 0) = ct_t * w(0) * w(1) + st_t * w(2);
-			result._R._e(1, 1) = 1.0 - ct_t*(sq0 + sq2);
-			result._R._e(1, 2) = ct_t * w(1) * w(2) - st_t * w(0);
-			result._R._e(2, 0) = ct_t * w(0) * w(2) - st_t * w(1);
-			result._R._e(2, 1) = ct_t * w(1) * w(2) + st_t * w(0);
-			result._R._e(2, 2) = 1.0 - ct_t*(sq0 + sq1);
-			result._p(0) = st_t * v(0) + vt_t * w(0) + ct_t * (w(1) * v(2) - w(2) * v(1));
-			result._p(1) = st_t * v(1) + vt_t * w(1) + ct_t * (w(2) * v(0) - w(0) * v(2));
-			result._p(2) = st_t * v(2) + vt_t * w(2) + ct_t * (w(0) * v(1) - w(1) * v(0));
+			double *R = &result._R._e(0);
+			double *p = &result._p(0);
+			*R = 1.0 - ct_t*(sq1 + sq2);
+			*(R + 3) = ct_t * w(0) * w(1) - st_t * w(2);
+			*(R + 6) = ct_t * w(0) * w(2) + st_t * w(1);
+			*(R + 1) = ct_t * w(0) * w(1) + st_t * w(2);
+			*(R + 4) = 1.0 - ct_t*(sq0 + sq2);
+			*(R + 7) = ct_t * w(1) * w(2) - st_t * w(0);
+			*(R + 2) = ct_t * w(0) * w(2) - st_t * w(1);
+			*(R + 5) = ct_t * w(1) * w(2) + st_t * w(0);
+			*(R + 8) = 1.0 - ct_t*(sq0 + sq1);
+			*p = st_t * v(0) + vt_t * w(0) + ct_t * (w(1) * v(2) - w(2) * v(1));
+			*(p + 1) = st_t * v(1) + vt_t * w(1) + ct_t * (w(2) * v(0) - w(0) * v(2));
+			*(p + 2) = st_t * v(2) + vt_t * w(2) + ct_t * (w(0) * v(1) - w(1) * v(0));
 
 			return result;
 		}

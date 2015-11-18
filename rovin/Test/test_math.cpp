@@ -2,8 +2,9 @@
 #include <conio.h>
 #include <cmath>
 #include <time.h>
-# include <omp.h>
+#include <omp.h>
 
+#include <rovin/Math/Numeric.h>
 #include <rovin/Math/LieGroup.h>
 #include <rovin/Model/Assembly.h>
 #include <rovin/utils/Diagnostic.h>
@@ -108,6 +109,14 @@ void test4()
 
 int main()
 {
+	//Math::makeSineLookUpTable();
+	//ofstream output("test.txt");
+	//double theta = 0.0;
+	//for (unsigned int i = 0; i < 1000000; i++)
+	//{
+	//	output << Math::fsin(theta) - sin(theta) << endl;
+	//	theta += 0.00002;
+	//}
 	//RMatrix	A(4, 4), B(4,4), C(4,4);
 	//A.SetEye(4,4);
 	//B.SetEye(4, 4);
@@ -125,98 +134,102 @@ int main()
 	//PERFORM_TEST(RMatrix D(4, 4), 1e+7);
 	//PERFORM_TEST(Math::SE3 eD, 1e+7);
 
-	omp_set_num_threads(10);
-	cout << Eigen::nbThreads() << endl;
-	SE3	A, B, C;
-	Matrix4d AA, BB, CC;
-	AA.setZero();
-	BB.setZero();
-	CC.setZero();
-	cout << C << endl;
-	cout << CC << endl;
+	//omp_set_num_threads(10);
+	//cout << Eigen::nbThreads() << endl;
+	//SE3	A, B, C;
+	//Matrix4d AA, BB, CC;
+	//AA.setZero();
+	//BB.setZero();
+	//CC.setZero();
+	//cout << C << endl;
+	//cout << CC << endl;
+	//double x = -10;
+	//cout << std::setprecision(15) << Math::fsin(x) << endl;
+	//cout << std::setprecision(15) << sin(x) << endl;
+	//cout << std::setprecision(15) << abs(Math::fsin(x) - sin(x)) << endl;
 
 	PERFORM_TEST(SE3_1 = Exp(se3_1), 1e+8);
 	PERFORM_TEST(SE3_rovin = Math::SE3::Exp(se3_rovin1, se3_rovin2), 1e+8);
 	cout << SE3_1 << endl;
 	cout << SE3_rovin << endl;
-	test1();
-	cout << SE3_1_sq << endl;
-	test3();
-	cout << SE3_rovin_sq << endl;
+	//test1();
+	//cout << SE3_1_sq << endl;
+	//test3();
+	//cout << SE3_rovin_sq << endl;
 
-	MYB.R = SE3_rovin.getRotation().matrix();
-	MYB.p = SE3_rovin.getPosition().matrix();
-	cout << "3" << endl;
-	PERFORM_TEST(test3(), 1e+8);
-	PERFORM_TEST(test3(), 1e+8);
-	PERFORM_TEST(test3(), 1e+8);
-	cout << "4" << endl;
-	MB.setRandom();
-	PERFORM_TEST(test4(), 1e+8);
-	PERFORM_TEST(test4(), 1e+8);
-	PERFORM_TEST(test4(), 1e+8);
-	cout << "1" << endl;
-	PERFORM_TEST(test1(), 1e+8);
-	PERFORM_TEST(test1(), 1e+8);
-	PERFORM_TEST(test1(), 1e+8);
-	cout << "2" << endl;
-	PERFORM_TEST(test2(), 1e+8);
-	PERFORM_TEST(test2(), 1e+8);
-	PERFORM_TEST(test2(), 1e+8);
-	cout << "3" << endl;
-	PERFORM_TEST(test3(), 1e+8);
-	PERFORM_TEST(test3(), 1e+8);
-	PERFORM_TEST(test3(), 1e+8);
-	cout << "4" << endl;
-	MB.setRandom();
-	PERFORM_TEST(test4(), 1e+8);
-	PERFORM_TEST(test4(), 1e+8);
-	PERFORM_TEST(test4(), 1e+8);
-	cout << "1" << endl;
-	PERFORM_TEST(test1(), 1e+8);
-	PERFORM_TEST(test1(), 1e+8);
-	PERFORM_TEST(test1(), 1e+8);
-	cout << "2" << endl;
-	PERFORM_TEST(test2(), 1e+8);
-	PERFORM_TEST(test2(), 1e+8);
-	PERFORM_TEST(test2(), 1e+8);
-	cout << "3" << endl;
-	PERFORM_TEST(test3(), 1e+8);
-	PERFORM_TEST(test3(), 1e+8);
-	PERFORM_TEST(test3(), 1e+8);
-	cout << "4" << endl;
-	MB.setRandom();
-	PERFORM_TEST(test4(), 1e+8);
-	PERFORM_TEST(test4(), 1e+8);
-	PERFORM_TEST(test4(), 1e+8);
-	cout << "1" << endl;
-	PERFORM_TEST(test1(), 1e+8);
-	PERFORM_TEST(test1(), 1e+8);
-	PERFORM_TEST(test1(), 1e+8);
-	cout << "2" << endl;
-	PERFORM_TEST(test2(), 1e+8);
-	PERFORM_TEST(test2(), 1e+8);
-	PERFORM_TEST(test2(), 1e+8);
-	cout << "3" << endl;
-	PERFORM_TEST(test3(), 1e+8);
-	PERFORM_TEST(test3(), 1e+8);
-	PERFORM_TEST(test3(), 1e+8);
-	cout << "4" << endl;
-	MB.setRandom();
-	PERFORM_TEST(test4(), 1e+8);
-	PERFORM_TEST(test4(), 1e+8);
-	PERFORM_TEST(test4(), 1e+8);
-	cout << "1" << endl;
-	PERFORM_TEST(test1(), 1e+8);
-	PERFORM_TEST(test1(), 1e+8);
-	PERFORM_TEST(test1(), 1e+8);
-	cout << "2" << endl;
-	PERFORM_TEST(test2(), 1e+8);
-	PERFORM_TEST(test2(), 1e+8);
-	PERFORM_TEST(test2(), 1e+8);
-	cout << "1" << endl;
-	cout << SE3_1_sq << endl;
-	cout << SE3_rovin_sq << endl;
+	//MYB.R = SE3_rovin.getRotation().matrix();
+	//MYB.p = SE3_rovin.getPosition().matrix();
+	//cout << "3" << endl;
+	//PERFORM_TEST(test3(), 1e+8);
+	//PERFORM_TEST(test3(), 1e+8);
+	//PERFORM_TEST(test3(), 1e+8);
+	//cout << "4" << endl;
+	//MB.setRandom();
+	//PERFORM_TEST(test4(), 1e+8);
+	//PERFORM_TEST(test4(), 1e+8);
+	//PERFORM_TEST(test4(), 1e+8);
+	//cout << "1" << endl;
+	//PERFORM_TEST(test1(), 1e+8);
+	//PERFORM_TEST(test1(), 1e+8);
+	//PERFORM_TEST(test1(), 1e+8);
+	//cout << "2" << endl;
+	//PERFORM_TEST(test2(), 1e+8);
+	//PERFORM_TEST(test2(), 1e+8);
+	//PERFORM_TEST(test2(), 1e+8);
+	//cout << "3" << endl;
+	//PERFORM_TEST(test3(), 1e+8);
+	//PERFORM_TEST(test3(), 1e+8);
+	//PERFORM_TEST(test3(), 1e+8);
+	//cout << "4" << endl;
+	//MB.setRandom();
+	//PERFORM_TEST(test4(), 1e+8);
+	//PERFORM_TEST(test4(), 1e+8);
+	//PERFORM_TEST(test4(), 1e+8);
+	//cout << "1" << endl;
+	//PERFORM_TEST(test1(), 1e+8);
+	//PERFORM_TEST(test1(), 1e+8);
+	//PERFORM_TEST(test1(), 1e+8);
+	//cout << "2" << endl;
+	//PERFORM_TEST(test2(), 1e+8);
+	//PERFORM_TEST(test2(), 1e+8);
+	//PERFORM_TEST(test2(), 1e+8);
+	//cout << "3" << endl;
+	//PERFORM_TEST(test3(), 1e+8);
+	//PERFORM_TEST(test3(), 1e+8);
+	//PERFORM_TEST(test3(), 1e+8);
+	//cout << "4" << endl;
+	//MB.setRandom();
+	//PERFORM_TEST(test4(), 1e+8);
+	//PERFORM_TEST(test4(), 1e+8);
+	//PERFORM_TEST(test4(), 1e+8);
+	//cout << "1" << endl;
+	//PERFORM_TEST(test1(), 1e+8);
+	//PERFORM_TEST(test1(), 1e+8);
+	//PERFORM_TEST(test1(), 1e+8);
+	//cout << "2" << endl;
+	//PERFORM_TEST(test2(), 1e+8);
+	//PERFORM_TEST(test2(), 1e+8);
+	//PERFORM_TEST(test2(), 1e+8);
+	//cout << "3" << endl;
+	//PERFORM_TEST(test3(), 1e+8);
+	//PERFORM_TEST(test3(), 1e+8);
+	//PERFORM_TEST(test3(), 1e+8);
+	//cout << "4" << endl;
+	//MB.setRandom();
+	//PERFORM_TEST(test4(), 1e+8);
+	//PERFORM_TEST(test4(), 1e+8);
+	//PERFORM_TEST(test4(), 1e+8);
+	//cout << "1" << endl;
+	//PERFORM_TEST(test1(), 1e+8);
+	//PERFORM_TEST(test1(), 1e+8);
+	//PERFORM_TEST(test1(), 1e+8);
+	//cout << "2" << endl;
+	//PERFORM_TEST(test2(), 1e+8);
+	//PERFORM_TEST(test2(), 1e+8);
+	//PERFORM_TEST(test2(), 1e+8);
+	//cout << "1" << endl;
+	//cout << SE3_1_sq << endl;
+	//cout << SE3_rovin_sq << endl;
 
 
 	//Vec3 so3_srLib(1, 2, 3);
