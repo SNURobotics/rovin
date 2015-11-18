@@ -9,9 +9,6 @@
 #include <rovin/Model/Assembly.h>
 #include <rovin/Model/RevoluteJoint.h>
 
-#include <rovin/Dynamics/System.h>
-#include <rovin/Dynamics/State.h>
-
 using namespace std;
 using namespace rovin::Math;
 using namespace rovin::Model;

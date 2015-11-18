@@ -8,6 +8,7 @@
 #pragma once
 
 #include <map>
+#include <memory>
 #include <vector>
 #include <rovin/Math/LieGroup.h>
 
@@ -15,7 +16,10 @@ namespace rovin
 {
 	namespace Model
 	{
+		class State;
 		class Assembly;
+
+		typedef std::shared_ptr< State > StatePtr;
 
 		class State
 		{
@@ -49,6 +53,14 @@ namespace rovin
 				std::vector< Math::SE3 > _T;
 			};
 
+			enum RETURN_STATE
+			{
+				ASSEMJOINT,
+				STATEJOINT,
+				ACTIVEJOINT,
+				PASSIVEJOINT
+			};
+
 			unsigned int getTotalJointDof() const;
 			unsigned int getActiveJointDof() const;
 
@@ -59,8 +71,16 @@ namespace rovin
 			JointState& getJointStateByMateIndex(const unsigned int mateIndex);
 			JointState& getJointState(const std::string& jointName);
 
+			const LinkState& getLinkState(const unsigned int linkIndex) const;
+			const LinkState& getLinkState(const std::string& linkName) const;
+
+			const JointState& getJointState(const unsigned int jointIndex) const;
+			const JointState& getJointStateByMateIndex(const unsigned int mateIndex) const;
+			const JointState& getJointState(const std::string& jointName) const;
+
 			unsigned int getLinkIndex(const std::string& linkName) const;
 			unsigned int getJointIndex(const std::string& jointName) const;
+			unsigned int getJointIndexByMateIndex(const unsigned int& mateIdx) const;
 
 			void addActiveJoint(const std::string& jointName);
 			void addActiveJoint(const std::vector< std::string >& jointNameList);
@@ -71,14 +91,24 @@ namespace rovin
 			std::vector< std::string > getActiveJointList() const;
 			std::vector< std::string > getPassiveJointList() const;
 
+			void setActiveJointq(const Math::VectorX& q);
+			void setPassiveJointq(const Math::VectorX& q);
+
+			void addActiveJointq(const Math::VectorX& q);
+			void addPassiveJointq(const Math::VectorX& q);
+
+			unsigned int returnDof(const RETURN_STATE& return_state) const;
+			void writeReturnMatrix(Math::MatrixX& returnMatrix, const Math::MatrixX& value, const unsigned int startRow, const unsigned int jointIndex, const RETURN_STATE& return_state) const;
+			void writeReturnVector(Math::VectorX& returnVector, const Math::VectorX& value, const unsigned int jointIndex, const RETURN_STATE& return_state) const;
+
 		private:
 			State(const std::vector< std::string >& linkNameList, const std::vector< std::pair< std::string, unsigned int >>& jointNameList);
 
 		private:
 			unsigned int _totalJointDof, _activeJointDof;
 
-			std::vector< LinkState > _linkState;
-			std::vector< JointState > _jointState;
+			std::vector< LinkState, Eigen::aligned_allocator< LinkState >> _linkState;
+			std::vector< JointState, Eigen::aligned_allocator< JointState >> _jointState;
 
 			std::vector< std::string > _linkName;
 			std::vector< std::string > _jointName;
