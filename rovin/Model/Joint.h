@@ -19,9 +19,9 @@ namespace rovin
 {
 	namespace Model
 	{
-		//class Link;
-		//class Joint;
-		//class JointState;
+		class Link;
+		class Joint;
+		class JointState;
 
 		typedef std::shared_ptr< Joint > JointPtr;
 

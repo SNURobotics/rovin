@@ -110,7 +110,7 @@ namespace rovin {
 			{
 				T = Math::SE3::Exp(_axes.col(_dof - 1), -state[0]);
 				for (unsigned int i = _dof - 1; i > 0; i--)
-					T *= Math::SE3::Exp(_axes.col(i-1), -state[i-1]);
+					T *= Math::SE3::Exp(_axes.col(i - 1), -state[i - 1]);
 			}
 
 			return T;
@@ -178,6 +178,7 @@ namespace rovin {
 		{
 			if (_dof == 0)
 				return;
+
 			if (position)
 			{
 				//	In most case, it has regular direction and single DOF.
@@ -189,36 +190,32 @@ namespace rovin {
 				}
 				else
 				{
-					state._T[_dof - 1] = Math::SE3::Exp(_axes.col(0), -state[0]);
+					state._T[_dof - 1] = Math::SE3::Exp(_axes.col(0), -state._q[0]);
 					for (unsigned int i = 1; i < _dof; i++)
 						state._T[_dof - 1 - i] = Math::SE3::Exp(_axes.col(i), -state._q[i]) * state._T[_dof - i];
 				}
 			}
-			//if (!isReversed)
-			//{
-			//	localVel = _axes.col(_dof - 1) * state[_dof - 1];
-			//	for (unsigned i = _dof - 1; i > 0; i--)
-			//	{
-			//		localFrame = Math::SE3::Exp(_axes.col(i), state[i]) * localFrame;
-			//		localVel += Math::SE3::invAd(localFrame);
-			//	}
-			//}
-			//else
-			//{
-			//	localVel = _axes.col(0) * state[0];
-			//	for (unsigned i = 1; i < _dof; i++)
-			//	{
 
-			//	}
-			//}
 			if (velocity)
 			{
 				if (direction == REGULAR)
 				{
 					state._v = _axes.col(_dof - 1) * state._qdot[_dof - 1];
-					//for (unsigned int i = )
+					for (unsigned int i = 1; i < _dof; i++)
+						state._v += Math::SE3::invAd(state._T[_dof - i]) * (_axes.col(_dof - 1 - i) * state._qdot[_dof - 1 - i]);
+				}
+				else
+				{
+					state._v = _axes.col(0) * -state._qdot[0];
+					for (unsigned int i = 1; i < _dof; i++)
+						state._v += Math::SE3::invAd(state._T[_dof - i]) * (_axes.col(i) * -state._qdot[i]);
 				}
 
+			}
+
+			if (acceleration)
+			{
+				//	TODO
 			}
 		}
 
