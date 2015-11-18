@@ -72,7 +72,7 @@ namespace rovin
 			virtual Math::Matrix6X getJacobianDot(const Math::VectorX& state) const = 0;
 
 			virtual void	updateForwardKinematics(State::JointState& state, JointDirection direction = REGULAR, bool position = true, bool velocity = false, bool acceleration = false) const = 0;
-
+			virtual Math::Matrix6X getJacobian(State::JointState& state, JointDirection direction = REGULAR, bool updateTransform = false) const = 0;
 
 		protected:
 			bool setName(const std::string& otherName);

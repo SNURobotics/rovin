@@ -198,6 +198,7 @@ namespace rovin {
 
 			if (velocity)
 			{
+				//	xdot = Jacobian * qdot;
 				if (direction == REGULAR)
 				{
 					state._v = _axes.col(_dof - 1) * state._qdot[_dof - 1];
@@ -217,6 +218,33 @@ namespace rovin {
 			{
 				//	TODO
 			}
+		}
+
+		Math::Matrix6X ScrewJoint::getJacobian(State::JointState & state, JointDirection direction, bool updateTransform) const
+		{
+			Math::MatrixX	J(6, _dof);
+			if (_dof == 0)
+			{
+				J.setZero();
+				return J;
+			}
+			else if (updateTransform)
+				updateForwardKinematics(state, direction, true);
+
+			if (direction == REGULAR)
+			{
+				J.col(_dof - 1) = _axes.col(_dof - 1);
+				for (unsigned int i = 1; i < _dof; i++)
+					J.col(_dof - 1 - i) = Math::SE3::invAd(state._T[_dof - i]) * _axes.col(_dof - 1 - i);
+			}
+			else
+			{
+				J.col(0) = -_axes.col(0);
+				for (unsigned int i = 1; i < _dof; i++)
+					J.col(i) = Math::SE3::invAd(state._T[_dof-i]) * (-_axes.col(i));
+			}
+
+			return Math::Matrix6X();
 		}
 
 	}
