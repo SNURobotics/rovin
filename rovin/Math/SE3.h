@@ -26,6 +26,8 @@ namespace rovin
 		class SE3
 		{
 		public:
+			///생성자
+			SE3(const SE3& T);
 			/// 회전은 하지 않고 p만큼 이동한 SE3를 생성합니다. 
 			SE3(const Vector3& p = (Vector3::Zero())) : _R(), _p(p) {}
 			/// R만큼 회전을 하고 p만큼 이동한 SE3를 생성합니다.
@@ -47,6 +49,10 @@ namespace rovin
 			*	\brief Matrixr4d로 변환해줍니다.
 			*/
 			const Matrix4 matrix() const;
+
+			/// 3개 SE3 곱셈
+			static SE3 multiply(const SE3&, const SE3&, const SE3&);
+			static SE3 multiply(const SE3&, const SE3&, const SE3&, const SE3&);
 
 			/// 회전부분을 SO3인 R으로 설정합니다.
 			void setRotation(const SO3& R);
@@ -94,8 +100,8 @@ namespace rovin
 
 			Matrix4 result;
 			result.setZero();
-			result.block(0, 0, 3, 3) = Bracket(w);
-			result.block(0, 3, 3, 1) = v;
+			result.block<3, 3>(0, 0) = Bracket(w);
+			result.block<3, 1>(0, 3) = v;
 			return result;
 		}
 	}

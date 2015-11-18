@@ -13,25 +13,25 @@ namespace rovin
 {
 	namespace Math
 	{
-		static MatrixX pinv(const MatrixX& mat)
+		static MatrixX pInv(const MatrixX& mat)
 		{
 			Eigen::JacobiSVD<Math::MatrixX> svd(mat, Eigen::ComputeFullU | Eigen::ComputeFullV);
-			Real tolerance = 1.e-6;
+			Real tolerance = RealEps;
 			VectorX singular_values = svd.singularValues();
 			MatrixX S(mat.rows(), mat.cols());
 			S.setZero();
 			for (int i = 0; i < singular_values.size(); i++)
 			{
-				if (singular_values(i) > tolerance || singular_values(i) < -tolerance)
+				if (singular_values(i) > tolerance)
 				{
-					S(i, i) = 1 / singular_values(i);
+					S(i, i) = 1.0 / singular_values(i);
 				}
 				else
 				{
 					S(i, i) = 0;
 				}
 			}
-			return svd.matrixV() * S.transpose() *svd.matrixU().transpose();
+			return svd.matrixV() * S.transpose() * svd.matrixU().transpose();
 		}
 	}
 }

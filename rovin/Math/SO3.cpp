@@ -29,7 +29,7 @@ namespace rovin
 		SO3 SO3::operator * (const SO3& operand) const
 		{
 			SO3 result;
-			result._e = _e * operand._e;
+			result._e.noalias() = _e * operand._e;
 			return result;
 		}
 

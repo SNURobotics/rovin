@@ -34,7 +34,7 @@ namespace rovin
 			_Tree.clear();
 		}
 
-		State Assembly::makeState() const
+		StatePtr Assembly::makeState() const
 		{
 			vector< string > linkNameList;
 			vector< pair< string, unsigned int >> jointNameList;
@@ -43,10 +43,12 @@ namespace rovin
 			{
 				linkNameList.push_back(_linkPtr[i]->getName());
 			}
-			for (unsigned int i = 0; i < _linkPtr.size(); i++)
+			for (unsigned int i = 0; i < _Mate.size(); i++)
 			{
-				linkNameList.push_back(_linkPtr[i]->getName());
+				jointNameList.push_back(pair< string, unsigned int>(_Mate[i]._joint->getName(), _Mate[i]._joint->getDOF()));
 			}
+
+			return StatePtr(new State(linkNameList, jointNameList));
 		}
 
 		Assembly& Assembly::operator = (const Assembly& target)
@@ -332,8 +334,6 @@ namespace rovin
 		{
 			utils::Log(isCompleted(), "수정하고 싶으면 Assembly 모드로 작업하십시오.", true);
 
-			unsigned int Idx;
-
 			if (oldName.compare(newName) == 0) return;
 
 			map< string, unsigned int >::iterator iter = _linkIndexMap.find(oldName);
@@ -344,7 +344,7 @@ namespace rovin
 				_linkIndexMap.erase(oldName);
 			}
 
-			map< string, unsigned int >::iterator iter = _mateIndexMap.find(oldName);
+			iter = _mateIndexMap.find(oldName);
 			if (iter != _mateIndexMap.end())
 			{
 				_Mate[iter->second]._joint->_name = newName;
@@ -352,7 +352,7 @@ namespace rovin
 				_mateIndexMap.erase(oldName);
 			}
 
-			map< string, unsigned int >::iterator iter = _markerIndexMap.find(oldName);
+			iter = _markerIndexMap.find(oldName);
 			if (iter != _markerIndexMap.end())
 			{
 				Math::SE3 T = _linkPtr[iter->second]->getMarker(oldName);

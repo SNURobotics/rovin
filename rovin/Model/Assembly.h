@@ -18,6 +18,8 @@
 
 namespace rovin
 {
+	class Kinematics;
+
 	namespace Model
 	{
 		class Joint;
@@ -32,6 +34,8 @@ namespace rovin
 		*/
 		class Assembly
 		{
+			friend class Kinematics;
+
 		public:
 			class Mate
 			{
@@ -47,7 +51,7 @@ namespace rovin
 
 				Mate(const Model::JointPtr& joint, const unsigned int mountLinkIdx, const unsigned int actionLinkIdx,
 					const Math::SE3& Tmj, const Math::SE3& Tja) : _joint(joint), _mountLinkIdx(mountLinkIdx), _actionLinkIdx(actionLinkIdx),
-					_Tmj(Tmj), _Tja(Tja), _InvTmj(Tmj.inverse()), _InvTja(Tja.inverse) {}
+					_Tmj(Tmj), _Tja(Tja), _InvTmj(Tmj.inverse()), _InvTja(Tja.inverse()) {}
 			};
 
 			Assembly(const std::string& assemblyName) : 
@@ -57,7 +61,7 @@ namespace rovin
 
 			~Assembly();
 
-			State makeState() const;
+			StatePtr makeState() const;
 
 			Assembly& operator = (const Assembly& target);
 			Assembly operator + (const Assembly& target);
