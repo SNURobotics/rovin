@@ -86,8 +86,8 @@ ostream &operator << (ostream &os, const SE3 &T)
 	{
 		for ( int j = 0; j < 4; j++ )
 		{
-			if ( T(i,j) >= 0.0 ) os << " " << setw(6) << T(i,j) << " ";
-			else os << setw(7) << T(i,j) << " ";
+			if ( T(i,j) >= 0.0 ) os << " " << setw(6) << std::setprecision(15) << T(i,j) << " ";
+			else os << setw(7) << std::setprecision(15) << T(i,j) << " ";
 		}
 		os << ";" << endl;
 	}

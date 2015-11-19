@@ -25,46 +25,13 @@ Math::SE3 SE3_rovin, SE3_rovin_sq;
 Math::Matrix3 MA, MB;
 Math::Vector3 MAV, MBV;
 Eigen::Transform<double, 3, Eigen::Isometry> T1, T2;
+SO3 SO3_1, SO3_2;
 
-class MYSE3
-{
-public:
-	MYSE3()
-	{
-		R.setZero();
-		p.setZero();
-	}
-
-	MYSE3& operator = (const MYSE3& operand)
-	{
-		R = operand.R;
-		p = operand.p;
-		return *this;
-	}
-
-	MYSE3 operator * (const MYSE3& operand) const
-	{
-		MYSE3 result;
-
-		result.R.noalias() = R * operand.R;
-		result.p.noalias() = R * operand.p + p;
-
-		return result;
-	}
-
-	MYSE3& operator *= (const MYSE3& operand) 
-	{
-		p = R * operand.p + p;
-		R = R * operand.R;
-
-		return *this;
-	}
-public:
-	Math::Matrix3 R;
-	Math::Vector3 p;
-};
-
-MYSE3 MYA, MYB;
+std::vector<Matrix3d, Eigen::aligned_allocator< Matrix3d >> R;
+std::vector<Vector3d, Eigen::aligned_allocator< Vector3d >> P;
+Matrix3d resultR, R31, R32;
+Vector3d resultP;
+Matrix3d RR;
 
 int afunc(int c)
 {
@@ -73,7 +40,8 @@ int afunc(int c)
 
 void test1()
 {
-	SE3_1_sq = SE3_1 * SE3_1 * SE3_1 * SE3_1;
+	//SE3_1_sq = SE3_1 * SE3_1 * SE3_1 * SE3_1;
+	SO3_1 = SO3_2 *SO3_2 *SO3_2 *SO3_2;
 	//cc += SE3_1_sq(0, 0);
 	//SE3_rovin_sq = SE3_rovin * SE3_rovin * SE3_rovin;
 	//cc += SE3_rovin_sq.getRotation().matrix()(0, 0);
@@ -94,21 +62,146 @@ void test2()
 	//SE3_rovin_sq.multiply(SE3_rovin, SE3_rovin);
 	//cc += SE3_rovin_sq.getRotation().matrix()(0, 0);
 }
+
+Matrix4d A4, B4;
+Matrix3d A3, B3;
+Matrix<double, 3, 4> B34;
+class mSE3 : public Matrix<double, 4, 4, RowMajor>
+{
+public:
+	mSE3() : Matrix<double, 4, 4, RowMajor>(Matrix<double, 4, 4, RowMajor>::Identity()) {}
+	mSE3(const double& T11, const double& T12, const double& T13, const double& T14,
+		const double& T21, const double& T22, const double& T23, const double& T24,
+		const double& T31, const double& T32, const double& T33, const double& T34)
+	{
+		double* T = &((*this)(0));
+		(*T) = T11;
+		(*(T + 1)) = T12;
+		(*(T + 2)) = T13;
+		(*(T + 3)) = T14;
+
+		(*(T + 4)) = T21;
+		(*(T + 5)) = T22;
+		(*(T + 6)) = T23;
+		(*(T + 7)) = T24;
+
+		(*(T + 8)) = T31;
+		(*(T + 9)) = T32;
+		(*(T + 10)) = T33;
+		(*(T + 11)) = T34;
+	}
+
+	mSE3& operator = (const mSE3& operand)
+	{
+		double* T = &((*this)(0));
+		const double* O = &((operand)(0));
+		(*T) = (*O);
+		(*(T + 1)) = (*(O + 1));
+		(*(T + 2)) = (*(O + 2));
+		(*(T + 3)) = (*(O + 3));
+
+		(*(T + 4)) = (*(O + 4));
+		(*(T + 5)) = (*(O + 5));
+		(*(T + 6)) = (*(O + 6));
+		(*(T + 7)) = (*(O + 7));
+
+		(*(T + 8)) = (*(O + 8));
+		(*(T + 9)) = (*(O + 9));
+		(*(T + 10)) = (*(O + 10));
+		(*(T + 11)) = (*(O + 11));
+		return (*this);
+	}
+
+	mSE3& operator *= (const mSE3& operand)
+	{
+		double tmp1, tmp2, tmp3;
+
+		double* T = &((*this)(0));
+		const double* O = &((operand)(0));
+
+		(*(T + 3)) += (*(T + 0)) * (*(O + 3)) + (*(T + 1)) * (*(O + 7)) + (*(T + 2)) * (*(O + 11));
+		(*(T + 7)) += (*(T + 4)) * (*(O + 3)) + (*(T + 5)) * (*(O + 7)) + (*(T + 6)) * (*(O + 11));
+		(*(T + 11)) += (*(T + 8)) * (*(O + 3)) + (*(T + 9)) * (*(O + 7)) + (*(T + 10)) * (*(O + 11));
+
+		tmp1 = (*(T + 0)) * (*(O + 0)) + (*(T + 1)) * (*(O + 4)) + (*(T + 2)) * (*(O + 8));
+		tmp2 = (*(T + 0)) * (*(O + 1)) + (*(T + 1)) * (*(O + 5)) + (*(T + 2)) * (*(O + 9));
+		tmp3 = (*(T + 0)) * (*(O + 2)) + (*(T + 1)) * (*(O + 6)) + (*(T + 2)) * (*(O + 10));
+		(*(T + 0)) = tmp1;
+		(*(T + 1)) = tmp2;
+		(*(T + 2)) = tmp3;
+
+		tmp1 = (*(T + 4)) * (*(O + 0)) + (*(T + 5)) * (*(O + 4)) + (*(T + 6)) * (*(O + 8));
+		tmp2 = (*(T + 4)) * (*(O + 1)) + (*(T + 5)) * (*(O + 5)) + (*(T + 6)) * (*(O + 9));
+		tmp3 = (*(T + 4)) * (*(O + 2)) + (*(T + 5)) * (*(O + 6)) + (*(T + 6)) * (*(O + 10));
+		(*(T + 4)) = tmp1;
+		(*(T + 5)) = tmp2;
+		(*(T + 6)) = tmp3;
+
+		tmp1 = (*(T + 8)) * (*(O + 0)) + (*(T + 9)) * (*(O + 4)) + (*(T + 10)) * (*(O + 8));
+		tmp2 = (*(T + 8)) * (*(O + 1)) + (*(T + 9)) * (*(O + 5)) + (*(T + 10)) * (*(O + 9));
+		tmp3 = (*(T + 8)) * (*(O + 2)) + (*(T + 9)) * (*(O + 6)) + (*(T + 10)) * (*(O + 10));
+		(*(T + 8)) = tmp1;
+		(*(T + 9)) = tmp2;
+		(*(T + 10)) = tmp3;
+
+		return *this;
+	}
+
+	mSE3 operator * (const mSE3& operand) const
+	{
+		const double* T = &((*this)(0));
+		const double* O = &((operand)(0));
+
+		return mSE3((*(T + 0)) * (*(O + 0)) + (*(T + 1)) * (*(O + 4)) + (*(T + 2)) * (*(O + 8)),
+			(*(T + 0)) * (*(O + 1)) + (*(T + 1)) * (*(O + 5)) + (*(T + 2)) * (*(O + 9)),
+			(*(T + 0)) * (*(O + 2)) + (*(T + 1)) * (*(O + 6)) + (*(T + 2)) * (*(O + 10)),
+			(*(T + 0)) * (*(O + 3)) + (*(T + 1)) * (*(O + 7)) + (*(T + 2)) * (*(O + 11)) + (*(T + 3)),
+
+			(*(T + 4)) * (*(O + 0)) + (*(T + 5)) * (*(O + 4)) + (*(T + 6)) * (*(O + 8)),
+			(*(T + 4)) * (*(O + 1)) + (*(T + 5)) * (*(O + 5)) + (*(T + 6)) * (*(O + 9)),
+			(*(T + 4)) * (*(O + 2)) + (*(T + 5)) * (*(O + 6)) + (*(T + 6)) * (*(O + 10)),
+			(*(T + 4)) * (*(O + 3)) + (*(T + 5)) * (*(O + 7)) + (*(T + 6)) * (*(O + 11)) + (*(T + 7)),
+
+			(*(T + 8)) * (*(O + 0)) + (*(T + 9)) * (*(O + 4)) + (*(T + 10)) * (*(O + 8)),
+			(*(T + 8)) * (*(O + 1)) + (*(T + 9)) * (*(O + 5)) + (*(T + 10)) * (*(O + 9)),
+			(*(T + 8)) * (*(O + 2)) + (*(T + 9)) * (*(O + 6)) + (*(T + 10)) * (*(O + 10)),
+			(*(T + 8)) * (*(O + 3)) + (*(T + 9)) * (*(O + 7)) + (*(T + 10)) * (*(O + 11)) + (*(T + 11)));
+	}
+} A, B;
+
 void test3()
 {
-	SE3_rovin_sq = Math::SE3::multiply(SE3_rovin, SE3_rovin, SE3_rovin, SE3_rovin);
-	cc += SE3_rovin_sq.getRotation().matrix()(0, 0);
+	A4 = (((B4 * B4).eval() * B4).eval() * B4).eval();
 }
+
 void test4()
 {
-	//T1 = T2 * T2 * T2 * T2;
-	//cc = T1(0, 0);
-	MYA = MYB * MYB * MYB;
-	cc += MYA.R(0, 0);
+	R32.noalias() = R31;
+	R32 *= R31;
+	R32 *= R31;
+	R32 *= R31;
+	//A = B * B * B * B;
+	//A = B;
+	//A *= B;
+	//A *= B;
+	//A *= B;
 }
 
 int main()
 {
+	Math::Real s, c;
+	Math::fsincos(Math::PI/2, s, c);
+	RR << 1, 2, 3, 4, 5, 6, 7, 8, 9;
+	B3 << 1, 2, 3, 4, 5, 6, 7, 8, 9;
+	B4 << 1, 2, 3, 4, 5, 6, 7, 8, 9;
+	resultR.setIdentity();
+	R.push_back(RR);
+	R.push_back(RR);
+	R.push_back(RR);
+	P.push_back(Vector3d::Zero());
+	P.push_back(Vector3d::Zero());
+	P.push_back(Vector3d::Zero());
+	cout << s << " " << c << endl;
 	//Math::makeSineLookUpTable();
 	//ofstream output("test.txt");
 	//double theta = 0.0;
@@ -148,88 +241,32 @@ int main()
 	//cout << std::setprecision(15) << sin(x) << endl;
 	//cout << std::setprecision(15) << abs(Math::fsin(x) - sin(x)) << endl;
 
-	PERFORM_TEST(SE3_1 = Exp(se3_1), 1e+8);
-	PERFORM_TEST(SE3_rovin = Math::SE3::Exp(se3_rovin1, se3_rovin2), 1e+8);
-	cout << SE3_1 << endl;
-	cout << SE3_rovin << endl;
+	//PERFORM_TEST(SE3_1 = Exp(se3_1), 1e+8);
+	//PERFORM_TEST(SE3_rovin = Math::SE3::Exp(se3_rovin1, se3_rovin2), 1e+8);
+	//cout << SE3_1 << endl;
+	//cout << std::setprecision(15) << SE3_rovin << endl;
+	//cout << Log(SE3_1) << endl;
+	//cout << Math::SE3::Log(SE3_rovin) << endl;
 	//test1();
 	//cout << SE3_1_sq << endl;
 	//test3();
 	//cout << SE3_rovin_sq << endl;
+	test4();
 
-	//MYB.R = SE3_rovin.getRotation().matrix();
-	//MYB.p = SE3_rovin.getPosition().matrix();
-	//cout << "3" << endl;
-	//PERFORM_TEST(test3(), 1e+8);
-	//PERFORM_TEST(test3(), 1e+8);
-	//PERFORM_TEST(test3(), 1e+8);
-	//cout << "4" << endl;
-	//MB.setRandom();
-	//PERFORM_TEST(test4(), 1e+8);
-	//PERFORM_TEST(test4(), 1e+8);
-	//PERFORM_TEST(test4(), 1e+8);
-	//cout << "1" << endl;
-	//PERFORM_TEST(test1(), 1e+8);
-	//PERFORM_TEST(test1(), 1e+8);
-	//PERFORM_TEST(test1(), 1e+8);
-	//cout << "2" << endl;
-	//PERFORM_TEST(test2(), 1e+8);
-	//PERFORM_TEST(test2(), 1e+8);
-	//PERFORM_TEST(test2(), 1e+8);
-	//cout << "3" << endl;
-	//PERFORM_TEST(test3(), 1e+8);
-	//PERFORM_TEST(test3(), 1e+8);
-	//PERFORM_TEST(test3(), 1e+8);
-	//cout << "4" << endl;
-	//MB.setRandom();
-	//PERFORM_TEST(test4(), 1e+8);
-	//PERFORM_TEST(test4(), 1e+8);
-	//PERFORM_TEST(test4(), 1e+8);
-	//cout << "1" << endl;
-	//PERFORM_TEST(test1(), 1e+8);
-	//PERFORM_TEST(test1(), 1e+8);
-	//PERFORM_TEST(test1(), 1e+8);
-	//cout << "2" << endl;
-	//PERFORM_TEST(test2(), 1e+8);
-	//PERFORM_TEST(test2(), 1e+8);
-	//PERFORM_TEST(test2(), 1e+8);
-	//cout << "3" << endl;
-	//PERFORM_TEST(test3(), 1e+8);
-	//PERFORM_TEST(test3(), 1e+8);
-	//PERFORM_TEST(test3(), 1e+8);
-	//cout << "4" << endl;
-	//MB.setRandom();
-	//PERFORM_TEST(test4(), 1e+8);
-	//PERFORM_TEST(test4(), 1e+8);
-	//PERFORM_TEST(test4(), 1e+8);
-	//cout << "1" << endl;
-	//PERFORM_TEST(test1(), 1e+8);
-	//PERFORM_TEST(test1(), 1e+8);
-	//PERFORM_TEST(test1(), 1e+8);
-	//cout << "2" << endl;
-	//PERFORM_TEST(test2(), 1e+8);
-	//PERFORM_TEST(test2(), 1e+8);
-	//PERFORM_TEST(test2(), 1e+8);
-	//cout << "3" << endl;
-	//PERFORM_TEST(test3(), 1e+8);
-	//PERFORM_TEST(test3(), 1e+8);
-	//PERFORM_TEST(test3(), 1e+8);
-	//cout << "4" << endl;
-	//MB.setRandom();
-	//PERFORM_TEST(test4(), 1e+8);
-	//PERFORM_TEST(test4(), 1e+8);
-	//PERFORM_TEST(test4(), 1e+8);
-	//cout << "1" << endl;
-	//PERFORM_TEST(test1(), 1e+8);
-	//PERFORM_TEST(test1(), 1e+8);
-	//PERFORM_TEST(test1(), 1e+8);
-	//cout << "2" << endl;
-	//PERFORM_TEST(test2(), 1e+8);
-	//PERFORM_TEST(test2(), 1e+8);
-	//PERFORM_TEST(test2(), 1e+8);
-	//cout << "1" << endl;
+	cout << "3" << endl;
+	PERFORM_TEST(test3(), 1e+8);
+	cout << "4" << endl;
+	B << 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12;
+	cout << B << endl;
+	PERFORM_TEST(test4(), 1e+8);
+	cout << A << endl;
+	MB.setRandom();
+	cout << "1" << endl;
+	PERFORM_TEST(test1(), 1e+8);
+	cout << "2" << endl;
+	PERFORM_TEST(test2(), 1e+8);
 	//cout << SE3_1_sq << endl;
-	//cout << SE3_rovin_sq << endl;
+	cout << SE3_rovin_sq << endl;
 
 
 	//Vec3 so3_srLib(1, 2, 3);

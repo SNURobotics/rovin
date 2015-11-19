@@ -9,7 +9,6 @@ namespace rovin
 	namespace Math
 	{
 		Eigen::Matrix<Real, 1, 4> Affine_const(0, 0, 0, 1);
-
 		SE3::SE3(const SE3& T)
 		{
 			_R._e = T._R._e;
@@ -139,10 +138,12 @@ namespace rovin
 			}
 			else
 			{
+				Real s, c;
+				Math::fsincos_precise(theta, s, c);
 				Real itheta = 1.0/theta;
-				st_t = fsin(theta)*itheta;
+				st_t = s*itheta;
 				itheta *= itheta;
-				ct_t = (1.0 - fcos(theta))*itheta;
+				ct_t = (1.0 - c)*itheta;
 				vt_t = (w(0)*v(0) + w(1)*v(1) + w(2)*v(2))*(1.0 - st_t)*itheta;
 			}
 

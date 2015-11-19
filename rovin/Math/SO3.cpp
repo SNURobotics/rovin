@@ -1,6 +1,7 @@
 #include <cassert>
 #include <cmath>
 #include "SO3.h"
+#include "Numeric.h"
 
 using namespace std;
 
@@ -164,10 +165,12 @@ namespace rovin
 			}
 			else
 			{
+				Real s, c;
+				Math::fsincos_precise(theta, s, c);
 				Real itheta = 1.0 / theta;
-				st_t = sin(theta)*itheta;
+				st_t = s*itheta;
 				itheta *= itheta;
-				ct_t = (1.0 - cos(theta))*itheta;
+				ct_t = (1.0 - c)*itheta;
 			}
 
 			SO3 result;
