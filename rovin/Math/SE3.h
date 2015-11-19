@@ -1,21 +1,22 @@
 /**
 *	\file	SE3.h
-*	\date	2015.11.05
+*	\date	2015.11.19
 *	\author	Keunjun (ckj@robotics.snu.ac.kr)
 *	\brief	SE3 클래스
 */
 
 #pragma once
 
-#include <iostream>
+#include <list>
+
 #include "Constant.h"
-#include "SO3.h"
 
 namespace rovin
 {
 	namespace Math
 	{
 		class SE3;
+		class SE3List;
 		typedef Vector6 se3;
 		typedef Vector6 dse3;
 
@@ -23,86 +24,99 @@ namespace rovin
 		*	\class SE3
 		*	\brief SE3를 생성하고 처리하는 클래스
 		*/
-		class SE3
+		typedef Eigen::Matrix<double, 4, 4, Eigen::RowMajor> SE3Base;
+		class SE3: public SE3Base
 		{
 		public:
-			///생성자
-			SE3(const SE3& T);
-			/// 회전은 하지 않고 p만큼 이동한 SE3를 생성합니다. 
-			SE3(const Vector3& p = (Vector3::Zero())) : _R(), _p(p) {}
-			/// R만큼 회전을 하고 p만큼 이동한 SE3를 생성합니다.
-			SE3(const SO3& R, const Vector3& p = (Vector3::Zero())) : _R(R), _p(p) {}
-			/// R만큼 회전을 하고 p만큼 이동한 SE3를 생성합니다. 단, R이 임의의 3x3 행렬이므로 SO3를 만족하는지 확인을 합니다. SO3의 성질을 만족하지 않는 경우에는 에러가 납니다.
-			SE3(const Matrix3& R, const Vector3& p = (Vector3::Zero())) : _R(R), _p(p) {}
-			/// 임의의 행렬인 T를 받아서 T가 SE3를 만족하면 T를 이용하여 SE3를 생성합니다.
-			SE3(const Matrix4& T);
+			SE3() : SE3Base(SE3Base::Identity()) {}
+			SE3(const SE3& T) : SE3Base(T) {}
+			SE3(const double& T11, const double& T12, const double& T13, const double& T14,
+				const double& T21, const double& T22, const double& T23, const double& T24,
+				const double& T31, const double& T32, const double& T33, const double& T34)
+			{
+				double* T = &((*this)(0));
+				(*T) = T11;
+				(*(T + 1)) = T12;
+				(*(T + 2)) = T13;
+				(*(T + 3)) = T14;
 
-			/// SE3 소멸자
-			~SE3() {}
+				(*(T + 4)) = T21;
+				(*(T + 5)) = T22;
+				(*(T + 6)) = T23;
+				(*(T + 7)) = T24;
 
-			SE3& operator = (const SE3&);
-			SE3& operator = (const Matrix4&);
-			SE3 operator * (const SE3&) const;
-			SE3& operator *= (const SE3&);
-			/**
-			*	\warning SE3는 SE3끼리 계산하는 것이 빠르다.matrix로 변환하는 과정에서 시간이 많이 걸림.
-			*	\brief Matrixr4d로 변환해줍니다.
-			*/
-			const Matrix4 matrix() const;
+				(*(T + 8)) = T31;
+				(*(T + 9)) = T32;
+				(*(T + 10)) = T33;
+				(*(T + 11)) = T34;
+			}
 
-			/// 3개 SE3 곱셈
-			static SE3 multiply(const SE3&, const SE3&, const SE3&);
-			static SE3 multiply(const SE3&, const SE3&, const SE3&, const SE3&);
+			SE3& operator = (const SE3& operand);
+			SE3& operator = (const SE3List& operand);
 
-			/// 회전부분을 SO3인 R으로 설정합니다.
-			void setRotation(const SO3& R);
-			/// 회전부분을 임의의 행렬 M으로 설정합니다. 이 경우에는 _M이 SO3의 성질을 만족하는지 확인합니다.
-			void setRotation(const Matrix3& M);
-			/// Translation부분을 p로 설정합니다.
-			void setPosition(const Vector3& p);
-			/// 회전부분을 SO3형태로 알려줍니다.
-			const SO3& getRotation() const;
-			/// Translation부분을 Vector3d형태로 알려줍니다.
-			const Vector3& getPosition() const;
+			SE3& operator *= (const SE3& operand);
+			SE3& operator *= (const SE3List& operand);
 
-			/// 출력 할 때 사용합니다.
-			friend std::ostream& operator << (std::ostream&, const SE3&);
+			//SE3List operator * (const SE3& operand) const;
+			SE3 operator * (const SE3& operand) const;
+			SE3List& operator * (SE3List& operand) const;
 
-			/// 역행렬을 구해줍니다.
-			SE3 inverse() const;
+			template< typename Derived > friend
+				const typename Eigen::ProductReturnType<Matrix4, Derived>::Type
+				operator * (const SE3& operand1, const Eigen::MatrixBase< Derived >& operand2)
+			{
+				return (static_cast<Matrix4>(operand1)) * operand2;
+			}
 
-			/// se3인 S를 이용하여 exponential mapping을 해줍니다.
-			static SE3 Exp(const se3& S, Real angle = (1.0));
-			/// se3를 두 부분 (w, v)으로 입력을 받아 exponential mapping을 해줍니다.
-			static SE3 Exp(so3 w, Vector3 v, Real angle = (1.0));
-
-			/// Log 값을 계산해줍니다. 결과는 6x1 se3로 돌려줍니다.
-			static se3 Log(const SE3&);
-
-			/// T의 Large Adjoint를 해줍니다.
-			static Matrix6 Ad(const SE3& T);
-			/// T^(-1)의 Large Adjoint를 해줍니다.
-			static Matrix6 invAd(const SE3& T);
-
-			/// Small Adjoint인 [S]를 계산해줍니다.
-			static Matrix6 ad(const se3& S);
-
-		private:
-			SO3 _R;
-			Vector3 _p;
+			template< typename Derived > friend
+				const typename Eigen::ProductReturnType<Derived, Matrix4>::Type
+				operator * (const Eigen::MatrixBase< Derived >& operand1, const SE3& operand2)
+			{
+				return operand2 * (static_cast<Matrix4>(operand1));
+			}
 		};
 
-		/// [S]를 계산해줍니다.
-		static Matrix4 Bracket(const se3& S)
+		class SE3List
 		{
-			so3 w = S.block(0, 0, 3, 1);
-			Vector3 v = S.block(3, 0, 3, 1);
+		public:
+			friend SE3;
 
-			Matrix4 result;
-			result.setZero();
-			result.block<3, 3>(0, 0) = Bracket(w);
-			result.block<3, 1>(0, 3) = v;
-			return result;
-		}
+			void push_left(const SE3* item);
+			void push_right(const SE3* item);
+
+			operator SE3() const;
+			operator Matrix4() const;
+
+			SE3List& operator * (const SE3& operand);
+			SE3List& operator * (SE3List& operand);
+		
+			template< typename Derived > friend
+				const typename Eigen::ProductReturnType<Matrix4, Derived>::Type
+				operator * (const SE3List& operand1, const Eigen::MatrixBase< Derived >& operand2)
+			{
+				return ((Matrix4)operand1) * operand2;
+			}
+
+			template< typename Derived > friend
+				const typename Eigen::ProductReturnType<Derived, Matrix4>::Type
+				operator * (const Eigen::MatrixBase< Derived >& operand1, const SE3List& operand2)
+			{
+				return operand1 * ((Matrix4)operand2);
+			}
+
+		private:
+			static const unsigned int TempSize = 20;
+
+			SE3List() : l(TempSize/2), r(TempSize/2) {}
+			SE3List(const SE3* item1, const SE3* item2) : l(TempSize/2-1), r(TempSize/2+1)
+			{
+				Temp[TempSize / 2 - 1] = item1;
+				Temp[TempSize / 2] = item2;
+			}
+
+			const SE3* Temp[TempSize];
+			unsigned int l = TempSize /2;
+			unsigned int r = TempSize /2;
+		};
 	}
 }

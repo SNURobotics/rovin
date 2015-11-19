@@ -48,7 +48,7 @@ void test1()
 }
 void test2()
 {
-	SE3_rovin_sq = SE3_rovin * SE3_rovin * SE3_rovin * SE3_rovin;
+	//SE3_rovin_sq = SE3_rovin * SE3_rovin * SE3_rovin * SE3_rovin;
 	//SE3_rovin_sq = Math::SE3::multiply(SE3_rovin, SE3_rovin, SE3_rovin);
 	//MA = MB*MB;
 	//MAV = MA*MBV + MBV;
