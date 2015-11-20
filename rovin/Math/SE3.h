@@ -81,6 +81,10 @@ namespace rovin
 
 			/// T의 Large Adjoint를 해줍니다.
 			static Matrix6 Ad(const SE3& T);
+			///
+			static se3 Ad(const SE3& T, const se3& S);
+			///
+			static se3 InvAd(const SE3& T, const se3& S);
 			/// T^(-1)의 Large Adjoint를 해줍니다.
 			static Matrix6 invAd(const SE3& T);
 

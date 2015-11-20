@@ -149,8 +149,8 @@ namespace rovin
 
 			SE3 result;
 
-			double *R = &result._R._e(0);
-			double *p = &result._p(0);
+			Real *R = &result._R._e(0);
+			Real *p = &result._p(0);
 			*R = 1.0 - ct_t*(sq1 + sq2);
 			*(R + 3) = ct_t * w(0) * w(1) - st_t * w(2);
 			*(R + 6) = ct_t * w(0) * w(2) + st_t * w(1);
