@@ -76,7 +76,7 @@ namespace rovin
 			static Vector3 invEulerZYZ(const SO3& R);
 
 			/// Exponential 매핑을 해줍니다. so3인 w를 값으로 받습니다. (angle은 회전 각을 의미합니다. 결론적으로 w * angle로 exponential 매핑을 합니다.)
-			static SO3 Exp(const so3& w, const Real angle = (1.0));
+			static SO3 Exp(so3 w, Real angle = (1.0));
 
 			/// Log 값을 계산해줍니다. 결과는 3x1 so3로 돌려줍니다.
 			static so3 Log(const SO3& R);
@@ -92,9 +92,17 @@ namespace rovin
 		static Matrix3 Bracket(const so3 w)
 		{
 			Matrix3 result;
-			result << 0, -w(2), w(1),
-				w(2), 0, -w(0),
-				-w(1), w(0), 0;
+			result(0, 0) = 0;
+			result(0, 1) = -w(2);
+			result(0, 2) = w(1);
+
+			result(1, 0) = w(2);
+			result(1, 1) = 0;
+			result(1, 2) = -w(0);
+
+			result(2, 0) = -w(1);
+			result(2, 1) = w(0);
+			result(2, 2) = 0;
 			return result;
 		}
 	}

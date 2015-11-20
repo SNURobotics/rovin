@@ -1,6 +1,7 @@
 #include <cassert>
 #include <cmath>
 #include "SO3.h"
+#include "Numeric.h"
 
 using namespace std;
 
@@ -29,7 +30,7 @@ namespace rovin
 		SO3 SO3::operator * (const SO3& operand) const
 		{
 			SO3 result;
-			result._e = _e * operand._e;
+			result._e.noalias() = _e * operand._e;
 			return result;
 		}
 
@@ -46,17 +47,17 @@ namespace rovin
 
 		Vector3 SO3::getX() const
 		{
-			return _e.block(0, 0, 3, 1);
+			return Vector3(_e(0, 0), _e(1, 0), _e(2, 0));
 		}
 
 		Vector3 SO3::getY() const
 		{
-			return _e.block(0, 1, 3, 1);
+			return Vector3(_e(0, 1), _e(1, 1), _e(2, 1));
 		}
 
 		Vector3 SO3::getZ() const
 		{
-			return _e.block(0, 2, 3, 1);
+			return Vector3(_e(0, 2), _e(1, 2), _e(2, 2));
 		}
 
 		ostream& rovin::Math::operator << (ostream& out, const SO3& R)
@@ -75,62 +76,68 @@ namespace rovin
 		SO3 SO3::RotX(const Real angle)
 		{
 			SO3 result;
-			result._e << 1, 0, 0,
-				0, cos(angle), -sin(angle),
-				0, sin(angle), cos(angle);
+
+			result._e(0, 0) = 1;
+			result._e(0, 1) = 0;
+			result._e(0, 2) = 0;
+
+			result._e(1, 0) = 0;
+			result._e(1, 1) = cos(angle);
+			result._e(1, 2) = -sin(angle);
+
+			result._e(2, 0) = 0;
+			result._e(2, 1) = sin(angle);
+			result._e(2, 2) = cos(angle);
+
 			return result;
 		}
 
 		SO3 SO3::RotY(const Real angle)
 		{
 			SO3 result;
-			result._e << cos(angle), 0, sin(angle),
-				0, 1, 0,
-				-sin(angle), 0, cos(angle);
+
+			result._e(0, 0) = cos(angle);
+			result._e(0, 1) = 0;
+			result._e(0, 2) = sin(angle);
+
+			result._e(1, 0) = 0;
+			result._e(1, 1) = 1;
+			result._e(1, 2) = 0;
+
+			result._e(2, 0) = -sin(angle);
+			result._e(2, 1) = 0;
+			result._e(2, 2) = cos(angle);
+
 			return result;
 		}
 
 		SO3 SO3::RotZ(const Real angle)
 		{
 			SO3 result;
-			result._e << cos(angle), -sin(angle), 0,
-				sin(angle), cos(angle), 0,
-				0, 0, 1;
+
+			result._e(0, 0) = cos(angle);
+			result._e(0, 1) = -sin(angle);
+			result._e(0, 2) = 0;
+
+			result._e(1, 0) = sin(angle);
+			result._e(1, 1) = cos(angle);
+			result._e(1, 2) = 0;
+
+			result._e(2, 0) = 0;
+			result._e(2, 1) = 0;
+			result._e(2, 2) = 1;
+
 			return result;
 		}
 
 		SO3 SO3::EulerZYX(const Real angle1, const Real angle2, const Real angle3)
 		{
-			SO3 result;
-			Matrix3 R1, R2, R3;
-			R1 << cos(angle1), -sin(angle1), 0,
-				sin(angle1), cos(angle1), 0,
-				0, 0, 1;
-			R2 << cos(angle2), 0, sin(angle2),
-				0, 1, 0,
-				-sin(angle2), 0, cos(angle2);
-			R3 << 1, 0, 0,
-				0, cos(angle3), -sin(angle3),
-				0, sin(angle3), cos(angle3);
-			result._e = R1 * R2 * R3;
-			return result;
+			return RotZ(angle1) * RotY(angle2) * RotX(angle3);
 		}
 
 		SO3 SO3::EulerZYZ(const Real angle1, const Real angle2, const Real angle3)
 		{
-			SO3 result;
-			Matrix3 R1, R2, R3;
-			R1 << cos(angle1), -sin(angle1), 0,
-				sin(angle1), cos(angle1), 0,
-				0, 0, 1;
-			R2 << cos(angle2), 0, sin(angle2),
-				0, 1, 0,
-				-sin(angle2), 0, cos(angle2);
-			R3 << cos(angle3), -sin(angle3), 0,
-				sin(angle3), cos(angle3), 0,
-				0, 0, 1;
-			result._e = R1 * R2 * R3;
-			return result;
+			return RotZ(angle1) * RotY(angle2) * RotZ(angle3);
 		}
 
 		Vector3 SO3::invEulerZYX(const SO3& R)
@@ -143,27 +150,40 @@ namespace rovin
 			return Vector3(atan2(R._e(1, 2), R._e(0, 2)), atan2(sqrt(R._e(0, 2)*R._e(0, 2) + R._e(1, 2)*R._e(1, 2)), R._e(2, 2)), atan2(R._e(2, 1), -R._e(2, 0)));
 		}
 
-		SO3 SO3::Exp(const so3& w, const Real angle)
+		SO3 SO3::Exp(so3 w, Real angle)
 		{
-			SO3 result;
+			w *= angle;
 
-			if ((w * angle).norm() < Eigen::NumTraits<Real>::dummy_precision())
+			Real sq0 = w(0)*w(0), sq1 = w(1)*w(1), sq2 = w(2)*w(2);
+			Real theta = sqrt(sq0 + sq1 + sq2);
+			Real st_t, ct_t;
+
+			if (theta < RealEps)
 			{
-				result._e = Matrix3::Identity();
+				st_t = 1.0 - theta*theta / 6.0;
+				ct_t = 0.5 - theta*theta / 24.0;
 			}
 			else
 			{
-				so3 w_temp;
-				Real angle_temp = angle;
-
-				Real norm_w = w.norm();
-				w_temp = w / norm_w;
-				angle_temp = angle * norm_w;
-				
-				Matrix3 _bracket = Bracket(w_temp);
-
-				result._e = Matrix3::Identity() + sin(angle_temp)*_bracket + (1 - cos(angle_temp))*_bracket*_bracket;
+				Real s, c;
+				Math::fsincos_precise(theta, s, c);
+				Real itheta = 1.0 / theta;
+				st_t = s*itheta;
+				itheta *= itheta;
+				ct_t = (1.0 - c)*itheta;
 			}
+
+			SO3 result;
+
+			result._e(0, 0) = 1.0 - ct_t*(sq1 + sq2);
+			result._e(0, 1) = ct_t * w(0) * w(1) - st_t * w(2);
+			result._e(0, 2) = ct_t * w(0) * w(2) + st_t * w(1);
+			result._e(1, 0) = ct_t * w(0) * w(1) + st_t * w(2);
+			result._e(1, 1) = 1.0 - ct_t*(sq0 + sq2);
+			result._e(1, 2) = ct_t * w(1) * w(2) - st_t * w(0);
+			result._e(2, 0) = ct_t * w(0) * w(2) - st_t * w(1);
+			result._e(2, 1) = ct_t * w(1) * w(2) + st_t * w(0);
+			result._e(2, 2) = 1.0 - ct_t*(sq0 + sq1);
 
 			return result;
 		}
@@ -174,7 +194,7 @@ namespace rovin
 
 			if (R._e.isApprox(R._e.transpose()))
 			{
-				if (Matrix3::Identity().isApprox(R._e))
+				if (R._e.isApprox(Matrix3::Identity()))
 				{
 					result << 0, 0, 0;
 				}
@@ -182,18 +202,18 @@ namespace rovin
 				{
 					Matrix3 tmp1 = (R._e - Matrix3::Identity()) / 2;
 					Real tmp2 = tmp1.trace() / 2;
-					result << -tmp2 + tmp1(0, 0),
-						-tmp2 + tmp1(1, 1),
-						-tmp2 + tmp1(2, 2);
+					result(0) = -tmp2 + tmp1(0, 0);
+					result(1) = -tmp2 + tmp1(1, 1);
+					result(2) = -tmp2 + tmp1(2, 2);
 				}
 			}
 			else
 			{
 				Real theta = acos((R._e.trace() - 1) / 2);
 				Matrix3 tmp = (R._e - R._e.transpose()) / (2 * sin(theta));
-				result << tmp(2, 1),
-					tmp(0, 2),
-					tmp(1, 0);
+				result(0) = tmp(2, 1);
+				result(1) = tmp(0, 2);
+				result(2) = tmp(1, 0);
 				result = result * theta;
 			}
 

@@ -26,6 +26,8 @@ namespace rovin
 		class SE3
 		{
 		public:
+			///생성자
+			SE3(const SE3& T);
 			/// 회전은 하지 않고 p만큼 이동한 SE3를 생성합니다. 
 			SE3(const Vector3& p = (Vector3::Zero())) : _R(), _p(p) {}
 			/// R만큼 회전을 하고 p만큼 이동한 SE3를 생성합니다.
@@ -48,6 +50,10 @@ namespace rovin
 			*/
 			const Matrix4 matrix() const;
 
+			/// 3개 SE3 곱셈
+			static SE3 multiply(const SE3&, const SE3&, const SE3&);
+			static SE3 multiply(const SE3&, const SE3&, const SE3&, const SE3&);
+
 			/// 회전부분을 SO3인 R으로 설정합니다.
 			void setRotation(const SO3& R);
 			/// 회전부분을 임의의 행렬 M으로 설정합니다. 이 경우에는 _M이 SO3의 성질을 만족하는지 확인합니다.
@@ -66,15 +72,19 @@ namespace rovin
 			SE3 inverse() const;
 
 			/// se3인 S를 이용하여 exponential mapping을 해줍니다.
-			static SE3 Exp(const se3& S, const Real angle = (1.0));
+			static SE3 Exp(const se3& S, Real angle = (1.0));
 			/// se3를 두 부분 (w, v)으로 입력을 받아 exponential mapping을 해줍니다.
-			static SE3 Exp(const so3& w, const Vector3& v, const Real angle = (1.0));
+			static SE3 Exp(so3 w, Vector3 v, Real angle = (1.0));
 
 			/// Log 값을 계산해줍니다. 결과는 6x1 se3로 돌려줍니다.
 			static se3 Log(const SE3&);
 
 			/// T의 Large Adjoint를 해줍니다.
 			static Matrix6 Ad(const SE3& T);
+			///
+			static se3 Ad(const SE3& T, const se3& S);
+			///
+			static se3 InvAd(const SE3& T, const se3& S);
 			/// T^(-1)의 Large Adjoint를 해줍니다.
 			static Matrix6 invAd(const SE3& T);
 
@@ -94,8 +104,8 @@ namespace rovin
 
 			Matrix4 result;
 			result.setZero();
-			result.block(0, 0, 3, 3) = Bracket(w);
-			result.block(0, 3, 3, 1) = v;
+			result.block<3, 3>(0, 0) = Bracket(w);
+			result.block<3, 1>(0, 3) = v;
 			return result;
 		}
 	}

@@ -1,95 +1,119 @@
-#include "System.h"
-#include "State.h"
-
-#include <list>
-#include <vector>
+#include "Kinematics.h"
 
 #include <rovin/Math/Constant.h>
 #include <rovin/Math/LinearAlgebra.h>
 
 using namespace std;
 using namespace rovin::Math;
+using namespace rovin::Model;
 
 namespace rovin
 {
-	namespace Dynamics
+	VectorX Kinematics::computeClosedLoopConstraintFunction(const Assembly& assem, const State& state)
 	{
-		VectorX System::Closedloop_Constraint_Function(State& state)
+		VectorX f(assem._ClosedLoopConstraint.size() * 6);
+		SE3 T;
+		for (unsigned int i = 0; i < assem._ClosedLoopConstraint.size(); i++)
 		{
-			VectorX f(_closedloop.size() * 6);
-			SE3 T, jointT;
-			int i = 0;
-			for (list< list< _CONN >>::const_iterator coniter = _closedloop.begin(); coniter != _closedloop.end(); coniter++, i++)
+			T = SE3();
+			for (unsigned int j = 0; j < assem._ClosedLoopConstraint[i].size(); j++)
 			{
-				T = SE3();
-				for (list< _CONN >::const_iterator iter = (*coniter).begin(); iter != (*coniter).end(); iter++)
+				unsigned int mateIdx = assem._ClosedLoopConstraint[i][j].first;
+				if (assem._ClosedLoopConstraint[i][j].second == JointDirection::REGULAR)
 				{
-					T *= iter->_sj * _jointptr[iter->_joint]->getTransform(state.getJointState(iter->_joint).q, iter->_isReverse) * iter->_je;
+					T *= SE3::multiply(assem._Mate[mateIdx]._Tmj,
+									   assem._Mate[mateIdx]._joint->getTransform(state.getJointStateByMateIndex(mateIdx)._q, false),
+									   assem._Mate[mateIdx]._Tja);
 				}
-				f.block<6, 1>(i * 6, 0) = SE3::Log(T);
-			}
-
-			return f;
-		}
-
-		Math::MatrixX System::Closedloop_Constraint_Jacobian(State& state, const RETURN_STATE& return_state = SYSTEMJOINT)
-		{
-			unsigned int column = state.getDof(return_state);
-			MatrixX J(_closedloop.size() * 6, column);
-			SE3 T, jointT;
-			int i = 0;
-			for (list< list< _CONN >>::const_iterator coniter = _closedloop.begin(); coniter != _closedloop.end(); coniter++, i++)
-			{
-				T = SE3();
-				for (list< _CONN >::const_reverse_iterator iter = (*coniter).rbegin(); iter != (*coniter).rend(); iter++)
+				else
 				{
-					T = iter->_je * T;
-					MatrixX temp_J = SE3::invAd(T) * _jointptr[iter->_joint]->getJacobian(state.getJointState(iter->_joint).q, iter->_isReverse);
-					state.writeColumns(J, temp_J, 6 * i, iter->_joint, return_state);
-
-					T = iter->_sj * _jointptr[iter->_joint]->getTransform(state.getJointState(iter->_joint).q, iter->_isReverse) * T;
+					T *= SE3::multiply(assem._Mate[mateIdx]._InvTja,
+									   assem._Mate[mateIdx]._joint->getTransform(state.getJointStateByMateIndex(mateIdx)._q, true),
+									   assem._Mate[mateIdx]._InvTmj);
 				}
 			}
-			return J;
+			f.block<6, 1>(i * 6, 0) = SE3::Log(T);
 		}
+		return f;
+	}
 
-		void System::Solve_Closedloop_Constraint(State& state)
+	MatrixX  Kinematics::computeClosedLoopConstraintJacobian(const Assembly& assem, const State& state, const State::RETURN_STATE& return_state)
+	{
+		MatrixX J(assem._ClosedLoopConstraint.size() * 6, state.returnDof(return_state));
+		SE3 T;
+		for (unsigned int i = 0; i < assem._ClosedLoopConstraint.size(); i++)
 		{
-			if (_closedloop.size() == 0) return;
-
-			VectorX S, dtheta;
-			while ((S = Closedloop_Constraint_Function(state)).norm() >= Eigen::NumTraits<Real>::dummy_precision())
+			T = SE3();
+			for (int j = assem._ClosedLoopConstraint[i].size() - 1; j >= 0; j--)
 			{
-				MatrixX J = Closedloop_Constraint_Jacobian(state, System::PASSIVEJOINT);
-				state.addPassiveJoint_q(-pinv(J) * S);
+				unsigned int mateIdx = assem._ClosedLoopConstraint[i][j].first;
+				if (assem._ClosedLoopConstraint[i][j].second == JointDirection::REGULAR)
+				{
+					T = assem._Mate[mateIdx]._Tja * T;
+					state.writeReturnMatrix(J,
+											SE3::invAd(T)*assem._Mate[mateIdx]._joint->getJacobian(state.getJointStateByMateIndex(mateIdx)._q, false),
+											6 * i, state.getJointIndexByMateIndex(mateIdx), return_state);
+					T = SE3::multiply(assem._Mate[mateIdx]._Tmj,
+									  assem._Mate[mateIdx]._joint->getTransform(state.getJointStateByMateIndex(mateIdx)._q, false),
+									  T);
+				}
+				else
+				{
+					T = assem._Mate[mateIdx]._InvTmj * T;
+					state.writeReturnMatrix(J,
+											SE3::invAd(T)*assem._Mate[mateIdx]._joint->getJacobian(state.getJointStateByMateIndex(mateIdx)._q, true),
+											6 * i, state.getJointIndexByMateIndex(mateIdx), return_state);
+					T = SE3::multiply(assem._Mate[mateIdx]._InvTja,
+									  assem._Mate[mateIdx]._joint->getTransform(state.getJointStateByMateIndex(mateIdx)._q, true),
+									  T);
+				}
 			}
 		}
+		return J;
+	}
 
-		void System::Forward_Kinematics(State & state)
+	void Kinematics::solveClosedLoopConstraint(const Assembly& assem, State& state)
+	{
+		if (assem._ClosedLoopConstraint.size() == 0) return;
+
+		VectorX S, dtheta;
+		while ((S = Kinematics::computeClosedLoopConstraintFunction(assem, state)).squaredNorm() >= RealEps)
 		{
-			Solve_Closedloop_Constraint(state);
-			for (unsigned i = 0; i < _BFSIdx.size(); i++)
+			state.addPassiveJointq(-pInv(Kinematics::computeClosedLoopConstraintJacobian(assem, state, State::PASSIVEJOINT))*S);
+		}
+	}
+	void Kinematics::solveForwardKinematics(const Model::Assembly & assem, Model::State & state)
+	{
+		for (unsigned int i = 0; i < assem._Tree.size(); i++)
+		{
+			unsigned int mateIdx = assem._Tree[i].first;
+			const Assembly::Mate&	mate = assem._Mate[mateIdx];
+			SE3 T_pc;
+			//	update transform and local velocity of each joint
+			mate._joint->updateForwardKinematics(state.getJointStateByMateIndex(mateIdx), assem._Tree[i].second, true, true);
+			//	update link state by propagation
+			if (assem._Tree[i].second == Model::REGULAR)
 			{
-				state.getLinkState(_BFSIdx[i]._elink).T =
-					state.getLinkState(_BFSIdx[i]._slink).T
-					* _BFSIdx[i]._sj
-					* _jointptr[_BFSIdx[i]._joint]->getTransform(state.getJointState(_BFSIdx[i]._joint).q, _BFSIdx[i]._isReverse)
-					* _BFSIdx[i]._je;
+				//	link position update
+				T_pc = mate._Tmj * state.getJointStateByMateIndex(mateIdx)._T[0] * mate._Tja;
+				state.getLinkState(mate._actionLinkIdx)._T
+					= state.getLinkState(mate._mountLinkIdx)._T * T_pc;
+				//	link velocity update (currently blocked to measure performance)
+				//state.getLinkState(mate._actionLinkIdx)._V
+				//	= SE3::invAd(T_pc)*state.getLinkState(mate._mountLinkIdx)._V
+				//	+ SE3::invAd(mate._Tja)*state.getJointStateByMateIndex(mateIdx)._v;
+			}
+			else	// reversed case (parent link is action link)
+			{
+				//	link position update
+				T_pc = mate._InvTja * state.getJointStateByMateIndex(mateIdx)._T[0] * mate._InvTmj;
+				state.getLinkState(mate._mountLinkIdx)._T
+					= state.getLinkState(mate._actionLinkIdx)._T * T_pc;
+				//	link velocity update (currently blocked to measure performance)
+				//state.getLinkState(mate._mountLinkIdx)._V
+				//	= SE3::invAd(T_pc)*state.getLinkState(mate._actionLinkIdx)._V
+				//	+ SE3::Ad(mate._Tmj)*state.getJointStateByMateIndex(mateIdx)._v;
 			}
 		}
-
-		void System::Forward_Diff_Kinematics(State & state)
-		{
-			//	update qdot
-			for (unsigned i = 0; i < _BFSIdx.size(); i++)
-			{
-				state.getLinkState(_BFSIdx[i]._elink).V =
-					Math::SE3::Ad(state.getLinkState(_BFSIdx[i]._elink).T.inverse()*state.getLinkState(_BFSIdx[i]._slink).T)
-					* state.getLinkState(_BFSIdx[i]._slink).V
-					+ Math::SE3::invAd(_BFSIdx[i]._je)
-					* _jointptr[_BFSIdx[i]._joint]->getJacobian(state.getJointState(_BFSIdx[i]._joint).q, _BFSIdx[i]._isReverse) * state.getJointState(_BFSIdx[i]._joint).qdot;
-			}
-		}
-
 	}
 }

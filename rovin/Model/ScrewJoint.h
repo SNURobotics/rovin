@@ -28,15 +28,18 @@ namespace rovin {
 			void					setAxis(const Math::Vector6& axis, unsigned int index);
 
 			void	normalizeAxes();
-			
+			void	adjointAxes(const Math::SE3&	TransformFromJoint);
 
-			virtual std::shared_ptr<Joint> copy() const;
+
+			virtual JointPtr copy() const;
 
 			virtual Math::SE3	getTransform(const Math::VectorX& state, bool isReversed = false) const override;
 			virtual Math::se3	getVelocity(const Math::VectorX& state, bool isReversed = false) const override;
 			virtual Math::Matrix6X getJacobian(const Math::VectorX& state, bool isReversed = false) const override;
 			virtual Math::Matrix6X getJacobianDot(const Math::VectorX& state) const override;
-
+			
+			virtual void	updateForwardKinematics(State::JointState& state, JointDirection direction = REGULAR, bool position = true, bool velocity = false, bool acceleration = false) const override;
+			virtual Math::Matrix6X getJacobian(State::JointState& state, JointDirection direction = REGULAR, bool updateTransform = false) const override;
 
 		protected:
 			///	Vector of Math::se3 which contatin rotation axis of each joint

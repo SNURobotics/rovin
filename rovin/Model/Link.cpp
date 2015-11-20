@@ -30,7 +30,7 @@ namespace rovin
 			}
 		}
 
-		void Link::deleteMarker(const string& marker_name)
+		void Link::eraseMarker(const string& marker_name)
 		{
 			_marker.erase(marker_name);
 		}

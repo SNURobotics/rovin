@@ -36,21 +36,29 @@ namespace rovin
 		Inertia::Inertia(const Vector6& I, const Vector3& p, const Real& m)
 		{
 			Matrix3 _I;
-			_I << I(0), -I(3), -I(4),
-				-I(3), I(1), -I(5),
-				-I(4), -I(5), I(2);
+			_I(0, 0) = I(0);
+			_I(0, 1) = -I(3);
+			_I(0, 2) = -I(4);
+
+			_I(1, 0) = -I(3);
+			_I(1, 1) = I(1);
+			_I(1, 2) = -I(5);
+
+			_I(2, 0) = -I(4);
+			_I(2, 1) = -I(5);
+			_I(2, 2) = I(2);
 			(*this) << _I, -Bracket(p),
 				Bracket(p), Matrix3::Identity()*m;
 		}
 
 		Inertia::Inertia(const Matrix6& I)
 		{
-			Matrix3 _I = I.block(0, 0, 3, 3);
-			Matrix3 _p = I.block(0, 3, 3, 3);
-			Matrix3 _m = I.block(3, 3, 3, 3);
+			Matrix3 _I = I.block<3, 3>(0, 0);
+			Matrix3 _p = I.block<3, 3>(0, 3);
+			Matrix3 _m = I.block<3, 3>(3, 3);
 
 			assert(_I.isApprox(_I.transpose()));
-			assert(abs(_p(0, 0)) < Eigen::NumTraits<Real>::dummy_precision() && abs(_p(1, 1)) < Eigen::NumTraits<Real>::dummy_precision() && abs(_p(2, 2)) < Eigen::NumTraits<Real>::dummy_precision());
+			assert(abs(_p(0, 0)) < RealEps && abs(_p(1, 1)) < RealEps && abs(_p(2, 2)) < RealEps);
 			assert(_m.isApprox(Matrix3::Identity()*_m(0, 0)));
 
 			(Matrix6)(*this) = I;
@@ -75,27 +83,27 @@ namespace rovin
 			return *this;
 		}
 
-		Inertia Inertia::operator * (const Real constant) const
+		Inertia Inertia::operator * (const Real& constant) const
 		{
 			Inertia result;
 			(Matrix6)result = (Matrix6)(*this) * constant;
 			return result;
 		}
 
-		Inertia& Inertia::operator *= (const Real constant)
+		Inertia& Inertia::operator *= (const Real& constant)
 		{
 			(Matrix6)(*this) *= constant;
 			return *this;
 		}
 
-		Inertia Inertia::operator / (const Real constant) const
+		Inertia Inertia::operator / (const Real& constant) const
 		{
 			Inertia result;
 			(Matrix6)result = (Matrix6)(*this) / constant;
 			return result;
 		}
 
-		Inertia& Inertia::operator /= (const Real constant)
+		Inertia& Inertia::operator /= (const Real& constant)
 		{
 			(Matrix6)(*this) /= constant;
 			return *this;

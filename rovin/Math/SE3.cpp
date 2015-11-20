@@ -1,5 +1,7 @@
 #include "SE3.h"
 
+#include "Numeric.h"
+
 using namespace std;
 
 namespace rovin
@@ -7,6 +9,12 @@ namespace rovin
 	namespace Math
 	{
 		Eigen::Matrix<Real, 1, 4> Affine_const(0, 0, 0, 1);
+		SE3::SE3(const SE3& T)
+		{
+			_R._e = T._R._e;
+			_p = T._p;
+		}
+
 		SE3::SE3(const Matrix4& T)
 		{
 			Eigen::Matrix<Real, 1, 4> Affine = T.block(3, 0, 1, 4);
@@ -31,8 +39,8 @@ namespace rovin
 		SE3 SE3::operator * (const SE3& operand) const
 		{
 			SE3 result;
-			result._R._e = _R._e * operand._R._e;
-			result._p = _R._e * operand._p + _p;
+			result._R._e.noalias() = _R._e * operand._R._e;
+			result._p.noalias() = _R._e * operand._p + _p;
 			return result;
 		}
 
@@ -47,6 +55,24 @@ namespace rovin
 		{
 			Matrix4 result;
 			result << _R._e, _p, Affine_const;
+			return result;
+		}
+
+		SE3 SE3::multiply(const SE3& op1, const SE3& op2, const SE3& op3)
+		{
+			SE3 result;
+			Matrix3 tempMatrix;
+			result._R._e.noalias() = (tempMatrix.noalias() = (op1._R._e * op2._R._e).eval()) * op3._R._e;
+			result._p.noalias() = (tempMatrix * op3._p).eval() + (op1._R._e * op2._p).eval() + op1._p;
+			return result;
+		}
+
+		SE3 SE3::multiply(const SE3& op1, const SE3& op2, const SE3& op3, const SE3& op4)
+		{
+			SE3 result;
+			Matrix3 tempMatrix1, tempMatrix2;
+			result._R._e.noalias() = (tempMatrix2.noalias() = ((tempMatrix1 = (op1._R._e * op2._R._e).eval()) * op3._R._e).eval()) * op4._R._e;
+			result._p.noalias() = (tempMatrix2 * op4._p).eval() + (tempMatrix1 * op3._p).eval() + (op1._R._e * op2._p).eval() + op1._p;
 			return result;
 		}
 
@@ -90,41 +116,53 @@ namespace rovin
 			return result;
 		}
 
-		SE3 SE3::Exp(const se3& S, const Real angle)
+		SE3 SE3::Exp(const se3& S, Real angle)
 		{
-			so3 w = S.block(0, 0, 3, 1);
-			Vector3 v = S.block(3, 0, 3, 1);
-			return Exp(w, v, angle);
+			return Exp(S.head<3>(), S.tail<3>(), angle);
 		}
 
-		SE3 SE3::Exp(const so3& w, const Vector3& v, const Real angle)
+		SE3 SE3::Exp(so3 w, Vector3 v, Real angle)
 		{
-			SE3 result;
+			w *= angle;
+			v *= angle;
 
-			if (Vector3::Zero().isApprox(w * angle))
+			Real sq0 = w(0)*w(0), sq1 = w(1)*w(1), sq2 = w(2)*w(2);
+			Real theta = sqrt(sq0 + sq1 + sq2);
+			Real st_t, ct_t, vt_t;
+
+			if (theta < RealEps)
 			{
-				result._R._e = Matrix3::Identity();
-				result._p = v * angle;
+				st_t = 1.0 - theta*theta/6.0;
+				ct_t = 0.5 - theta*theta/24.0;
+				vt_t = (w(0)*v(0) + w(1)*v(1) + w(2)*v(2))*(1.0 - theta*theta/20.0)/6.0;
 			}
 			else
 			{
-				so3 w_temp;
-				Vector3 v_temp;
-				Real angle_temp;
-
-				Real norm_w = w.norm();
-				w_temp = w / norm_w;
-				v_temp = v / norm_w;
-				angle_temp = angle * norm_w;
-
-				Matrix3 _bracket = Bracket(w_temp);
-
-				Matrix3 G;
-				G = Matrix3::Identity()*angle_temp + (1 - cos(angle_temp))*_bracket + (angle_temp - sin(angle_temp))*_bracket*_bracket;
-
-				result._R._e = SO3::Exp(w_temp, angle_temp)._e;
-				result._p = G * v_temp;
+				Real s, c;
+				Math::fsincos_precise(theta, s, c);
+				Real itheta = 1.0/theta;
+				st_t = s*itheta;
+				itheta *= itheta;
+				ct_t = (1.0 - c)*itheta;
+				vt_t = (w(0)*v(0) + w(1)*v(1) + w(2)*v(2))*(1.0 - st_t)*itheta;
 			}
+
+			SE3 result;
+
+			Real *R = &result._R._e(0);
+			Real *p = &result._p(0);
+			*R = 1.0 - ct_t*(sq1 + sq2);
+			*(R + 3) = ct_t * w(0) * w(1) - st_t * w(2);
+			*(R + 6) = ct_t * w(0) * w(2) + st_t * w(1);
+			*(R + 1) = ct_t * w(0) * w(1) + st_t * w(2);
+			*(R + 4) = 1.0 - ct_t*(sq0 + sq2);
+			*(R + 7) = ct_t * w(1) * w(2) - st_t * w(0);
+			*(R + 2) = ct_t * w(0) * w(2) - st_t * w(1);
+			*(R + 5) = ct_t * w(1) * w(2) + st_t * w(0);
+			*(R + 8) = 1.0 - ct_t*(sq0 + sq1);
+			*p = st_t * v(0) + vt_t * w(0) + ct_t * (w(1) * v(2) - w(2) * v(1));
+			*(p + 1) = st_t * v(1) + vt_t * w(1) + ct_t * (w(2) * v(0) - w(0) * v(2));
+			*(p + 2) = st_t * v(2) + vt_t * w(2) + ct_t * (w(0) * v(1) - w(1) * v(0));
 
 			return result;
 		}
@@ -135,7 +173,7 @@ namespace rovin
 
 			so3 w = SO3::Log(T._R);
 
-			if (Vector3::Zero().isApprox(w))
+			if (w.norm() < RealEps)
 			{
 				result << w, T._p;
 			}
