@@ -48,22 +48,41 @@ int main()
 
 	////////////////////////
 	VectorX q(3);
-	q << PI / 4, PI / 4, PI / 4;
+	q << PI / 2, PI / 2, PI / 2;
 	state->setActiveJointq(q);
 	////////////////////////
 
-	//rovin::Kinematics::solveClosedLoopConstraint(*fourBar, *state);
+	rovin::Kinematics::solveClosedLoopConstraint(*fourBar, *state);
 	rovin::Kinematics::solveForwardKinematics(*fourBar, *state);
+
+	cout << rovin::Kinematics::computeJacobian(*fourBar, *state, "L4", "L1") << endl;
 
 	//PERFORM_TEST(B = pinv(A), 1e+5);
 	
 
-	cout << state->getJointState("J1")._q << endl;
-	cout << state->getJointState("J2")._q << endl;
-	cout << state->getJointState("J3")._q << endl;
+	cout << state->getJointState("J1").getq() << endl;
+	cout << state->getJointState("J2").getq() << endl;
+	cout << state->getJointState("J3").getq() << endl;
 	//cout << state->getJointState("J4")._q << endl;
-
 	cout << state->getLinkState("L4")._T << endl;
+
+	///
+	q << PI / 3, PI / 4, -PI / 4;
+	state->setActiveJointq(q);
+	rovin::Kinematics::solveForwardKinematics(*fourBar, *state);
+	SE3 goalT = state->getLinkState("L4")._T;
+
+	q.setRandom();
+	state->setActiveJointq(q);
+	rovin::Kinematics::solveForwardKinematics(*fourBar, *state);
+	cout << state->getJointState("J1").getq() << endl;
+	cout << state->getJointState("J2").getq() << endl;
+	cout << state->getJointState("J3").getq() << endl;
+
+	rovin::Kinematics::solveInverseKinematics(*fourBar, *state, goalT, "L4");
+	cout << state->getJointState("J1").getq() << endl;
+	cout << state->getJointState("J2").getq() << endl;
+	cout << state->getJointState("J3").getq() << endl;
 
 	return 0;
 }

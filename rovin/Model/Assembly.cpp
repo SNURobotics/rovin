@@ -1,21 +1,76 @@
 #include "Assembly.h"
 
+#include "ScrewJoint.h"
+
 #include <list>
 #include <queue>
 
 #include <rovin/utils/Diagnostic.h>
 
 using namespace std;
+using namespace rovin::Math;
 
 namespace rovin
 {
 	namespace Model
 	{
-		pair< unsigned int, Model::JointDirection > reverseDirection(const pair< unsigned int, Model::JointDirection >& target)
+		pair< unsigned int, JointDirection > Assembly::reverseDirection(const pair< unsigned int, JointDirection >& target)
 		{
-			if (target.second == Model::JointDirection::REGULAR)
-				return pair< unsigned int, Model::JointDirection >(target.first, Model::JointDirection::REVERSE);
-			return pair< unsigned int, Model::JointDirection >(target.first, Model::JointDirection::REVERSE);
+			if (target.second == JointDirection::REGULAR)
+				return pair< unsigned int, JointDirection >(target.first, JointDirection::REVERSE);
+			return pair< unsigned int, JointDirection >(target.first, JointDirection::REVERSE);
+		}
+
+		Assembly::Mate::Mate(const Model::JointPtr& joint, const unsigned int mountLinkIdx, const unsigned int actionLinkIdx,
+			const SE3& Tmj, const SE3& Tja) : _joint(joint), _mountLinkIdx(mountLinkIdx), _actionLinkIdx(actionLinkIdx),
+			_Tmj(Tmj), _Tja(Tja), _M(Tmj * Tja)
+		{
+			if (joint->getJointType() == Joint::SCREWJOINT)
+			{
+				static_pointer_cast<ScrewJoint>(joint)->adjointAxes(Tja.inverse());
+			}
+		}
+
+		unsigned int Assembly::Mate::getParentLinkIdx(const JointDirection& jointDirection) const
+		{
+			if (jointDirection == JointDirection::REGULAR)
+				return _mountLinkIdx;
+			else return _actionLinkIdx;
+		}
+
+		unsigned int Assembly::Mate::getChildLinkIdx(const JointDirection& jointDirection) const
+		{
+			if (jointDirection == JointDirection::REGULAR)
+				return _actionLinkIdx;
+			else return _mountLinkIdx;
+		}
+
+		SE3 Assembly::Mate::getTransform(const State::JointState& jointState, const JointDirection& jointDirection) const
+		{
+			if (_joint->getJointType() == Joint::SCREWJOINT)
+			{
+				if(jointDirection == JointDirection::REGULAR) return _M * jointState._T[0];
+				else return (_M * jointState._T[0]).inverse();
+			}
+			else
+			{
+				if (jointDirection == JointDirection::REGULAR) return _Tmj * jointState._T[0] * _Tja;
+				else return (_Tmj * jointState._T[0] * _Tja).inverse();
+			}
+		}
+
+		Matrix6X Assembly::Mate::getJacobian(const State::JointState& jointState, const JointDirection& jointDirection) const
+		{
+			if (_joint->getJointType() == Joint::SCREWJOINT)
+			{
+				if (jointDirection == JointDirection::REGULAR) return jointState._J;
+				else return (-SE3::Ad(_M * jointState._T[0]))*jointState._J;
+			}
+			else
+			{
+				if (jointDirection == JointDirection::REGULAR) return SE3::InvAd(_Tja)*jointState._J;
+				else return (-SE3::Ad(_Tmj * jointState._T[0]))*jointState._J;
+			}
 		}
 
 		Assembly::Assembly(const Assembly& operand)
@@ -409,6 +464,7 @@ namespace rovin
 			utils::Log(getLinkIndex(baseLinkName) == -1, "입력한 이름을 갖는 Link가 존재하지 않습니다.", true);
 
 			_Tree.clear();
+			_Parent.clear();
 			_ClosedLoopConstraint.clear();
 
 			_complete = true;
@@ -421,13 +477,13 @@ namespace rovin
 				adjacencyList[_Mate[i]._actionLinkIdx].push_back(pair< unsigned int, Model::JointDirection >(i, JointDirection::REVERSE));
 			}
 
-			vector< pair< unsigned int, Model::JointDirection >> parent(_linkPtr.size());
-			vector< unsigned int > depth(_linkPtr.size());
+			_Parent.resize(_linkPtr.size());
+			_Depth.resize(_linkPtr.size());
 			vector< bool > checkLinkVisit(_linkPtr.size()), checkMateVisit(_Mate.size());
 			queue< unsigned int > que;
 			que.push(_baseLink);
 			checkLinkVisit[_baseLink] = true;
-			depth[_baseLink] = 0;
+			_Depth[_baseLink] = 0;
 			while (!que.empty())
 			{
 				unsigned int currentIdx = que.front();
@@ -455,34 +511,34 @@ namespace rovin
 						closedloop.push_back(adjacencyList[currentIdx][i]);
 						unsigned int Idx1 = currentIdx;
 						unsigned int Idx2 = nextIdx;
-						unsigned int depth1 = depth[Idx1];
-						unsigned int depth2 = depth[Idx2];
+						unsigned int depth1 = _Depth[Idx1];
+						unsigned int depth2 = _Depth[Idx2];
 						while (depth1 > depth2)
 						{
-							closedloop.push_front(parent[Idx1]);
-							if (parent[Idx1].second == Model::JointDirection::REGULAR)
-								Idx1 = _Mate[parent[Idx1].first]._mountLinkIdx;
-							else Idx1 = _Mate[parent[Idx1].first]._actionLinkIdx;
+							closedloop.push_front(_Parent[Idx1]);
+							if (_Parent[Idx1].second == Model::JointDirection::REGULAR)
+								Idx1 = _Mate[_Parent[Idx1].first]._mountLinkIdx;
+							else Idx1 = _Mate[_Parent[Idx1].first]._actionLinkIdx;
 							depth1--;
 						}
 						while (depth1 < depth2)
 						{
-							closedloop.push_back(reverseDirection(parent[Idx2]));
-							if (parent[Idx2].second == Model::JointDirection::REGULAR)
-								Idx2 = _Mate[parent[Idx2].first]._mountLinkIdx;
-							else Idx2 = _Mate[parent[Idx2].first]._actionLinkIdx;
+							closedloop.push_back(reverseDirection(_Parent[Idx2]));
+							if (_Parent[Idx2].second == Model::JointDirection::REGULAR)
+								Idx2 = _Mate[_Parent[Idx2].first]._mountLinkIdx;
+							else Idx2 = _Mate[_Parent[Idx2].first]._actionLinkIdx;
 							depth2--;
 						}
 						while (Idx1 != Idx2)
 						{
-							closedloop.push_front(parent[Idx1]);
-							closedloop.push_back(reverseDirection(parent[Idx2]));
-							if (parent[Idx1].second == Model::JointDirection::REGULAR)
-								Idx1 = _Mate[parent[Idx1].first]._mountLinkIdx;
-							else Idx1 = _Mate[parent[Idx1].first]._actionLinkIdx;
-							if (parent[Idx2].second == Model::JointDirection::REGULAR)
-								Idx2 = _Mate[parent[Idx2].first]._mountLinkIdx;
-							else Idx2 = _Mate[parent[Idx2].first]._actionLinkIdx;
+							closedloop.push_front(_Parent[Idx1]);
+							closedloop.push_back(reverseDirection(_Parent[Idx2]));
+							if (_Parent[Idx1].second == Model::JointDirection::REGULAR)
+								Idx1 = _Mate[_Parent[Idx1].first]._mountLinkIdx;
+							else Idx1 = _Mate[_Parent[Idx1].first]._actionLinkIdx;
+							if (_Parent[Idx2].second == Model::JointDirection::REGULAR)
+								Idx2 = _Mate[_Parent[Idx2].first]._mountLinkIdx;
+							else Idx2 = _Mate[_Parent[Idx2].first]._actionLinkIdx;
 							depth1--;
 							depth2--;
 						}
@@ -495,8 +551,8 @@ namespace rovin
 					else
 					{
 						checkLinkVisit[nextIdx] = true;
-						depth[nextIdx] = depth[currentIdx] + 1;
-						parent[nextIdx] = adjacencyList[currentIdx][i];
+						_Depth[nextIdx] = _Depth[currentIdx] + 1;
+						_Parent[nextIdx] = adjacencyList[currentIdx][i];
 						que.push(nextIdx);
 						_Tree.push_back(adjacencyList[currentIdx][i]);
 					}

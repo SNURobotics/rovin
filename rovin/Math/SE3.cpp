@@ -39,8 +39,8 @@ namespace rovin
 		SE3 SE3::operator * (const SE3& operand) const
 		{
 			SE3 result;
-			result._R._e.noalias() = _R._e * operand._R._e;
-			result._p.noalias() = _R._e * operand._p + _p;
+			result._R._e = _R._e * operand._R._e;
+			result._p = _R._e * operand._p + _p;
 			return result;
 		}
 
@@ -54,25 +54,11 @@ namespace rovin
 		const Matrix4 SE3::matrix() const
 		{
 			Matrix4 result;
-			result << _R._e, _p, Affine_const;
-			return result;
-		}
 
-		SE3 SE3::multiply(const SE3& op1, const SE3& op2, const SE3& op3)
-		{
-			SE3 result;
-			Matrix3 tempMatrix;
-			result._R._e.noalias() = (tempMatrix.noalias() = (op1._R._e * op2._R._e).eval()) * op3._R._e;
-			result._p.noalias() = (tempMatrix * op3._p).eval() + (op1._R._e * op2._p).eval() + op1._p;
-			return result;
-		}
+			result.block<3, 3>(0, 0) = _R._e;
+			result.block<3, 1>(0, 3) = _p;
+			result.block<1, 4>(3, 0) = Affine_const;
 
-		SE3 SE3::multiply(const SE3& op1, const SE3& op2, const SE3& op3, const SE3& op4)
-		{
-			SE3 result;
-			Matrix3 tempMatrix1, tempMatrix2;
-			result._R._e.noalias() = (tempMatrix2.noalias() = ((tempMatrix1 = (op1._R._e * op2._R._e).eval()) * op3._R._e).eval()) * op4._R._e;
-			result._p.noalias() = (tempMatrix2 * op4._p).eval() + (tempMatrix1 * op3._p).eval() + (op1._R._e * op2._p).eval() + op1._p;
 			return result;
 		}
 
@@ -111,8 +97,8 @@ namespace rovin
 		SE3 SE3::inverse() const
 		{
 			SE3 result;
-			result._R._e = _R._e.transpose();
-			result._p = -result._R._e * _p;
+			result._R._e = _R._e.transpose().eval();
+			result._p = (-result._R._e) * _p;
 			return result;
 		}
 
@@ -180,7 +166,8 @@ namespace rovin
 			else
 			{
 				Real norm_w = w.norm();
-				Matrix3 Ainv = Matrix3::Identity() - 0.5*Bracket(w) + (1 - (norm_w / 2) / tan(norm_w / 2))*Bracket(w)*Bracket(w) / (norm_w*norm_w);
+				Matrix3 bw = Bracket(w);
+				Matrix3 Ainv = Matrix3::Identity() - 0.5*bw.eval() + (1 - (norm_w / 2) / tan(norm_w / 2))*(bw*bw).eval() / (norm_w*norm_w);
 				result << w, Ainv*T._p;
 			}
 
@@ -191,17 +178,108 @@ namespace rovin
 		{
 			Matrix6 result;
 
-			result << T._R._e, Matrix3::Zero(), Bracket(T._p)*T._R._e, T._R._e;
+			result(0, 0) = T._R._e(0, 0);
+			result(0, 1) = T._R._e(0, 1);
+			result(0, 2) = T._R._e(0, 2);
+
+			result(0, 3) = 0;
+			result(0, 4) = 0;
+			result(0, 5) = 0;
+
+			result(1, 0) = T._R._e(1, 0);
+			result(1, 1) = T._R._e(1, 1);
+			result(1, 2) = T._R._e(1, 2);
+
+			result(1, 3) = 0;
+			result(1, 4) = 0;
+			result(1, 5) = 0;
+
+			result(2, 0) = T._R._e(2, 0);
+			result(2, 1) = T._R._e(2, 1);
+			result(2, 2) = T._R._e(2, 2);
+
+			result(2, 3) = 0;
+			result(2, 4) = 0;
+			result(2, 5) = 0;
+
+			result(3, 0) = -T._p(2)*T._R._e(1, 0) + T._p(1)*T._R._e(2, 0);
+			result(3, 1) = -T._p(2)*T._R._e(1, 1) + T._p(1)*T._R._e(2, 1);
+			result(3, 2) = -T._p(2)*T._R._e(1, 2) + T._p(1)*T._R._e(2, 2);
+
+			result(3, 3) = T._R._e(0, 0);
+			result(3, 4) = T._R._e(0, 1);
+			result(3, 5) = T._R._e(0, 2);
+
+			result(4, 0) = T._p(2)*T._R._e(0, 0) - T._p(0)*T._R._e(2, 0);
+			result(4, 1) = T._p(2)*T._R._e(0, 1) - T._p(0)*T._R._e(2, 1);
+			result(4, 2) = T._p(2)*T._R._e(0, 2) - T._p(0)*T._R._e(2, 2);
+
+			result(4, 3) = T._R._e(1, 0);
+			result(4, 4) = T._R._e(1, 1);
+			result(4, 5) = T._R._e(1, 2);
+
+			result(5, 0) = -T._p(1)*T._R._e(0, 0) + T._p(0)*T._R._e(1, 0);
+			result(5, 1) = -T._p(1)*T._R._e(0, 1) + T._p(0)*T._R._e(1, 1);
+			result(5, 2) = -T._p(1)*T._R._e(0, 2) + T._p(0)*T._R._e(1, 2);
+
+			result(5, 3) = T._R._e(2, 0);
+			result(5, 4) = T._R._e(2, 1);
+			result(5, 5) = T._R._e(2, 2);
 
 			return result;
 		}
 
-		Matrix6 SE3::invAd(const SE3& T)
+		Matrix6 SE3::InvAd(const SE3& T)
 		{
 			Matrix6 result;
-			Matrix3 InvR = T._R.inverse()._e;
-			result << InvR, Matrix3::Zero(),
-				-InvR*Bracket(T._p), InvR;
+
+			result(0, 0) = T._R._e(0, 0);
+			result(0, 1) = T._R._e(1, 0);
+			result(0, 2) = T._R._e(2, 0);
+
+			result(0, 3) = 0;
+			result(0, 4) = 0;
+			result(0, 5) = 0;
+
+			result(1, 0) = T._R._e(0, 1);
+			result(1, 1) = T._R._e(1, 1);
+			result(1, 2) = T._R._e(2, 1);
+
+			result(1, 3) = 0;
+			result(1, 4) = 0;
+			result(1, 5) = 0;
+
+			result(2, 0) = T._R._e(0, 2);
+			result(2, 1) = T._R._e(1, 2);
+			result(2, 2) = T._R._e(2, 2);
+
+			result(2, 3) = 0;
+			result(2, 4) = 0;
+			result(2, 5) = 0;
+
+			result(3, 0) = -T._R._e(1, 0)*T._p(2) + T._R._e(2, 0)*T._p(1);
+			result(3, 1) = T._R._e(0, 0)*T._p(2) - T._R._e(2, 0)*T._p(0);
+			result(3, 2) = -T._R._e(0, 0)*T._p(1) + T._R._e(1, 0)*T._p(0);
+
+			result(3, 3) = T._R._e(0, 0);
+			result(3, 4) = T._R._e(1, 0);
+			result(3, 5) = T._R._e(2, 0);
+
+			result(4, 0) = -T._R._e(1, 1)*T._p(2) + T._R._e(2, 1)*T._p(1);
+			result(4, 1) = T._R._e(0, 1)*T._p(2) - T._R._e(2, 1)*T._p(0);
+			result(4, 2) = -T._R._e(0, 1)*T._p(1) + T._R._e(1, 1)*T._p(0);
+
+			result(4, 3) = T._R._e(0, 1);
+			result(4, 4) = T._R._e(1, 1);
+			result(4, 5) = T._R._e(2, 1);
+
+			result(5, 0) = -T._R._e(1, 2)*T._p(2) + T._R._e(2, 2)*T._p(1);
+			result(5, 1) = T._R._e(0, 2)*T._p(2) - T._R._e(2, 2)*T._p(0);
+			result(5, 2) = -T._R._e(0, 2)*T._p(1) + T._R._e(1, 2)*T._p(0);
+
+			result(5, 3) = T._R._e(0, 2);
+			result(5, 4) = T._R._e(1, 2);
+			result(5, 5) = T._R._e(2, 2);
 
 			return result;
 		}
@@ -213,8 +291,10 @@ namespace rovin
 			so3 w = S.block(0, 0, 3, 1);
 			Vector3 v = S.block(3, 0, 3, 1);
 
-			result << Bracket(w), Matrix3::Zero(),
-				Bracket(v), Bracket(w);
+			result.block<3, 3>(0, 0) = Bracket(w);
+			result.block<3, 3>(0, 3).setZero();
+			result.block<3, 3>(3, 0) = Bracket(v);
+			result.block<3, 3>(3, 3) = Bracket(w);
 
 			return result;
 		}

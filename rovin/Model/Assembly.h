@@ -28,6 +28,8 @@ namespace rovin
 
 		typedef std::shared_ptr< Assembly > AssemblyPtr;
 
+		enum JointDirection { REGULAR, REVERSE };
+
 		/**
 		*	\class Assembly
 		*	\brief Link와 joint를 연결시켜주고 모델에 대한 정보를 저장하는 클래스입니다.
@@ -46,12 +48,17 @@ namespace rovin
 
 				Math::SE3 _Tmj;
 				Math::SE3 _Tja;
-				Math::SE3 _InvTmj;
-				Math::SE3 _InvTja;
+
+				Math::SE3 _M;
 
 				Mate(const Model::JointPtr& joint, const unsigned int mountLinkIdx, const unsigned int actionLinkIdx,
-					const Math::SE3& Tmj, const Math::SE3& Tja) : _joint(joint), _mountLinkIdx(mountLinkIdx), _actionLinkIdx(actionLinkIdx),
-					_Tmj(Tmj), _Tja(Tja), _InvTmj(Tmj.inverse()), _InvTja(Tja.inverse()) {}
+					const Math::SE3& Tmj, const Math::SE3& Tja);
+
+				unsigned int getParentLinkIdx(const JointDirection& jointDirection) const;
+				unsigned int getChildLinkIdx(const JointDirection& jointDirection) const;
+
+				Math::SE3 Assembly::Mate::getTransform(const State::JointState& jointState, const JointDirection& jointDirection) const;
+				Math::Matrix6X getJacobian(const State::JointState& jointState, const JointDirection& jointDirection) const;
 			};
 
 			Assembly(const std::string& assemblyName) : 
@@ -103,6 +110,8 @@ namespace rovin
 			void setAssemblyMode();
 			void completeAssembling(const std::string& baseLinkName);
 
+			static std::pair< unsigned int, JointDirection > reverseDirection(const std::pair< unsigned int, JointDirection >& target);
+
 		private:
 			std::string _assemblyName;
 
@@ -117,6 +126,8 @@ namespace rovin
 
 			unsigned int _baseLink;
 			std::vector< std::pair< unsigned int, Model::JointDirection >> _Tree;
+			std::vector< std::pair< unsigned int, Model::JointDirection >> _Parent;
+			std::vector< unsigned int > _Depth;
 			std::vector< std::vector< std::pair< unsigned int, Model::JointDirection >>> _ClosedLoopConstraint;
 		};
 	}

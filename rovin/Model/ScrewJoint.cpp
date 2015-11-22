@@ -6,7 +6,7 @@ using namespace std;
 namespace rovin {
 	namespace Model {
 		ScrewJoint::ScrewJoint(const std::string & name, unsigned int dof, const Math::MatrixX & axes)
-			:Joint(name, dof)
+			:Joint(JOINTTYPE::SCREWJOINT, name,  dof)
 		{
 			if (axes.rows() == 6 && axes.cols() == _dof)
 			{
@@ -68,9 +68,7 @@ namespace rovin {
 
 		void ScrewJoint::adjointAxes(const Math::SE3 & TransformFromJoint)
 		{
-			for (unsigned int i = 0; i < _dof; i++)
-				_axes.col(i) = Math::SE3::invAd(TransformFromJoint)*_axes.col(i);
-			return;
+			_axes = Math::SE3::Ad(TransformFromJoint) * _axes;
 		}
 
 		ScrewJoint & rovin::Model::ScrewJoint::operator=(const ScrewJoint & otherJoint)
@@ -153,7 +151,7 @@ namespace rovin {
 				for (unsigned i = _dof - 1; i > 0; i--)
 				{
 					T = Math::SE3::Exp(_axes.col(i), state[i]) * T;
-					J.col(i - 1) = Math::SE3::invAd(T) * _axes.col(i - 1);
+					J.col(i - 1) = Math::SE3::InvAd(T) * _axes.col(i - 1);
 				}
 			}
 			else
@@ -174,53 +172,38 @@ namespace rovin {
 			return Math::MatrixX();
 		}
 
-		void ScrewJoint::updateForwardKinematics(State::JointState & state, JointDirection direction, bool position, bool velocity, bool acceleration) const
+		void ScrewJoint::updateForwardKinematics(State::JointState & state, bool transform, bool jacobian, bool jacobiandot) const
 		{
 			if (_dof == 0)
 				return;
 
-			if (position)
+			if ((transform | jacobian | jacobiandot) && !state.isUpdated(true, false, false))
 			{
 				//	In most case, it has regular direction and single DOF.
-				if (direction == REGULAR)
-				{
-					state._T[_dof - 1] = Math::SE3::Exp(_axes.col(_dof - 1), state._q[_dof - 1]);
-					for (unsigned int i = 1; i < _dof; i++)
-						state._T[_dof - 1 - i] = Math::SE3::Exp(_axes.col(_dof - 1 - i), state._q[_dof - 1 - i]) * state._T[_dof - i];
-				}
-				else
-				{
-					state._T[_dof - 1] = Math::SE3::Exp(_axes.col(0), -state._q[0]);
-					for (unsigned int i = 1; i < _dof; i++)
-						state._T[_dof - 1 - i] = Math::SE3::Exp(_axes.col(i), -state._q[i]) * state._T[_dof - i];
-				}
+				const Math::VectorX &q = state.getq();
+				state._T[_dof - 1] = Math::SE3::Exp(_axes.col(_dof - 1), q[_dof - 1]);
+				for (unsigned int i = 1; i < _dof; i++)
+					state._T[_dof - 1 - i] = Math::SE3::Exp(_axes.col(_dof - 1 - i), q[_dof - 1 - i]) * state._T[_dof - i];
+				state.TUpdated();
 			}
 
-			if (velocity)
+			if ((jacobian | jacobiandot) && !state.isUpdated(false, true, false))
 			{
-				//	xdot = Jacobian * qdot;
-				if (direction == REGULAR)
-				{
-					state._v = _axes.col(_dof - 1) * state._qdot[_dof - 1];
-					for (unsigned int i = 1; i < _dof; i++)
-						state._v += Math::SE3::invAd(state._T[_dof - i]) * (_axes.col(_dof - 1 - i) * state._qdot[_dof - 1 - i]);
-				}
-				else
-				{
-					state._v = _axes.col(0) * -state._qdot[0];
-					for (unsigned int i = 1; i < _dof; i++)
-						state._v += Math::SE3::invAd(state._T[_dof - i]) * (_axes.col(i) * -state._qdot[i]);
-				}
-
+				//	Jacobian;
+				state._J.col(_dof - 1) = _axes.col(_dof - 1);
+				for (unsigned int i = 1; i < _dof; i++)
+					state._J.col(_dof - 1 - i) = Math::SE3::InvAd(state._T[_dof - i]) * _axes.col(_dof - 1 - i);
+				state.JUpdated();
 			}
 
-			if (acceleration)
+			if (jacobiandot && !state.isUpdated(false, false, true))
 			{
 				//	TODO
+				state.JdotUpdated();
 			}
 		}
 
-		Math::Matrix6X ScrewJoint::getJacobian(State::JointState & state, JointDirection direction, bool updateTransform) const
+		Math::Matrix6X ScrewJoint::getJacobian(State::JointState & state, bool updateTransform) const
 		{
 			Math::MatrixX	J(6, _dof);
 			if (_dof == 0)
@@ -229,20 +212,11 @@ namespace rovin {
 				return J;
 			}
 			else if (updateTransform)
-				updateForwardKinematics(state, direction, true);
+				updateForwardKinematics(state, true);
 
-			if (direction == REGULAR)
-			{
-				J.col(_dof - 1) = _axes.col(_dof - 1);
-				for (unsigned int i = 1; i < _dof; i++)
-					J.col(_dof - 1 - i) = Math::SE3::invAd(state._T[_dof - i]) * _axes.col(_dof - 1 - i);
-			}
-			else
-			{
-				J.col(0) = -_axes.col(0);
-				for (unsigned int i = 1; i < _dof; i++)
-					J.col(i) = Math::SE3::invAd(state._T[_dof-i]) * (-_axes.col(i));
-			}
+			J.col(_dof - 1) = _axes.col(_dof - 1);
+			for (unsigned int i = 1; i < _dof; i++)
+				J.col(_dof - 1 - i) = Math::SE3::InvAd(state._T[_dof - i]) * _axes.col(_dof - 1 - i);
 
 			return Math::Matrix6X();
 		}

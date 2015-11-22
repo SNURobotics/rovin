@@ -18,13 +18,15 @@ using namespace rovin::Model;
 
 AssemblyPtr robot;
 
-unsigned int _DOF = 6;
+unsigned int _DOF = 60;
 
 void Modeling(unsigned int);
 
 int main()
 {
 	srand(time(NULL));
+
+	cout << SE3::InvAd(SE3::Exp(so3(1, 2, 3), Vector3(1, 2, 3))) << endl;
 
 	Modeling(_DOF);
 
@@ -44,7 +46,11 @@ int main()
 
 	//fourBar->Solve_Closedloop_Constraint(state);
 
-	PERFORM_TEST(rovin::Kinematics::solveForwardKinematics(*robot, *state), 1e+6);
+	PERFORM_TEST(rovin::Kinematics::solveForwardKinematics(*robot, *state), 2e+5);
+	PERFORM_TEST(rovin::Kinematics::solveForwardKinematics(*robot, *state), 2e+5);
+	PERFORM_TEST(rovin::Kinematics::solveForwardKinematics(*robot, *state), 2e+5);
+	PERFORM_TEST(rovin::Kinematics::solveForwardKinematics(*robot, *state), 2e+5);
+	PERFORM_TEST(rovin::Kinematics::solveForwardKinematics(*robot, *state), 2e+5);
 
 	return 0;
 }

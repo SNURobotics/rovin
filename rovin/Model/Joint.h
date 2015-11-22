@@ -25,8 +25,6 @@ namespace rovin
 
 		typedef std::shared_ptr< Joint > JointPtr;
 
-		enum JointDirection {REGULAR, REVERSE};
-
 		/**
 		*	\class Joint
 		*	\brief Joint class specify kinematic information about general mechanical joints.
@@ -36,7 +34,9 @@ namespace rovin
 			friend class Assembly;
 
 		public:
-			Joint(const std::string& name = std::string(""), unsigned int dof = 0);
+			enum JOINTTYPE { NONE, SCREWJOINT };
+
+			Joint(const JOINTTYPE& jointType = JOINTTYPE::NONE, const std::string& name = std::string(""), unsigned int dof = 0);
 			Joint(const Joint& otherJoint);
 			virtual ~Joint() = default;
 
@@ -50,8 +50,9 @@ namespace rovin
 			bool	setConstDamper(const Math::VectorX& values);
 			bool	setConstFriction(const Math::VectorX& values);
 
-			const std::string&	getName() const		{ return _name; }
-			unsigned int		getDOF() const		{ return _dof; }
+			const JOINTTYPE&	getJointType() const { return _jointType; }
+			const std::string&	getName() const			{ return _name; }
+			unsigned int		getDOF() const			{ return _dof; }
 
 			const Math::VectorX&	getLimitPosLower() const	{ return _LimitPosLower; }
 			const Math::VectorX&	getLimitPosUpper() const	{ return _LimitPosUpper; }
@@ -71,11 +72,13 @@ namespace rovin
 			virtual Math::Matrix6X getJacobian(const Math::VectorX& state, bool isReversed = false) const = 0;
 			virtual Math::Matrix6X getJacobianDot(const Math::VectorX& state) const = 0;
 
-			virtual void	updateForwardKinematics(State::JointState& state, JointDirection direction = REGULAR, bool position = true, bool velocity = false, bool acceleration = false) const = 0;
-			virtual Math::Matrix6X getJacobian(State::JointState& state, JointDirection direction = REGULAR, bool updateTransform = false) const = 0;
+			virtual void	updateForwardKinematics(State::JointState& state, bool transform = true, bool jacobian = false, bool jacobiandot = false) const = 0;
+			virtual Math::Matrix6X getJacobian(State::JointState& state, bool updateTransform = false) const = 0;
 
 		protected:
 			bool setName(const std::string& otherName);
+
+			JOINTTYPE _jointType;
 
 			///	Unique string representation of joint.
 			std::string		_name;

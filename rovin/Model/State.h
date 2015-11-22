@@ -23,7 +23,7 @@ namespace rovin
 
 		class State
 		{
-			friend Assembly;
+			friend class Assembly;
 
 		public:
 			class LinkState
@@ -42,17 +42,35 @@ namespace rovin
 
 				unsigned int _dof;
 
-				Math::VectorX _q;
-				Math::VectorX _qdot;
 				Math::VectorX _qddot;
-
 				Math::VectorX _tau;
-
 				Math::dse3 _constraintF;
 
 				std::vector< Math::SE3 > _T;
-				Math::se3 _v;
+				Math::Matrix6X _J;
+				Math::Matrix6X _Jdot;
 
+				void setq(const Math::VectorX& q) { _q = q; _TUpdated = _TUpdated = _TUpdated = false; }
+				void setqdot(const Math::VectorX& qdot) { _qdot = qdot; _TUpdated = false; }
+
+				void addq(const Math::VectorX& q) { _q += q;_TUpdated = _TUpdated = _TUpdated = false; }
+				void addqdot(const Math::VectorX& qdot) { _qdot += qdot; _TUpdated = false; }
+
+				const Math::VectorX& getq() const { return _q; }
+				const Math::VectorX& getqdot() const { return _qdot; }
+				
+				bool isUpdated(bool transform, bool jacobian, bool jacobiandot) const { return (!transform | _TUpdated) & (!jacobian | _JUpdated) & (!jacobiandot | _JdotUpdated); }
+				void TUpdated() { _TUpdated = true; }
+				void JUpdated() { _JUpdated = true; }
+				void JdotUpdated() { _JdotUpdated = true; }
+
+			private:
+				Math::VectorX _q;
+				Math::VectorX _qdot;
+
+				bool _TUpdated;
+				bool _JUpdated;
+				bool _JdotUpdated;
 			};
 
 			enum RETURN_STATE

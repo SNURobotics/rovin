@@ -17,19 +17,31 @@ namespace rovin
 		{
 			_dof = dof;
 
-			_q = Math::VectorX(dof);
-			_qdot = Math::VectorX(dof);
-			_qddot = Math::VectorX(dof);
+			if (dof != 0)
+			{
+				_q = Math::VectorX(dof);
+				_qdot = Math::VectorX(dof);
+				_qddot = Math::VectorX(dof);
 
-			_tau = Math::VectorX(dof);
+				_tau = Math::VectorX(dof);
 
-			_q.setZero();
-			_qdot.setZero();
-			_qddot.setZero();
-			_tau.setZero();
+				_q.setZero();
+				_qdot.setZero();
+				_qddot.setZero();
+				_tau.setZero();
+
+				_T = vector< Math::SE3 >(dof);
+				_J = Math::Matrix6X(6, dof);
+
+				_TUpdated = _JUpdated = _JdotUpdated = false;
+			}
+			else
+			{
+				_TUpdated = _JUpdated = _JdotUpdated = true;
+			}
+
 			_constraintF.setZero();
 
-			_T = vector< Math::SE3 >(dof);
 		}
 
 		State::State(const vector< string >& linkNameList, const vector< pair< string, unsigned int >>& jointNameList)
@@ -147,6 +159,8 @@ namespace rovin
 				{
 					Idx = i;
 					flag = true;
+
+					utils::Log(_jointState[_passiveJointList[Idx]]._dof == 0, "Active joint의 Dof는 0이면 안됩니다.", true);
 				}
 			}
 
@@ -231,7 +245,7 @@ namespace rovin
 		{
 			for (unsigned int i = 0; i < _activeJointList.size(); i++)
 			{
-				_jointState[_activeJointList[i]]._q = q.block(_stateIndex[_activeJointList[i]], 0, _jointState[_activeJointList[i]]._dof, 1);
+				_jointState[_activeJointList[i]].setq(q.block(_stateIndex[_activeJointList[i]], 0, _jointState[_activeJointList[i]]._dof, 1));
 			}
 		}
 
@@ -239,7 +253,8 @@ namespace rovin
 		{
 			for (unsigned int i = 0; i < _passiveJointList.size(); i++)
 			{
-				_jointState[_passiveJointList[i]]._q = q.block(_stateIndex[_passiveJointList[i]], 0, _jointState[_passiveJointList[i]]._dof, 1);
+				if (_jointState[_passiveJointList[i]]._dof == 0) continue;
+				_jointState[_passiveJointList[i]].setq(q.block(_stateIndex[_passiveJointList[i]], 0, _jointState[_passiveJointList[i]]._dof, 1));
 			}
 		}
 
@@ -247,7 +262,7 @@ namespace rovin
 		{
 			for (unsigned int i = 0; i < _activeJointList.size(); i++)
 			{
-				_jointState[_activeJointList[i]]._q += q.block(_stateIndex[_activeJointList[i]], 0, _jointState[_activeJointList[i]]._dof, 1);
+				_jointState[_activeJointList[i]].addq(q.block(_stateIndex[_activeJointList[i]], 0, _jointState[_activeJointList[i]]._dof, 1));
 			}
 		}
 
@@ -255,7 +270,8 @@ namespace rovin
 		{
 			for (unsigned int i = 0; i < _passiveJointList.size(); i++)
 			{
-				_jointState[_passiveJointList[i]]._q += q.block(_stateIndex[_passiveJointList[i]], 0, _jointState[_passiveJointList[i]]._dof, 1);
+				if (_jointState[_passiveJointList[i]]._dof == 0) continue;
+				_jointState[_passiveJointList[i]].addq(q.block(_stateIndex[_passiveJointList[i]], 0, _jointState[_passiveJointList[i]]._dof, 1));
 			}
 		}
 
