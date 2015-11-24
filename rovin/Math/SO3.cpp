@@ -192,7 +192,8 @@ namespace rovin
 		{
 			so3 result;
 
-			if (R._e.isApprox(R._e.transpose()))
+			Real trc = R._e.trace();
+			if (std::abs(trc + 1.0) < RealEps || std::abs(trc - 3.0) < RealEps)
 			{
 				if (R._e.isApprox(Matrix3::Identity()))
 				{

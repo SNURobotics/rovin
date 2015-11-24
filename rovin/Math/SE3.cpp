@@ -157,18 +157,69 @@ namespace rovin
 		{
 			se3 result;
 
-			so3 w = SO3::Log(T._R);
+			Real theta = 0.5*(T._R._e(0, 0) + T._R._e(1, 1) + T._R._e(2, 2) - 1.0), t_st;
 
-			if (w.norm() < RealEps)
+			if (theta < RealEps - 1.0)
 			{
-				result << w, T._p;
+				Real w[3];
+				if (T._R._e(0, 0) > 1.0 - RealEps)
+				{
+					w[0] = PI;
+					w[1] = w[2] = 0.0;
+				}
+				else if (T._R._e(1, 1) > 1.0 - RealEps)
+				{
+					w[1] = PI;
+					w[0] = w[2] = 0.0;
+				}
+				else if (T._R._e(2, 2) > 1.0 - RealEps)
+				{
+					w[2] = PI;
+					w[0] = w[1] = 0.0;
+				}
+				else
+				{
+					w[0] = PI_DIVIDED_BY_SQRT2 * sqrt((T._R._e(1, 0) * T._R._e(1, 0) + T._R._e(2, 0) * T._R._e(2, 0)) / (1.0 - T._R._e(0, 0)));
+					w[1] = PI_DIVIDED_BY_SQRT2 * sqrt((T._R._e(0 ,1) * T._R._e(0, 1) + T._R._e(2, 1) * T._R._e(2, 1)) / (1.0 - T._R._e(1, 1)));
+					w[2] = PI_DIVIDED_BY_SQRT2 * sqrt((T._R._e(0, 2) * T._R._e(0, 2) + T._R._e(1, 2) * T._R._e(1, 2)) / (1.0 - T._R._e(2, 2)));
+				}
+				Real w2[] = { w[0] * w[0], w[1] * w[1], w[2] * w[2] }, w3[] = { w2[0] * w[0], w2[1] * w[1], w2[2] * w[2] }, v[] = { w[1] * w[2], w[2] * w[0], w[0] * w[1] };
+				Real id = (Real)0.25 * PI_SQUARE / (w2[0] * w2[0] + w2[1] * w2[1] + w2[2] * w2[2] + 2.0 * (w2[0] * w2[1] + w2[1] * w2[2] + w2[2] * w2[0]));
+				Real p[] = { T._p(0) * id, T._p(1) * id, T._p(2) * id };
+
+				result(0) = w[0];
+				result(1) = w[1];
+				result(2) = w[2];
+				result(3) = 2.0 * (2.0 * w2[0] * p[0] + (w3[2] + v[1] * w[0] + v[0] * w[1] + 2.0 * v[2]) * p[1] + (2.0 * v[1] - w3[1] - w[0] * v[2] - w[2] * v[0]) * p[2]);
+				result(4) = 2.0 * ((2.0 * v[2] - w3[2] - v[0] * w[1] - v[1] * w[0]) * p[0] + 2.0 * w2[1] * p[1] + (w3[0] + w[2] * v[1] + v[2] * w[1] + 2.0 * v[0]) * p[2]);
+				result(5) = 2.0 * ((w[0] * v[2] + w[2] * v[0] + 2.0 * v[1] + w3[1]) * p[0] + (2.0 * v[0] - w3[0] - v[2] * w[1] - w[2] * v[1]) * p[1] + 2.0 * w2[2] * p[2]);
 			}
 			else
 			{
-				Real norm_w = w.norm();
-				Matrix3 bw = Bracket(w);
-				Matrix3 Ainv = Matrix3::Identity() - 0.5*bw.eval() + (1 - (norm_w / 2) / tan(norm_w / 2))*(bw*bw).eval() / (norm_w*norm_w);
-				result << w, Ainv*T._p;
+				if (theta > 1.0)
+				{
+					theta = 1.0;
+				}
+				else if (theta < -1.0)
+				{
+					theta = -1.0;
+				}
+				//
+				theta = acos(theta);
+				if (theta < RealEps)	t_st = (Real)3.0 / ((Real)6.0 - theta * theta);
+				else					t_st = theta / (2.0 * sin(theta));
+				Real stct, st = sin(theta), w[] = { T._R._e(2, 1) - T._R._e(1, 2), T._R._e(0, 2) - T._R._e(2, 0), T._R._e(1, 0) - T._R._e(0, 1) }, w2[] = { w[0] * w[0], w[1] * w[1], w[2] * w[2] }, w3[] = { w[1] * w[2], w[2] * w[0], w[0] * w[1] };
+				w[0] = t_st * w[0];	w[1] = t_st * w[1];	w[2] = t_st * w[2];
+
+				if (theta < RealEps)	stct = theta / 48.0;
+				else					stct = (2.0 * st - theta * (1.0 + cos(theta))) / (8.0 * st * st * st);
+
+				result(0) = w[0];
+				result(1) = w[1];
+				result(2) = w[2];
+				result(3) = (1.0 - stct * (w2[1] + w2[2])) * T._p(0) + (0.5 * w[2] + stct * w3[2]) * T._p(1) + (stct * w3[1] - 0.5 * w[1]) * T._p(2);
+				result(4) = (stct * w3[2] - 0.5 * w[2]) * T._p(0) + (1.0 - stct * (w2[0] + w2[2])) * T._p(1) + (0.5 * w[0] + stct * w3[0]) * T._p(2);
+				result(5) = (0.5 * w[1] + stct * w3[1]) * T._p(0) + (stct * w3[0] - 0.5 * w[0]) * T._p(1) + (1.0 - stct * (w2[1] + w2[0])) * T._p(2);
 			}
 
 			return result;

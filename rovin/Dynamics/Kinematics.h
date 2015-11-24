@@ -29,7 +29,16 @@ namespace rovin
 		static void solveInverseKinematics(const Model::Assembly& assem, Model::State& state, const Math::SE3& goalT, const unsigned int targetLinkIndex, int referenceLinkIndex = (-1));
 
 		static void solveForwardKinematics(const Model::SerialOpenChainAssembly& assem, Model::State& state);
+		static void solveDifferentialForwardKinematics(const Model::SerialOpenChainAssembly& assem, Model::State& state);
 		static Math::SE3 calculateEndeffectorFrame(const Model::SerialOpenChainAssembly& assem, Model::State& state);
+		static Math::se3 calculateEndeffectorVelocity(const Model::SerialOpenChainAssembly& assem, Model::State& state);
+
+		static Math::Matrix6X computJacobian(const Model::SerialOpenChainAssembly& assem, Model::State& state);
+		static std::pair< Math::SE3, Math::Matrix6X > computeTransformNJacobian(const Model::SerialOpenChainAssembly& assem, Model::State& state);
+		static void solveInverseKinematics(const Model::SerialOpenChainAssembly& assem, Model::State& state, const Math::SE3 goalT);
+
+		static void solveInverseDynamics(const Model::SerialOpenChainAssembly& assem, Model::State& state, const std::vector< Real >& qddot = std::vector< Real >(), const std::vector< std::pair < unsigned int, Math::dse3 >>& F = vector< std::pair < unsigned int, Math::dse3 >>(), bool isFVComputed = false);
+
 	private:
 		virtual ~Kinematics() = 0;
 	};

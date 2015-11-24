@@ -23,6 +23,8 @@ void Modeling();
 
 int main()
 {
+	SE3 goalT;
+
 	Modeling();
 
 	StatePtr state = openchain->makeState();
@@ -32,6 +34,18 @@ int main()
 	state->setActiveJointq(q);
 
 	rovin::Kinematics::solveForwardKinematics(*openchain, *state);
+	goalT = state->getLinkState("L4")._T;
+	cout << state->getLinkState("L4")._T << endl;
+
+	q << PI / 4, PI /3, -PI / 6;
+	state->setActiveJointq(q);
+
+	rovin::Kinematics::solveForwardKinematics(*openchain, *state);
+	cout << state->getLinkState("L4")._T << endl;
+
+	rovin::Kinematics::solveInverseKinematics(*openchain, *state, goalT);
+	rovin::Kinematics::solveForwardKinematics(*openchain, *state);
+	cout << state->getLinkState("L4")._T << endl;
 
 	SimpleOSG renderer(*openchain, *state, 600, 600);
 	renderer._viewer.run();

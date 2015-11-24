@@ -47,9 +47,9 @@ int main()
 
 	//fourBar->Solve_Closedloop_Constraint(state);
 
-	PERFORM_TEST(rovin::Kinematics::calculateEndeffectorFrame(*robot, *state), 2e+5);
-	PERFORM_TEST(rovin::Kinematics::calculateEndeffectorFrame(*robot, *state), 2e+5);
-	PERFORM_TEST(rovin::Kinematics::calculateEndeffectorFrame(*robot, *state), 2e+5);
+	PERFORM_TEST(rovin::Kinematics::solveForwardKinematics(*robot, *state), 2e+5);
+	PERFORM_TEST(rovin::Kinematics::solveForwardKinematics(*robot, *state), 2e+5);
+	PERFORM_TEST(rovin::Kinematics::solveForwardKinematics(*robot, *state), 2e+5);
 	PERFORM_TEST(rovin::Kinematics::solveForwardKinematics(*robot_gen, *state), 2e+5);
 	PERFORM_TEST(rovin::Kinematics::solveForwardKinematics(*robot_gen, *state), 2e+5);
 	PERFORM_TEST(rovin::Kinematics::solveForwardKinematics(*robot_gen, *state), 2e+5);
@@ -70,5 +70,5 @@ void Modeling(unsigned int DOF)
 		robot->addMate(shared_ptr< Joint >(new RevoluteJoint("J" + to_string(i))), "L" + to_string(i - 1), "L" + to_string(i), SE3(), SE3());
 	}
 
-	robot->completeAssembling("L1");
+	robot->completeAssembling("L0");
 }

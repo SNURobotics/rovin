@@ -275,7 +275,7 @@ namespace rovin
 		while (true)
 		{
 			TnJ = computeTransformNJacobian(assem, state, targetLinkIndex, referenceLinkIndex);
-			if ((S = SE3::Log(goalT * TnJ.first.inverse())).squaredNorm() < RealEps)
+			if ((S = SE3::Log(goalT * TnJ.first.inverse())).norm() < InverseKinematicsExitCondition)
 				break;
 			state.addActiveJointq(pInv(TnJ.second) * S);
 		}
@@ -303,5 +303,43 @@ namespace rovin
 			T *= assem.getTransform(mateIdx, state.getJointStateByMateIndex(mateIdx));
 		}
 		return T * assem._socLink[assem._endeffectorLink]._M;
+	}
+
+	Matrix6X Kinematics::computJacobian(const Model::SerialOpenChainAssembly& assem, Model::State& state)
+	{
+		return computeTransformNJacobian(assem, state).second;
+	}
+
+	pair< SE3, Matrix6X > Kinematics::computeTransformNJacobian(const Model::SerialOpenChainAssembly& assem, Model::State& state)
+	{
+		MatrixX J(6, state.returnDof(State::ACTIVEJOINT));
+
+		SE3 T;
+		for (unsigned int i = 0; i < assem._Mate.size(); i++)
+		{
+			unsigned int mateIdx = assem._Tree[i].first;
+
+			state.writeReturnMatrix(J,
+				SE3::Ad(T) * assem.getJacobian(mateIdx, state.getJointStateByMateIndex(mateIdx)),
+				0,
+				state.getJointIndexByMateIndex(mateIdx),
+				State::ACTIVEJOINT);
+			T *= assem.getTransform(mateIdx, state.getJointStateByMateIndex(mateIdx));
+		}
+
+		return pair< SE3, Matrix6X >(T * assem._socLink[assem._endeffectorLink]._M, J);
+	}
+
+	void Kinematics::solveInverseKinematics(const Model::SerialOpenChainAssembly& assem, Model::State& state, const Math::SE3 goalT)
+	{
+		VectorX S;
+		pair< SE3, Matrix6X > TnJ;
+		while (true)
+		{
+			TnJ = computeTransformNJacobian(assem, state);
+			if ((S = SE3::Log(goalT * TnJ.first.inverse())).norm() < InverseKinematicsExitCondition)
+				break;
+			state.addActiveJointq(pInv(TnJ.second) * S);
+		}
 	}
 }
