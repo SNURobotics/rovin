@@ -5,6 +5,7 @@
 #include <rovin/Math/Constant.h>
 #include <rovin/Math/LinearAlgebra.h>
 #include <rovin/Model/Assembly.h>
+#include <rovin/Model/SerialOpenChainAssembly.h>
 #include <rovin/Model/State.h>
 
 namespace rovin
@@ -16,7 +17,7 @@ namespace rovin
 		static Math::MatrixX computeClosedLoopConstraintJacobian(const Model::Assembly& assem, Model::State& state, const Model::State::RETURN_STATE& return_state);
 		static void solveClosedLoopConstraint(const Model::Assembly& assem, Model::State& state);
 
-		//	Update position and velocity of each link which are corresponding to input state.
+		//	Update position of each link which are corresponding to input state.
 		static void solveForwardKinematics(const Model::Assembly& assem, Model::State& state);
 
 		// Active Joint에 대해서 Jacobian을 구합니다. Closed Loop Constraint가 존재하는 경우에는 조건까지 포함하여 jacobian을 구해줍니다.
@@ -26,6 +27,9 @@ namespace rovin
 
 		static void solveInverseKinematics(const Model::Assembly& assem, Model::State& state, const Math::SE3& goalT, const std::string& targetLinkName, const std::string& referenceLinkName = (""));
 		static void solveInverseKinematics(const Model::Assembly& assem, Model::State& state, const Math::SE3& goalT, const unsigned int targetLinkIndex, int referenceLinkIndex = (-1));
+
+		static void solveForwardKinematics(const Model::SerialOpenChainAssembly& assem, Model::State& state);
+		static Math::SE3 getEndeffectorFrame(const Model::SerialOpenChainAssembly& assem, Model::State& state);
 	private:
 		virtual ~Kinematics() = 0;
 	};

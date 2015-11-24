@@ -28,7 +28,8 @@ namespace rovin
 
 		typedef std::shared_ptr< Assembly > AssemblyPtr;
 
-		enum JointDirection { REGULAR, REVERSE };
+		enum JointDirection			{ REGULAR, REVERSE };
+		enum JointReferenceFrame	{ JOINTFRAME=0, SPATIAL=1, BODY=2 };
 
 		/**
 		*	\class Assembly
@@ -49,16 +50,11 @@ namespace rovin
 				Math::SE3 _Tmj;
 				Math::SE3 _Tja;
 
-				Math::SE3 _M;
-
 				Mate(const Model::JointPtr& joint, const unsigned int mountLinkIdx, const unsigned int actionLinkIdx,
 					const Math::SE3& Tmj, const Math::SE3& Tja);
 
-				unsigned int getParentLinkIdx(const JointDirection& jointDirection) const;
-				unsigned int getChildLinkIdx(const JointDirection& jointDirection) const;
-
-				Math::SE3 Assembly::Mate::getTransform(const State::JointState& jointState, const JointDirection& jointDirection) const;
-				Math::Matrix6X getJacobian(const State::JointState& jointState, const JointDirection& jointDirection) const;
+				unsigned int getParentLinkIdx(const JointDirection& jointDirection = JointDirection::REGULAR) const;
+				unsigned int getChildLinkIdx(const JointDirection& jointDirection = JointDirection::REGULAR) const;
 			};
 
 			Assembly(const std::string& assemblyName) : 
@@ -110,9 +106,13 @@ namespace rovin
 			void setAssemblyMode();
 			void completeAssembling(const std::string& baseLinkName);
 
+			Math::SE3 getTransform(const unsigned int mateIdx, State::JointState& jointState, const JointDirection& jointDirection) const;
+			Math::Matrix6X getJacobian(const unsigned int mateIdx, State::JointState& jointState, const JointDirection& jointDirection) const;
+			Math::Matrix6X getJacobianDot(const unsigned int mateIdx, State::JointState& jointState, const JointDirection& jointDirection) const;
+
 			static std::pair< unsigned int, JointDirection > reverseDirection(const std::pair< unsigned int, JointDirection >& target);
 
-		private:
+		protected:
 			std::string _assemblyName;
 
 			bool _complete;

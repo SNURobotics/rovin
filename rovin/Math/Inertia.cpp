@@ -111,7 +111,7 @@ namespace rovin
 
 		void Inertia::changeFrame(const SE3& T)
 		{
-			(Matrix6)(*this) = SE3::Ad(T).transpose() * (Matrix6)(*this) * SE3::Ad(T);
+			(Matrix6)(*this) = SE3::InvAd(T).transpose() * (Matrix6)(*this) * SE3::InvAd(T);
 		}
 	}
 }

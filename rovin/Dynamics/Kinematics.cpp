@@ -23,11 +23,8 @@ namespace rovin
 			for (unsigned int j = 0; j < assem._ClosedLoopConstraint[i].size(); j++)
 			{
 				unsigned int mateIdx = assem._ClosedLoopConstraint[i][j].first;
-				const Assembly::Mate&	mate = assem._Mate[mateIdx];
 
-				mate._joint->updateForwardKinematics(state.getJointStateByMateIndex(mateIdx), true);
-
-				T *= mate.getTransform(state.getJointStateByMateIndex(mateIdx), assem._ClosedLoopConstraint[i][j].second);
+				T *= assem.getTransform(mateIdx, state.getJointStateByMateIndex(mateIdx), assem._ClosedLoopConstraint[i][j].second);
 			}
 			f.block<6, 1>(i * 6, 0) = SE3::Log(T);
 		}
@@ -44,23 +41,20 @@ namespace rovin
 		for (unsigned int i = 0; i < assem._ClosedLoopConstraint.size(); i++)
 		{
 			T = SE3();
-			for (int j = assem._ClosedLoopConstraint[i].size() - 1; j >= 0; j--)
+			for (unsigned int j = 0; j < assem._ClosedLoopConstraint[i].size(); j++)
 			{
 				unsigned int mateIdx = assem._ClosedLoopConstraint[i][j].first;
-				const Assembly::Mate&	mate = assem._Mate[mateIdx];
 
-				mate._joint->updateForwardKinematics(state.getJointStateByMateIndex(mateIdx), false, true);
-
-				if (mate._joint->getDOF() != 0)
+				if (assem._Mate[mateIdx]._joint->getDOF() != 0)
 				{
 					state.writeReturnMatrix(J,
-						SE3::InvAd(T) * mate.getJacobian(state.getJointStateByMateIndex(mateIdx), assem._ClosedLoopConstraint[i][j].second),
+						SE3::Ad(T) * assem.getJacobian(mateIdx, state.getJointStateByMateIndex(mateIdx), assem._ClosedLoopConstraint[i][j].second),
 						6 * i,
 						state.getJointIndexByMateIndex(mateIdx),
 						return_state);
 				}
 
-				T = mate.getTransform(state.getJointStateByMateIndex(mateIdx), assem._ClosedLoopConstraint[i][j].second) * T;
+				T *= assem.getTransform(mateIdx, state.getJointStateByMateIndex(mateIdx), assem._ClosedLoopConstraint[i][j].second);
 			}
 		}
 		return J;
@@ -84,15 +78,11 @@ namespace rovin
 		for (unsigned int i = 0; i < assem._Tree.size(); i++)
 		{
 			unsigned int mateIdx = assem._Tree[i].first;
-			const Assembly::Mate&	mate = assem._Mate[mateIdx];
-
-			//	update transform and local velocity of each joint
-			mate._joint->updateForwardKinematics(state.getJointStateByMateIndex(mateIdx), true, true);
 
 			//	update link state by propagation
-			state.getLinkState(mate.getChildLinkIdx(assem._Tree[i].second))._T = 
-				state.getLinkState(mate.getParentLinkIdx(assem._Tree[i].second))._T * 
-				mate.getTransform(state.getJointStateByMateIndex(mateIdx), assem._Tree[i].second);
+			state.getLinkState(assem._Mate[mateIdx].getChildLinkIdx(assem._Tree[i].second))._T =
+				state.getLinkState(assem._Mate[mateIdx].getParentLinkIdx(assem._Tree[i].second))._T *
+				assem.getTransform(mateIdx, state.getJointStateByMateIndex(mateIdx), assem._Tree[i].second);
 		}
 	}
 
@@ -106,7 +96,6 @@ namespace rovin
 		{
 			targetLinkIdx = assem.getLinkIndexByMarkerName(targetLinkMarkerName);
 			utils::Log(targetLinkIdx == -1, "targetLinkMarkerName은 링크의 이름이거나 마커의 이름이어야 합니다.", true);
-			isMarker = true;
 		}
 
 		if (referenceLinkMarkerName.compare("") == 0)
@@ -120,12 +109,13 @@ namespace rovin
 			{
 				referenceLinkIdx = assem.getLinkIndexByMarkerName(referenceLinkMarkerName);
 				utils::Log(referenceLinkIdx == -1, "referenceLinkMarkerName은 링크의 이름이거나 마커의 이름이어야 합니다.", true);
+				isMarker = true;
 			}
 		}
 
 		if(!isMarker)
 			return computeJacobian(assem, state, targetLinkIdx, referenceLinkIdx);
-		return SE3::Ad(assem.getLinkPtr(targetLinkIdx)->getMarker(targetLinkMarkerName))*computeJacobian(assem, state, targetLinkIdx, referenceLinkIdx);
+		return SE3::Ad(assem.getLinkPtr(referenceLinkIdx)->getMarker(referenceLinkMarkerName))*computeJacobian(assem, state, targetLinkIdx, referenceLinkIdx);
 	}
 
 	Matrix6X Kinematics::computeJacobian(const Model::Assembly& assem, Model::State& state, unsigned int targetLinkIndex, int referenceLinkIndex)
@@ -154,7 +144,7 @@ namespace rovin
 			unsigned int mateIdx = assem._Parent[targetLinkIndex].first;
 			const Assembly::Mate& mate = assem._Mate[mateIdx];
 
-			targetTrace.push_back(assem._Parent[targetLinkIndex]);
+			targetTrace.push_front(assem._Parent[targetLinkIndex]);
 
 			targetLinkIndex = mate.getParentLinkIdx(assem._Parent[targetLinkIndex].second);
 			targetLinkDepth--;
@@ -164,7 +154,7 @@ namespace rovin
 			unsigned int mateIdx = assem._Parent[referenceLinkIndex].first;
 			const Assembly::Mate& mate = assem._Mate[mateIdx];
 
-			referenceTrace.push_front(Assembly::reverseDirection(assem._Parent[referenceLinkIndex]));
+			referenceTrace.push_back(Assembly::reverseDirection(assem._Parent[referenceLinkIndex]));
 
 			referenceLinkIndex = mate.getParentLinkIdx(assem._Parent[referenceLinkIndex].second);
 			referenceLinkDepteh--;
@@ -175,7 +165,7 @@ namespace rovin
 				unsigned int mateIdx = assem._Parent[targetLinkIndex].first;
 				const Assembly::Mate& mate = assem._Mate[mateIdx];
 
-				targetTrace.push_back(assem._Parent[targetLinkIndex]);
+				targetTrace.push_front(assem._Parent[targetLinkIndex]);
 
 				targetLinkIndex = mate.getParentLinkIdx(assem._Parent[targetLinkIndex].second);
 				targetLinkDepth--;
@@ -185,30 +175,28 @@ namespace rovin
 				unsigned int mateIdx = assem._Parent[referenceLinkIndex].first;
 				const Assembly::Mate& mate = assem._Mate[mateIdx];
 
-				referenceTrace.push_front(Assembly::reverseDirection(assem._Parent[referenceLinkIndex]));
+				referenceTrace.push_back(Assembly::reverseDirection(assem._Parent[referenceLinkIndex]));
 
 				referenceLinkIndex = mate.getParentLinkIdx(assem._Parent[referenceLinkIndex].second);
 				referenceLinkDepteh--;
 			}
 		}
-		trace.splice(trace.end(), targetTrace);
 		trace.splice(trace.end(), referenceTrace);
+		trace.splice(trace.end(), targetTrace);
 
 		for (list< pair< unsigned int, JointDirection >>::iterator iter = trace.begin(); iter != trace.end(); iter++)
 		{
 			unsigned int mateIdx = iter->first;
-			const Assembly::Mate& mate = assem._Mate[mateIdx];
 
-			mate._joint->updateForwardKinematics(state.getJointStateByMateIndex(mateIdx), false, true);
-			if (mate._joint->getDOF() != 0)
+			if (assem._Mate[mateIdx]._joint->getDOF() != 0)
 			{
 				state.writeReturnMatrix(J,
-					SE3::InvAd(T) * mate.getJacobian(state.getJointStateByMateIndex(mateIdx), iter->second),
+					SE3::Ad(T) * assem.getJacobian(mateIdx, state.getJointStateByMateIndex(mateIdx), iter->second),
 					0,
 					state.getJointIndexByMateIndex(mateIdx),
 					State::STATEJOINT);
 			}
-			T = mate.getTransform(state.getJointStateByMateIndex(mateIdx), iter->second) * T;
+			T *= assem.getTransform(mateIdx, state.getJointStateByMateIndex(mateIdx), iter->second);
 		}
 
 		if (state.getTotalJointDof() != state.getActiveJointDof())
@@ -287,9 +275,33 @@ namespace rovin
 		while (true)
 		{
 			TnJ = computeTransformNJacobian(assem, state, targetLinkIndex, referenceLinkIndex);
-			if ((S = SE3::Log(TnJ.first.inverse() * goalT)).squaredNorm() < RealEps)
+			if ((S = SE3::Log(goalT * TnJ.first.inverse())).squaredNorm() < RealEps)
 				break;
 			state.addActiveJointq(pInv(TnJ.second) * S);
 		}
+	}
+
+	void Kinematics::solveForwardKinematics(const Model::SerialOpenChainAssembly& assem, Model::State& state)
+	{
+		SE3 T;
+		state.getLinkState(assem._baseLink)._T = assem._socLink[assem._baseLink]._M;
+		for (unsigned int i = 0; i < assem._Tree.size(); i++)
+		{
+			unsigned int mateIdx = assem._Tree[i].first;
+
+			T = T * assem.getTransform(mateIdx, state.getJointStateByMateIndex(mateIdx));
+			state.getLinkState(assem._Mate[mateIdx].getChildLinkIdx(assem._Tree[i].second))._T = T * assem._socLink[assem._Mate[mateIdx].getChildLinkIdx(assem._Tree[i].second)]._M;
+		}
+	}
+
+	Math::SE3 Kinematics::getEndeffectorFrame(const Model::SerialOpenChainAssembly& assem, Model::State& state)
+	{
+		SE3 T;
+		for (unsigned int i = 0; i < assem._Tree.size(); i++)
+		{
+			unsigned int mateIdx = assem._Tree[i].first;
+			T = T * assem.getTransform(mateIdx, state.getJointStateByMateIndex(mateIdx));
+		}
+		return T * assem._socLink[assem._endeffectorLink]._M;
 	}
 }

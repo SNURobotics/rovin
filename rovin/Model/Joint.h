@@ -66,14 +66,10 @@ namespace rovin
 
 			
 			virtual JointPtr copy() const = 0;
-			virtual Math::SE3	getTransform(const Math::VectorX& state, bool isReversed = false) const = 0;
-			virtual Math::se3	getVelocity(const Math::VectorX& state, bool isReversed = false) const = 0;
-			///	Return static jacobian matrix (6 by DOF). Derived class should implement this.
-			virtual Math::Matrix6X getJacobian(const Math::VectorX& state, bool isReversed = false) const = 0;
-			virtual Math::Matrix6X getJacobianDot(const Math::VectorX& state) const = 0;
 
-			virtual void	updateForwardKinematics(State::JointState& state, bool transform = true, bool jacobian = false, bool jacobiandot = false) const = 0;
-			virtual Math::Matrix6X getJacobian(State::JointState& state, bool updateTransform = false) const = 0;
+			virtual void updateTransform(State::JointState& state) const = 0;
+			virtual void updateJacobian(State::JointState& state) const = 0;
+			virtual void updateJacobianDot(State::JointState& state) const = 0;
 
 		protected:
 			bool setName(const std::string& otherName);

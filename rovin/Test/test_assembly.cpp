@@ -44,20 +44,20 @@ int main()
 
 	vector< string > activeJoint;
 	activeJoint.push_back("J1");
-	//activeJoint.push_back("J2");
-	//activeJoint.push_back("J3");
+	activeJoint.push_back("J2");
+	activeJoint.push_back("J3");
 
 	state->addActiveJoint(activeJoint);
 
 	////////////////////////
-	VectorX q(1);
+	VectorX q(3);
 	q.setRandom();
 	state->setActiveJointq(q);
 	////////////////////////
 
 	cout << q << endl;
 
-	rovin::Kinematics::solveClosedLoopConstraint(*fourBar, *state);
+	//rovin::Kinematics::solveClosedLoopConstraint(*fourBar, *state);
 	rovin::Kinematics::solveForwardKinematics(*fourBar, *state);
 
 	//cout << rovin::Kinematics::computeJacobian(*fourBar, *state, "L4", "L1") << endl;
@@ -68,26 +68,30 @@ int main()
 	cout << state->getJointState("J1").getq() << endl;
 	cout << state->getJointState("J2").getq() << endl;
 	cout << state->getJointState("J3").getq() << endl;
-	cout << state->getJointState("J4").getq() << endl;
+	//cout << state->getJointState("J4").getq() << endl;
 	cout << state->getLinkState("L4")._T << endl;
 
-	/////
-	//q << PI / 3, PI / 4, -PI / 4;
-	//state->setActiveJointq(q);
-	//rovin::Kinematics::solveForwardKinematics(*fourBar, *state);
-	//SE3 goalT = state->getLinkState("L4")._T;
+	///
+	q << PI / 3, PI / 4, -PI / 4;
+	state->setActiveJointq(q);
+	rovin::Kinematics::solveForwardKinematics(*fourBar, *state);
+	cout << state->getLinkState("L4")._T << endl;
+	SE3 goalT = state->getLinkState("L4")._T;
 
-	//q.setRandom();
-	//state->setActiveJointq(q);
-	//rovin::Kinematics::solveForwardKinematics(*fourBar, *state);
-	//cout << state->getJointState("J1").getq() << endl;
-	//cout << state->getJointState("J2").getq() << endl;
-	//cout << state->getJointState("J3").getq() << endl;
+	q.setRandom();
+	state->setActiveJointq(q);
+	rovin::Kinematics::solveForwardKinematics(*fourBar, *state);
+	cout << state->getJointState("J1").getq() << endl;
+	cout << state->getJointState("J2").getq() << endl;
+	cout << state->getJointState("J3").getq() << endl;
+	cout << state->getLinkState("L4")._T << endl;
 
-	//rovin::Kinematics::solveInverseKinematics(*fourBar, *state, goalT, "L4");
-	//cout << state->getJointState("J1").getq() << endl;
-	//cout << state->getJointState("J2").getq() << endl;
-	//cout << state->getJointState("J3").getq() << endl;
+	rovin::Kinematics::solveInverseKinematics(*fourBar, *state, goalT, "L4");
+	rovin::Kinematics::solveForwardKinematics(*fourBar, *state);
+	cout << state->getJointState("J1").getq() << endl;
+	cout << state->getJointState("J2").getq() << endl;
+	cout << state->getJointState("J3").getq() << endl;
+	cout << state->getLinkState("L4")._T << endl;
 
 	rovin::Renderer::SimpleOSG renderer(*fourBar, *state, 600, 600);
 	renderer._viewer.run();
@@ -113,6 +117,6 @@ void Modeling()
 	fourBar->addMate(shared_ptr< Joint >(new RevoluteJoint("J1")), "L1", "L2", SE3(Vector3(-6, 0, 0)), SE3(Vector3(0, 4, 0)));
 	fourBar->addMate(shared_ptr< Joint >(new RevoluteJoint("J2")), "L2", "L3", SE3(Vector3(0, 4, 0)), SE3(Vector3(6, 0, 0)));
 	fourBar->addMate(shared_ptr< Joint >(new RevoluteJoint("J3")), "L3", "L4", SE3(Vector3(6, 0, 0)), SE3(Vector3(0, -4, 0)));
-	fourBar->addMate(shared_ptr< Joint >(new RevoluteJoint("J4")), "L1", "L4", SE3(Vector3(6, 0, 0)), SE3(Vector3(0, 4, 0)));
+	//fourBar->addMate(shared_ptr< Joint >(new RevoluteJoint("J4")), "L1", "L4", SE3(Vector3(6, 0, 0)), SE3(Vector3(0, 4, 0)));
 	fourBar->completeAssembling("L1");
 }

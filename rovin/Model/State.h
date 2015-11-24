@@ -48,21 +48,26 @@ namespace rovin
 
 				std::vector< Math::SE3 > _T;
 				Math::Matrix6X _J;
-				Math::Matrix6X _Jdot;
+				Math::Matrix6X _JDot;
 
-				void setq(const Math::VectorX& q) { _q = q; _TUpdated = _TUpdated = _TUpdated = false; }
-				void setqdot(const Math::VectorX& qdot) { _qdot = qdot; _TUpdated = false; }
+				void setq(const Math::VectorX& q) { _q = q; needUpdate(true, true, true); }
+				void setqdot(const Math::VectorX& qdot) { _qdot = qdot; needUpdate(false, false, true); }
 
-				void addq(const Math::VectorX& q) { _q += q;_TUpdated = _TUpdated = _TUpdated = false; }
-				void addqdot(const Math::VectorX& qdot) { _qdot += qdot; _TUpdated = false; }
+				void addq(const Math::VectorX& q) { _q += q; needUpdate(true, true, true); }
+				void addqdot(const Math::VectorX& qdot) { _qdot += qdot; needUpdate(false, false, true); }
 
 				const Math::VectorX& getq() const { return _q; }
 				const Math::VectorX& getqdot() const { return _qdot; }
+
+				const int getJointReferenceFrame() const { return _JointReferenceFrame; }
+				void setJointReferenceFrame(const int JointReferenceFrame) { _JointReferenceFrame = JointReferenceFrame; }
 				
 				bool isUpdated(bool transform, bool jacobian, bool jacobiandot) const { return (!transform | _TUpdated) & (!jacobian | _JUpdated) & (!jacobiandot | _JdotUpdated); }
+				void needUpdate(bool transform, bool jacobian, bool jacobiandot) { _TUpdated &= !transform; _JUpdated &= !jacobian; _JdotUpdated &= !jacobiandot; }
+				
 				void TUpdated() { _TUpdated = true; }
 				void JUpdated() { _JUpdated = true; }
-				void JdotUpdated() { _JdotUpdated = true; }
+				void JDotUpdated() { _JdotUpdated = true; }
 
 			private:
 				Math::VectorX _q;
@@ -71,6 +76,8 @@ namespace rovin
 				bool _TUpdated;
 				bool _JUpdated;
 				bool _JdotUpdated;
+
+				int _JointReferenceFrame;
 			};
 
 			enum RETURN_STATE

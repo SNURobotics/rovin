@@ -166,7 +166,7 @@ namespace rovin
 			else
 			{
 				Real s, c;
-				Math::fsincos_precise(theta, s, c);
+				Math::fsincos(theta, s, c);
 				Real itheta = 1.0 / theta;
 				st_t = s*itheta;
 				itheta *= itheta;

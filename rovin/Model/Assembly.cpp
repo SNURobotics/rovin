@@ -23,13 +23,7 @@ namespace rovin
 
 		Assembly::Mate::Mate(const Model::JointPtr& joint, const unsigned int mountLinkIdx, const unsigned int actionLinkIdx,
 			const SE3& Tmj, const SE3& Tja) : _joint(joint), _mountLinkIdx(mountLinkIdx), _actionLinkIdx(actionLinkIdx),
-			_Tmj(Tmj), _Tja(Tja), _M(Tmj * Tja)
-		{
-			if (joint->getJointType() == Joint::SCREWJOINT)
-			{
-				static_pointer_cast<ScrewJoint>(joint)->adjointAxes(Tja.inverse());
-			}
-		}
+			_Tmj(Tmj), _Tja(Tja) {}
 
 		unsigned int Assembly::Mate::getParentLinkIdx(const JointDirection& jointDirection) const
 		{
@@ -43,34 +37,6 @@ namespace rovin
 			if (jointDirection == JointDirection::REGULAR)
 				return _actionLinkIdx;
 			else return _mountLinkIdx;
-		}
-
-		SE3 Assembly::Mate::getTransform(const State::JointState& jointState, const JointDirection& jointDirection) const
-		{
-			if (_joint->getJointType() == Joint::SCREWJOINT)
-			{
-				if(jointDirection == JointDirection::REGULAR) return _M * jointState._T[0];
-				else return (_M * jointState._T[0]).inverse();
-			}
-			else
-			{
-				if (jointDirection == JointDirection::REGULAR) return _Tmj * jointState._T[0] * _Tja;
-				else return (_Tmj * jointState._T[0] * _Tja).inverse();
-			}
-		}
-
-		Matrix6X Assembly::Mate::getJacobian(const State::JointState& jointState, const JointDirection& jointDirection) const
-		{
-			if (_joint->getJointType() == Joint::SCREWJOINT)
-			{
-				if (jointDirection == JointDirection::REGULAR) return jointState._J;
-				else return (-SE3::Ad(_M * jointState._T[0]))*jointState._J;
-			}
-			else
-			{
-				if (jointDirection == JointDirection::REGULAR) return SE3::InvAd(_Tja)*jointState._J;
-				else return (-SE3::Ad(_Tmj * jointState._T[0]))*jointState._J;
-			}
 		}
 
 		Assembly::Assembly(const Assembly& operand)
@@ -504,7 +470,7 @@ namespace rovin
 					{
 						nextIdx = _Mate[adjacencyList[currentIdx][i].first]._mountLinkIdx;
 					}
-					
+
 					if (checkLinkVisit[nextIdx])
 					{
 						list< pair< unsigned int, Model::JointDirection >> closedloop;
@@ -558,6 +524,76 @@ namespace rovin
 					}
 				}
 			}
+		}
+
+		SE3 Assembly::getTransform(const unsigned int mateIdx, State::JointState& jointState, const JointDirection& jointDirection) const
+		{
+			if (jointState.getJointReferenceFrame() != JointReferenceFrame::JOINTFRAME)
+			{
+				jointState.needUpdate(true, true, true);
+				jointState.setJointReferenceFrame(JointReferenceFrame::JOINTFRAME);
+			}
+
+			if (!jointState.isUpdated(true, false, false))
+			{
+				_Mate[mateIdx]._joint->updateTransform(jointState);
+				jointState.TUpdated();
+			}
+
+			if (jointDirection == JointDirection::REGULAR) return _Mate[mateIdx]._Tmj * jointState._T[jointState._dof - 1] * _Mate[mateIdx]._Tja;
+			else return (_Mate[mateIdx]._Tmj * jointState._T[jointState._dof - 1] * _Mate[mateIdx]._Tja).inverse();
+		}
+
+		Matrix6X Assembly::getJacobian(const unsigned int mateIdx, State::JointState& jointState, const JointDirection& jointDirection) const
+		{
+			if (jointState.getJointReferenceFrame() != JointReferenceFrame::JOINTFRAME)
+			{
+				jointState.needUpdate(true, true, true);
+				jointState.setJointReferenceFrame(JointReferenceFrame::JOINTFRAME);
+			}
+
+			if (!jointState.isUpdated(true, false, false))
+			{
+				_Mate[mateIdx]._joint->updateTransform(jointState);
+				jointState.TUpdated();
+			}
+			else if (!jointState.isUpdated(false, true, false))
+			{
+				_Mate[mateIdx]._joint->updateJacobian(jointState);
+				jointState.JUpdated();
+			}
+
+			if (jointDirection == JointDirection::REGULAR) return SE3::Ad(_Mate[mateIdx]._Tmj)*jointState._J;
+			else return (-SE3::InvAd(jointState._T[jointState._dof - 1] * _Mate[mateIdx]._Tja))*jointState._J;
+		}
+
+		Matrix6X Assembly::getJacobianDot(const unsigned int mateIdx, State::JointState& jointState, const JointDirection& jointDirection) const
+		{
+			if (jointState.getJointReferenceFrame() != JointReferenceFrame::JOINTFRAME)
+			{
+				jointState.needUpdate(true, true, true);
+				jointState.setJointReferenceFrame(JointReferenceFrame::JOINTFRAME);
+			}
+
+			if (!jointState.isUpdated(true, false, false))
+			{
+				_Mate[mateIdx]._joint->updateTransform(jointState);
+				jointState.TUpdated();
+			}
+			else if (!jointState.isUpdated(false, true, false))
+			{
+				_Mate[mateIdx]._joint->updateJacobian(jointState);
+				jointState.JUpdated();
+			}
+			else if (!jointState.isUpdated(false, false, true))
+			{
+				_Mate[mateIdx]._joint->updateJacobianDot(jointState);
+				jointState.JDotUpdated();
+			}
+
+			//TODO
+			if (jointDirection == JointDirection::REGULAR) return SE3::Ad(_Mate[mateIdx]._Tmj)*jointState._J;
+			else return (-SE3::InvAd(jointState._T[0] * _Mate[mateIdx]._Tja))*jointState._J;
 		}
 	}
 }
