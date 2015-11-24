@@ -92,7 +92,7 @@ namespace rovin {
 			const Math::VectorX &q = state.getq();
 			state._T[0] = Math::SE3::Exp(_axes.col(0), q[0]);
 			for (unsigned int i = 1; i < _dof; i++)
-				state._T[i] = Math::SE3::Exp(_axes.col(i), q[i]) * state._T[i - 1];
+				state._T[i] = state._T[i - 1] * Math::SE3::Exp(_axes.col(i), q[i]);
 		}
 
 		void ScrewJoint::updateJacobian(State::JointState& state) const

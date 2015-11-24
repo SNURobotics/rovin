@@ -39,9 +39,9 @@ namespace rovin
 
 			StatePtr makeState() const;
 
-			Math::SE3 getTransform(const unsigned int mateIdx, State::JointState& jointState) const;
-			Math::Matrix6X getJacobian(const unsigned int mateIdx, State::JointState& jointState) const;
-			Math::Matrix6X getJacobianDot(const unsigned int mateIdx, State::JointState& jointState) const;
+			Math::SE3& getTransform(const unsigned int mateIdx, State::JointState& jointState) const;
+			Math::Matrix6X& getJacobian(const unsigned int mateIdx, State::JointState& jointState) const;
+			Math::Matrix6X& getJacobianDot(const unsigned int mateIdx, State::JointState& jointState) const;
 
 			void completeAssembling(const std::string& baseLinkName);
 

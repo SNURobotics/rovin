@@ -62,7 +62,7 @@ namespace rovin
 				const int getJointReferenceFrame() const { return _JointReferenceFrame; }
 				void setJointReferenceFrame(const int JointReferenceFrame) { _JointReferenceFrame = JointReferenceFrame; }
 				
-				bool isUpdated(bool transform, bool jacobian, bool jacobiandot) const { return (!transform | _TUpdated) & (!jacobian | _JUpdated) & (!jacobiandot | _JdotUpdated); }
+				bool isUpdated(bool transform, bool jacobian, bool jacobiandot) const { return false; return (!transform | _TUpdated) & (!jacobian | _JUpdated) & (!jacobiandot | _JdotUpdated); }
 				void needUpdate(bool transform, bool jacobian, bool jacobiandot) { _TUpdated &= !transform; _JUpdated &= !jacobian; _JdotUpdated &= !jacobiandot; }
 				
 				void TUpdated() { _TUpdated = true; }
