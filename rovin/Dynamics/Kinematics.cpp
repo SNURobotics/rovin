@@ -289,18 +289,18 @@ namespace rovin
 		{
 			unsigned int mateIdx = assem._Tree[i].first;
 
-			T = T * assem.getTransform(mateIdx, state.getJointStateByMateIndex(mateIdx));
+			T *= assem.getTransform(mateIdx, state.getJointStateByMateIndex(mateIdx));
 			state.getLinkState(assem._Mate[mateIdx].getChildLinkIdx(assem._Tree[i].second))._T = T * assem._socLink[assem._Mate[mateIdx].getChildLinkIdx(assem._Tree[i].second)]._M;
 		}
 	}
 
-	Math::SE3 Kinematics::getEndeffectorFrame(const Model::SerialOpenChainAssembly& assem, Model::State& state)
+	Math::SE3 Kinematics::calculateEndeffectorFrame(const Model::SerialOpenChainAssembly& assem, Model::State& state)
 	{
 		SE3 T;
 		for (unsigned int i = 0; i < assem._Tree.size(); i++)
 		{
 			unsigned int mateIdx = assem._Tree[i].first;
-			T = T * assem.getTransform(mateIdx, state.getJointStateByMateIndex(mateIdx));
+			T *= assem.getTransform(mateIdx, state.getJointStateByMateIndex(mateIdx));
 		}
 		return T * assem._socLink[assem._endeffectorLink]._M;
 	}

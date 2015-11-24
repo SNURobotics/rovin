@@ -57,7 +57,7 @@ namespace rovin
 			}
 		}
 
-		Math::SE3& SerialOpenChainAssembly::getTransform(const unsigned int mateIdx, State::JointState& jointState) const
+		const Math::SE3& SerialOpenChainAssembly::getTransform(const unsigned int mateIdx, State::JointState& jointState) const
 		{
 			if (jointState.getJointReferenceFrame() != JointReferenceFrame::SPATIAL)
 			{
@@ -81,7 +81,7 @@ namespace rovin
 			return jointState._T[dof - 1];
 		}
 
-		Math::Matrix6X& SerialOpenChainAssembly::getJacobian(const unsigned int mateIdx, State::JointState& jointState) const
+		const Math::Matrix6X& SerialOpenChainAssembly::getJacobian(const unsigned int mateIdx, State::JointState& jointState) const
 		{
 			if (jointState.getJointReferenceFrame() != JointReferenceFrame::SPATIAL)
 			{
@@ -115,7 +115,7 @@ namespace rovin
 			return jointState._J;
 		}
 
-		Math::Matrix6X& SerialOpenChainAssembly::getJacobianDot(const unsigned int mateIdx, State::JointState& jointState) const
+		const Math::Matrix6X& SerialOpenChainAssembly::getJacobianDot(const unsigned int mateIdx, State::JointState& jointState) const
 		{
 			if (jointState.getJointReferenceFrame() != JointReferenceFrame::SPATIAL)
 			{

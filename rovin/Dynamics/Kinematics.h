@@ -29,7 +29,7 @@ namespace rovin
 		static void solveInverseKinematics(const Model::Assembly& assem, Model::State& state, const Math::SE3& goalT, const unsigned int targetLinkIndex, int referenceLinkIndex = (-1));
 
 		static void solveForwardKinematics(const Model::SerialOpenChainAssembly& assem, Model::State& state);
-		static Math::SE3 getEndeffectorFrame(const Model::SerialOpenChainAssembly& assem, Model::State& state);
+		static Math::SE3 calculateEndeffectorFrame(const Model::SerialOpenChainAssembly& assem, Model::State& state);
 	private:
 		virtual ~Kinematics() = 0;
 	};
