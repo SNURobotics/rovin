@@ -339,13 +339,111 @@ namespace rovin
 		{
 			Matrix6 result;
 
+			result(0, 0) = 0;
+			result(0, 1) = -S(2);
+			result(0, 2) = S(1);
+
+			result(0, 3) = 0;
+			result(0, 4) = 0;
+			result(0, 5) = 0;
+
+			result(1, 0) = S(2);
+			result(1, 1) = 0;
+			result(1, 2) = -S(0);
+
+			result(1, 3) = 0;
+			result(1, 4) = 0;
+			result(1, 5) = 0;
+
+			result(2, 0) = -S(1);
+			result(2, 1) = S(0);
+			result(2, 2) = 0;
+
+			result(2, 3) = 0;
+			result(2, 4) = 0;
+			result(2, 5) = 0;
+
+			result(3, 0) = 0;
+			result(3, 1) = -S(5);
+			result(3, 2) = S(4);
+
+			result(3, 3) = 0;
+			result(3, 4) = -S(2);
+			result(3, 5) = S(1);
+
+			result(4, 0) = S(5);
+			result(4, 1) = 0;
+			result(4, 2) = -S(3);
+
+			result(4, 3) = S(2);
+			result(4, 4) = 0;
+			result(4, 5) = -S(0);
+
+			result(5, 0) = -S(4);
+			result(5, 1) = S(3);
+			result(5, 2) = 0;
+
+			result(5, 3) = -S(1);
+			result(5, 4) = S(0);
+			result(5, 5) = 0;
+
+			return result;
+		}
+
+		Matrix6 SE3::adTranspose(const se3& S)
+		{
+			Matrix6 result;
+
 			so3 w = S.block(0, 0, 3, 1);
 			Vector3 v = S.block(3, 0, 3, 1);
 
-			result.block<3, 3>(0, 0) = Bracket(w);
-			result.block<3, 3>(0, 3).setZero();
-			result.block<3, 3>(3, 0) = Bracket(v);
-			result.block<3, 3>(3, 3) = Bracket(w);
+			result(0, 0) = 0;
+			result(0, 1) = S(2);
+			result(0, 2) = -S(1);
+
+			result(0, 3) = 0;
+			result(0, 4) = S(5);
+			result(0, 5) = -S(4);
+
+			result(1, 0) = -S(2);
+			result(1, 1) = 0;
+			result(1, 2) = S(0);
+
+			result(1, 3) = -S(5);
+			result(1, 4) = 0;
+			result(1, 5) = S(3);
+
+			result(2, 0) = S(1);
+			result(2, 1) = -S(0);
+			result(2, 2) = 0;
+
+			result(2, 3) = S(4);
+			result(2, 4) = -S(3);
+			result(2, 5) = 0;
+
+			result(3, 0) = 0;
+			result(3, 1) = 0;
+			result(3, 2) = 0;
+
+			result(3, 3) = 0;
+			result(3, 4) = S(2);
+			result(3, 5) = -S(1);
+
+			result(4, 0) = 0;
+			result(4, 1) = 0;
+			result(4, 2) = 0;
+
+			result(4, 3) = -S(2);
+			result(4, 4) = 0;
+			result(4, 5) = S(0);
+
+			result(5, 0) = 0;
+			result(5, 1) = 0;
+			result(5, 2) = 0;
+
+			result(5, 3) = S(1);
+			result(5, 4) = -S(0);
+			result(5, 5) = 0;
 
 			return result;
 		}

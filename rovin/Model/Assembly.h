@@ -19,6 +19,7 @@
 namespace rovin
 {
 	class Kinematics;
+	class Dynamics;
 
 	namespace Model
 	{
@@ -38,6 +39,7 @@ namespace rovin
 		class Assembly
 		{
 			friend class Kinematics;
+			friend class Dynamics;
 
 		public:
 			class Mate
@@ -55,6 +57,13 @@ namespace rovin
 
 				unsigned int getParentLinkIdx(const JointDirection& jointDirection = JointDirection::REGULAR) const;
 				unsigned int getChildLinkIdx(const JointDirection& jointDirection = JointDirection::REGULAR) const;
+			};
+
+			enum JOINT_KINEMATICS_OPTION
+			{
+				JOINT_TRANSFORM = 1 << 0,
+				JOINT_JACOBIAN = 1 << 1,
+				JOINT_JACOBIANDOT = 1 << 2
 			};
 
 			Assembly(const std::string& assemblyName) : 
@@ -105,6 +114,8 @@ namespace rovin
 			bool isCompleted() const;
 			void setAssemblyMode();
 			void completeAssembling(const std::string& baseLinkName);
+
+			void updateJointKinematics(const unsigned int mateIdx, State::JointState& jointState, const unsigned int options) const;
 
 			Math::SE3 getTransform(const unsigned int mateIdx, State::JointState& jointState, const JointDirection& jointDirection) const;
 			Math::Matrix6X getJacobian(const unsigned int mateIdx, State::JointState& jointState, const JointDirection& jointDirection) const;

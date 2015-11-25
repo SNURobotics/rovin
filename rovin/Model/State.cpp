@@ -32,12 +32,14 @@ namespace rovin
 
 				_T = vector< Math::SE3 >(dof);
 				_J = Math::Matrix6X(6, dof);
+				_JDot = Math::Matrix6X(6, dof);
 
-				_TUpdated = _JUpdated = _JdotUpdated = false;
+				_JointReferenceFrame = -1;
+				_TUpdated = _JUpdated = _JDotUpdated = false;
 			}
 			else
 			{
-				_TUpdated = _JUpdated = _JdotUpdated = true;
+				_TUpdated = _JUpdated = _JDotUpdated = true;
 			}
 
 			_constraintF.setZero();
@@ -66,6 +68,10 @@ namespace rovin
 				_stateIndex.push_back(_totalJointDof);
 				_totalJointDof += jointNameList[i].second;
 			}
+
+			_JointReferenceFrame = -1;
+			_TUpdated = _VUpdated = _VDotUpdated = false;
+			_accumulatedJ = _accumulatedJDot = false;
 		}
 
 		unsigned int State::getTotalJointDof() const
@@ -247,6 +253,8 @@ namespace rovin
 			{
 				_jointState[_activeJointList[i]].setq(q.block(_stateIndex[_activeJointList[i]], 0, _jointState[_activeJointList[i]]._dof, 1));
 			}
+			_accumulatedT = _accumulatedJ = _accumulatedJDot = false;
+			needUpdate(true, true, true);
 		}
 
 		void State::setPassiveJointq(const Math::VectorX& q)
@@ -256,6 +264,48 @@ namespace rovin
 				if (_jointState[_passiveJointList[i]]._dof == 0) continue;
 				_jointState[_passiveJointList[i]].setq(q.block(_stateIndex[_passiveJointList[i]], 0, _jointState[_passiveJointList[i]]._dof, 1));
 			}
+			_accumulatedT = _accumulatedJ = _accumulatedJDot = false;
+			needUpdate(true, true, true);
+		}
+
+		void State::setActiveJointqdot(const Math::VectorX& qdot)
+		{
+			for (unsigned int i = 0; i < _activeJointList.size(); i++)
+			{
+				_jointState[_activeJointList[i]].setqdot(qdot.block(_stateIndex[_activeJointList[i]], 0, _jointState[_activeJointList[i]]._dof, 1));
+			}
+			_accumulatedJDot = false;
+			needUpdate(false, true, true);
+		}
+
+		void State::setPassiveJointqdot(const Math::VectorX& qdot)
+		{
+			for (unsigned int i = 0; i < _passiveJointList.size(); i++)
+			{
+				if (_jointState[_passiveJointList[i]]._dof == 0) continue;
+				_jointState[_passiveJointList[i]].setqdot(qdot.block(_stateIndex[_passiveJointList[i]], 0, _jointState[_passiveJointList[i]]._dof, 1));
+			}
+			_accumulatedJDot = false;
+			needUpdate(false, true, true);
+		}
+
+		void State::setActiveJointqddot(const Math::VectorX& qddot)
+		{
+			for (unsigned int i = 0; i < _activeJointList.size(); i++)
+			{
+				_jointState[_activeJointList[i]].setqddot(qddot.block(_stateIndex[_activeJointList[i]], 0, _jointState[_activeJointList[i]]._dof, 1));
+			}
+			needUpdate(false, false, true);
+		}
+
+		void State::setPassiveJointqddot(const Math::VectorX& qddot)
+		{
+			for (unsigned int i = 0; i < _passiveJointList.size(); i++)
+			{
+				if (_jointState[_passiveJointList[i]]._dof == 0) continue;
+				_jointState[_passiveJointList[i]].setqddot(qddot.block(_stateIndex[_passiveJointList[i]], 0, _jointState[_passiveJointList[i]]._dof, 1));
+			}
+			needUpdate(false, false, true);
 		}
 
 		void State::addActiveJointq(const Math::VectorX& q)
@@ -264,6 +314,8 @@ namespace rovin
 			{
 				_jointState[_activeJointList[i]].addq(q.block(_stateIndex[_activeJointList[i]], 0, _jointState[_activeJointList[i]]._dof, 1));
 			}
+			_accumulatedT = _accumulatedJ = _accumulatedJDot = false;
+			needUpdate(true, true, true);
 		}
 
 		void State::addPassiveJointq(const Math::VectorX& q)
@@ -273,6 +325,48 @@ namespace rovin
 				if (_jointState[_passiveJointList[i]]._dof == 0) continue;
 				_jointState[_passiveJointList[i]].addq(q.block(_stateIndex[_passiveJointList[i]], 0, _jointState[_passiveJointList[i]]._dof, 1));
 			}
+			_accumulatedT = _accumulatedJ = _accumulatedJDot = false;
+			needUpdate(true, true, true);
+		}
+
+		void State::addActiveJointqdot(const Math::VectorX& qdot)
+		{
+			for (unsigned int i = 0; i < _activeJointList.size(); i++)
+			{
+				_jointState[_activeJointList[i]].addqdot(qdot.block(_stateIndex[_activeJointList[i]], 0, _jointState[_activeJointList[i]]._dof, 1));
+			}
+			_accumulatedJDot = false;
+			needUpdate(false, true, true);
+		}
+
+		void State::addPassiveJointqdot(const Math::VectorX& qdot)
+		{
+			for (unsigned int i = 0; i < _passiveJointList.size(); i++)
+			{
+				if (_jointState[_passiveJointList[i]]._dof == 0) continue;
+				_jointState[_passiveJointList[i]].addqdot(qdot.block(_stateIndex[_passiveJointList[i]], 0, _jointState[_passiveJointList[i]]._dof, 1));
+			}
+			_accumulatedJDot = false;
+			needUpdate(false, true, true);
+		}
+
+		void State::addActiveJointqddot(const Math::VectorX& qddot)
+		{
+			for (unsigned int i = 0; i < _activeJointList.size(); i++)
+			{
+				_jointState[_activeJointList[i]].addqddot(qddot.block(_stateIndex[_activeJointList[i]], 0, _jointState[_activeJointList[i]]._dof, 1));
+			}
+			needUpdate(false, false, true);
+		}
+
+		void State::addPassiveJointqddot(const Math::VectorX& qddot)
+		{
+			for (unsigned int i = 0; i < _passiveJointList.size(); i++)
+			{
+				if (_jointState[_passiveJointList[i]]._dof == 0) continue;
+				_jointState[_passiveJointList[i]].addqddot(qddot.block(_stateIndex[_passiveJointList[i]], 0, _jointState[_passiveJointList[i]]._dof, 1));
+			}
+			needUpdate(false, false, true);
 		}
 
 		unsigned int State::returnDof(const RETURN_STATE& return_state) const

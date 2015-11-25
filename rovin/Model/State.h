@@ -33,49 +33,60 @@ namespace rovin
 
 				Math::SE3 _T;
 				Math::se3 _V;
+				Math::se3 _VDot;
 			};
 
 			class JointState
 			{
+				friend State;
+
 			public:
 				JointState(const unsigned int& dof);
 
 				unsigned int _dof;
 
-				Math::VectorX _qddot;
 				Math::VectorX _tau;
 				Math::dse3 _constraintF;
 
 				std::vector< Math::SE3 > _T;
 				Math::Matrix6X _J;
 				Math::Matrix6X _JDot;
-
-				void setq(const Math::VectorX& q) { _q = q; needUpdate(true, true, true); }
-				void setqdot(const Math::VectorX& qdot) { _qdot = qdot; needUpdate(false, false, true); }
-
-				void addq(const Math::VectorX& q) { _q += q; needUpdate(true, true, true); }
-				void addqdot(const Math::VectorX& qdot) { _qdot += qdot; needUpdate(false, false, true); }
+				
+				Math::SE3 _accumulatedT;
+				Math::Matrix6X _accumulatedJ;
+				Math::Matrix6X _accumulatedJDot;
 
 				const Math::VectorX& getq() const { return _q; }
 				const Math::VectorX& getqdot() const { return _qdot; }
+				const Math::VectorX& getqddot() const { return _qddot; }
 
 				const int getJointReferenceFrame() const { return _JointReferenceFrame; }
 				void setJointReferenceFrame(const int JointReferenceFrame) { _JointReferenceFrame = JointReferenceFrame; }
 				
-				bool isUpdated(bool transform, bool jacobian, bool jacobiandot) const { return (!transform | _TUpdated) & (!jacobian | _JUpdated) & (!jacobiandot | _JdotUpdated); }
-				void needUpdate(bool transform, bool jacobian, bool jacobiandot) { _TUpdated &= !transform; _JUpdated &= !jacobian; _JdotUpdated &= !jacobiandot; }
+				bool isUpdated(bool transform, bool jacobian, bool jacobiandot) const { return (!transform | _TUpdated) & (!jacobian | _JUpdated) & (!jacobiandot | _JDotUpdated); }
+				void needUpdate(bool transform, bool jacobian, bool jacobiandot) { _TUpdated &= !transform; _JUpdated &= !jacobian; _JDotUpdated &= !jacobiandot; }
 				
 				void TUpdated() { _TUpdated = true; }
 				void JUpdated() { _JUpdated = true; }
-				void JDotUpdated() { _JdotUpdated = true; }
+				void JDotUpdated() { _JDotUpdated = true; }
+
+			private:
+				void setq(const Math::VectorX& q) { _q = q; needUpdate(true, true, true); }
+				void setqdot(const Math::VectorX& qdot) { _qdot = qdot; needUpdate(false, false, true); }
+				void setqddot(const Math::VectorX& qddot) { _qddot = qddot; needUpdate(false, false, false); }
+
+				void addq(const Math::VectorX& q) { _q += q; needUpdate(true, true, true); }
+				void addqdot(const Math::VectorX& qdot) { _qdot += qdot; needUpdate(false, false, true); }
+				void addqddot(const Math::VectorX& qddot) { _qddot += qddot; needUpdate(false, false, false); }
 
 			private:
 				Math::VectorX _q;
 				Math::VectorX _qdot;
+				Math::VectorX _qddot;
 
 				bool _TUpdated;
 				bool _JUpdated;
-				bool _JdotUpdated;
+				bool _JDotUpdated;
 
 				int _JointReferenceFrame;
 			};
@@ -118,15 +129,61 @@ namespace rovin
 			std::vector< std::string > getActiveJointList() const;
 			std::vector< std::string > getPassiveJointList() const;
 
+			void setJointq(const unsigned int jointIdx, const Math::VectorX& q) { setJointq(_jointState[jointIdx], q); }
+			void setJointq(const std::string& jointName, const Math::VectorX& q) { setJointq(getJointState(jointName), q); }
+			void setJointq(JointState& jointState, const Math::VectorX& q) { jointState.setq(q); _accumulatedT = _accumulatedJ = _accumulatedJDot = false; needUpdate(true, true, true); }
+
+			const Math::VectorX& getJointq(const unsigned int jointIdx) const { return getJointq(_jointState[jointIdx]); }
+			const Math::VectorX& getJointq(const std::string& jointName) const { return getJointq(getJointState(jointName)); }
+			const Math::VectorX& getJointq(const JointState& jointState) const { return jointState.getq(); }
+
+			void setJointqdot(const unsigned int jointIdx, const Math::VectorX& qdot) { setJointqdot(_jointState[jointIdx], qdot); }
+			void setJointqdot(const std::string& jointName, const Math::VectorX& qdot) { setJointqdot(getJointState(jointName), qdot); }
+			void setJointqdot(JointState& jointState, const Math::VectorX& qdot) { jointState.setqdot(qdot); _accumulatedJDot = false; needUpdate(false, true, true); }
+
+			const Math::VectorX& getJointqdot(const unsigned int jointIdx) const { return getJointqdot(_jointState[jointIdx]); }
+			const Math::VectorX& getJointqdot(const std::string& jointName) const { return getJointqdot(getJointState(jointName)); }
+			const Math::VectorX& getJointqdot(const JointState& jointState) const { return jointState.getqdot(); }
+
+			void setJointqddot(const unsigned int jointIdx, const Math::VectorX& qddot) { setJointqddot(_jointState[jointIdx], qddot); }
+			void setJointqddot(const std::string& jointName, const Math::VectorX& qddot) { setJointqddot(getJointState(jointName), qddot); }
+			void setJointqddot(JointState& jointState, const Math::VectorX& qddot) { jointState.setqddot(qddot); needUpdate(false, false, true); }
+
+			const Math::VectorX& getJointqddot(const unsigned int jointIdx) const { return getJointq(_jointState[jointIdx]); }
+			const Math::VectorX& getJointqddot(const std::string& jointName) const { return getJointq(getJointState(jointName)); }
+			const Math::VectorX& getJointqddot(const JointState& jointState) const { return jointState.getq(); }
+
 			void setActiveJointq(const Math::VectorX& q);
 			void setPassiveJointq(const Math::VectorX& q);
 
 			void addActiveJointq(const Math::VectorX& q);
 			void addPassiveJointq(const Math::VectorX& q);
 
+			void setActiveJointqdot(const Math::VectorX& qdot);
+			void setPassiveJointqdot(const Math::VectorX& qdot);
+
+			void addActiveJointqdot(const Math::VectorX& qdot);
+			void addPassiveJointqdot(const Math::VectorX& qdot);
+
+			void setActiveJointqddot(const Math::VectorX& qddot);
+			void setPassiveJointqddot(const Math::VectorX& qddot);
+
+			void addActiveJointqddot(const Math::VectorX& qddot);
+			void addPassiveJointqddot(const Math::VectorX& qddot);
+
 			unsigned int returnDof(const RETURN_STATE& return_state) const;
 			void writeReturnMatrix(Math::MatrixX& returnMatrix, const Math::MatrixX& value, const unsigned int startRow, const unsigned int jointIndex, const RETURN_STATE& return_state) const;
 			void writeReturnVector(Math::VectorX& returnVector, const Math::VectorX& value, const unsigned int jointIndex, const RETURN_STATE& return_state) const;
+
+			const int getJointReferenceFrame() const { return _JointReferenceFrame; }
+			void setJointReferenceFrame(const int JointReferenceFrame) { _JointReferenceFrame = JointReferenceFrame; }
+
+			bool isUpdated(bool transform, bool velocity, bool acceleration) const { return (!transform | _TUpdated) & (!velocity | _VUpdated) & (!acceleration | _VDotUpdated); }
+			void needUpdate(bool transform, bool velocity, bool acceleration) { _TUpdated &= !transform; _VUpdated &= !velocity; _VDotUpdated &= !acceleration; }
+
+			void TUpdated() { _TUpdated = true; }
+			void VUpdated() { _VUpdated = true; }
+			void VDotUpdated() { _VDotUpdated = true; }
 
 		private:
 			State(const std::vector< std::string >& linkNameList, const std::vector< std::pair< std::string, unsigned int >>& jointNameList);
@@ -149,6 +206,17 @@ namespace rovin
 
 			std::vector< unsigned int > _assemIndex;
 			std::vector< unsigned int > _stateIndex;
+
+			bool _TUpdated;
+			bool _VUpdated;
+			bool _VDotUpdated;
+
+			int _JointReferenceFrame;
+
+		public:
+			bool _accumulatedT;
+			bool _accumulatedJ;
+			bool _accumulatedJDot;
 		};
 	}
 }

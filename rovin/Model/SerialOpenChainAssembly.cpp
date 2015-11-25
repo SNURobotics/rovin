@@ -43,6 +43,7 @@ namespace rovin
 
 			SE3 T;
 			_socLink[_baseLink]._M = SE3();
+			_socLink[_baseLink]._G = _linkPtr[_baseLink]->getInertia();
 			for (i = 0; i < _Tree.size(); i++)
 			{
 				unsigned int linkIdx = _Mate[_Tree[i].first].getChildLinkIdx();
@@ -57,7 +58,7 @@ namespace rovin
 			}
 		}
 
-		const Math::SE3& SerialOpenChainAssembly::getTransform(const unsigned int mateIdx, State::JointState& jointState) const
+		void SerialOpenChainAssembly::updateJointKinematics(const unsigned int mateIdx, State::JointState& jointState, const unsigned int options) const
 		{
 			if (jointState.getJointReferenceFrame() != JointReferenceFrame::SPATIAL)
 			{
@@ -66,9 +67,10 @@ namespace rovin
 			}
 
 			const Math::VectorX &q = jointState.getq();
+			const Math::VectorX &qdot = jointState.getqdot();
 			int dof = _socMate[mateIdx]._axes.cols();
 
-			if (!jointState.isUpdated(true, false, false))
+			if (((options & JOINT_TRANSFORM) | (options & JOINT_JACOBIAN) | (options & JOINT_JACOBIANDOT)) && !jointState.isUpdated(true, false, false))
 			{
 				jointState._T[0] = SE3::Exp(_socMate[mateIdx]._axes.col(0), q[0]);
 				for (int i = 1; i < dof; i++)
@@ -78,79 +80,48 @@ namespace rovin
 				jointState.TUpdated();
 			}
 
-			return jointState._T[dof - 1];
-		}
-
-		const Math::Matrix6X& SerialOpenChainAssembly::getJacobian(const unsigned int mateIdx, State::JointState& jointState) const
-		{
-			if (jointState.getJointReferenceFrame() != JointReferenceFrame::SPATIAL)
-			{
-				jointState.needUpdate(true, true, true);
-				jointState.setJointReferenceFrame(JointReferenceFrame::SPATIAL);
-			}
-
-			const Math::VectorX &q = jointState.getq();
-			int dof = _socMate[mateIdx]._axes.cols();
-
-			if (!jointState.isUpdated(true, false, false))
-			{
-				jointState._T[0] = SE3::Exp(_socMate[mateIdx]._axes.col(0), q[0]);
-				for (int i = 1; i < dof; i++)
-				{
-					jointState._T[i] = jointState._T[i - 1] * SE3::Exp(_socMate[mateIdx]._axes.col(i), q[i]);
-				}
-				jointState.TUpdated();
-			}
-
-			if (!jointState.isUpdated(false, true, false))
+			if (((options & JOINT_JACOBIAN) | (options & JOINT_JACOBIANDOT)) && !jointState.isUpdated(false, true, false))
 			{
 				jointState._J.col(0) = _socMate[mateIdx]._axes.col(0);
 				for (int i = 1; i < dof; i++)
 				{
-					jointState._J.col(0) = SE3::Ad(jointState._T[i - 1]) * _socMate[mateIdx]._axes.col(i);
+					jointState._J.col(i) = SE3::Ad(jointState._T[i - 1]) * _socMate[mateIdx]._axes.col(i);
 				}
 				jointState.JUpdated();
 			}
+
+			if ((options & JOINT_JACOBIANDOT) & !jointState.isUpdated(false, false, true))
+			{
+				jointState._JDot.setZero();
+				for (int i = 1; i < dof; i++)
+				{
+					for (int j = 0; j < i; j++)
+					{
+						jointState._JDot.col(i) += SE3::ad(jointState._J.col(j)) * jointState._J.col(i) * qdot(j);
+					}
+				}
+				jointState.JDotUpdated();
+			}
+		}
+
+		const Math::SE3& SerialOpenChainAssembly::getTransform(const unsigned int mateIdx, State::JointState& jointState) const
+		{
+			updateJointKinematics(mateIdx, jointState, JOINT_TRANSFORM);
+
+			return jointState._T[_socMate[mateIdx]._axes.cols() - 1];
+		}
+
+		const Math::Matrix6X& SerialOpenChainAssembly::getJacobian(const unsigned int mateIdx, State::JointState& jointState) const
+		{
+			updateJointKinematics(mateIdx, jointState, JOINT_JACOBIAN);
 
 			return jointState._J;
 		}
 
 		const Math::Matrix6X& SerialOpenChainAssembly::getJacobianDot(const unsigned int mateIdx, State::JointState& jointState) const
 		{
-			if (jointState.getJointReferenceFrame() != JointReferenceFrame::SPATIAL)
-			{
-				jointState.needUpdate(true, true, true);
-				jointState.setJointReferenceFrame(JointReferenceFrame::SPATIAL);
-			}
+			updateJointKinematics(mateIdx, jointState, JOINT_JACOBIANDOT);
 
-			const Math::VectorX &q = jointState.getq();
-			int dof = _socMate[mateIdx]._axes.cols();
-
-			if (!jointState.isUpdated(true, false, false))
-			{
-				jointState._T[0] = SE3::Exp(_socMate[mateIdx]._axes.col(0), q[0]);
-				for (int i = 1; i < dof; i++)
-				{
-					jointState._T[i] = jointState._T[i - 1] * SE3::Exp(_socMate[mateIdx]._axes.col(i), q[i]);
-				}
-				jointState.TUpdated();
-			}
-
-			if (!jointState.isUpdated(false, true, false))
-			{
-				jointState._J.col(0) = _socMate[mateIdx]._axes.col(0);
-				for (int i = 1; i < dof; i++)
-				{
-					jointState._J.col(0) = SE3::Ad(jointState._T[i - 1]) * _socMate[mateIdx]._axes.col(i);
-				}
-				jointState.JUpdated();
-			}
-
-			if (!jointState.isUpdated(false, false, true))
-			{
-				// TODO
-			}
-			
 			return jointState._JDot;
 		}
 	}

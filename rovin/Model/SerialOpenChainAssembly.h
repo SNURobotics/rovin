@@ -4,6 +4,9 @@
 
 namespace rovin
 {
+	class Kinematics;
+	class Dynamics;
+
 	namespace Model
 	{
 		class SerialOpenChainAssembly;
@@ -14,6 +17,7 @@ namespace rovin
 		class SerialOpenChainAssembly : public Assembly
 		{
 			friend class Kinematics;
+			friend class Dynamics;
 
 		public:
 			class SerialOpenChainLink
@@ -38,6 +42,8 @@ namespace rovin
 			SerialOpenChainAssembly(const std::string& name) : Assembly(name) {}
 
 			StatePtr makeState() const;
+
+			void updateJointKinematics(const unsigned int mateIdx, State::JointState& jointState, const unsigned int options) const;
 
 			const Math::SE3& getTransform(const unsigned int mateIdx, State::JointState& jointState) const;
 			const Math::Matrix6X& getJacobian(const unsigned int mateIdx, State::JointState& jointState) const;

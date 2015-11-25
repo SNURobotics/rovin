@@ -37,7 +37,7 @@ int main()
 	goalT = state->getLinkState("L4")._T;
 	cout << state->getLinkState("L4")._T << endl;
 
-	q << PI / 4, PI /3, -PI / 6;
+	q << 0, PI / 4, -PI / 4;
 	state->setActiveJointq(q);
 
 	rovin::Kinematics::solveForwardKinematics(*openchain, *state);
@@ -45,6 +45,9 @@ int main()
 
 	rovin::Kinematics::solveInverseKinematics(*openchain, *state, goalT);
 	rovin::Kinematics::solveForwardKinematics(*openchain, *state);
+	cout << state->getJointState("J1").getq() << endl;
+	cout << state->getJointState("J2").getq() << endl;
+	cout << state->getJointState("J3").getq() << endl;
 	cout << state->getLinkState("L4")._T << endl;
 
 	SimpleOSG renderer(*openchain, *state, 600, 600);

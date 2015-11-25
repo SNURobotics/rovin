@@ -130,9 +130,11 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Dynamics.cpp" />
     <ClCompile Include="Kinematics.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Dynamics.h" />
     <ClInclude Include="Kinematics.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
