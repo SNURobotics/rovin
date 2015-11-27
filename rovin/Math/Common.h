@@ -1,18 +1,50 @@
-/**
-*	\file	LinearAlgegra.h
-*	\date	2015.11.13
-*	\author	Keunjun (ckj@robotics.snu.ac.kr)
-*	\brief	Linear algegra 관련 함수
-*/
-
 #pragma once
 
 #include "Constant.h"
+
+#include <cmath>
 
 namespace rovin
 {
 	namespace Math
 	{
+		static Real min(Real x, Real y)
+		{
+			if (x < y)
+			{
+				return x;
+			}
+			return y;
+		}
+
+		static Real max(Real x, Real y)
+		{
+			if (x < y)
+			{
+				return y;
+			}
+			return x;
+		}
+
+		static void fsincos(Real theta, Real& sine, Real& cosine)
+		{
+			theta -= (int)(theta*Inv_PI_DOUBLE)*PI_DOUBLE;
+			if (theta < 0) theta += PI_DOUBLE;
+
+			sine = sin(theta);
+			if (theta < PI_HALF)
+			{
+				cosine = sqrt(1 - sine*sine);
+				return;
+			}
+			else if (theta < PI + PI_HALF)
+			{
+				cosine = -sqrt(1 - sine*sine);
+				return;
+			}
+			cosine = sqrt(1 - sine*sine);
+		}
+
 		static MatrixX pInv(const MatrixX& mat)
 		{
 			Eigen::JacobiSVD<Math::MatrixX> svd(mat, Eigen::ComputeFullU | Eigen::ComputeFullV);

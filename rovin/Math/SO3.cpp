@@ -1,7 +1,6 @@
 #include <cassert>
 #include <cmath>
 #include "SO3.h"
-#include "Numeric.h"
 
 using namespace std;
 

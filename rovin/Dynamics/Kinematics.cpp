@@ -2,7 +2,7 @@
 
 #include <rovin/utils/Diagnostic.h>
 #include <rovin/Math/Constant.h>
-#include <rovin/Math/LinearAlgebra.h>
+#include <rovin/Math/Common.h>
 
 using namespace std;
 using namespace rovin::Math;
@@ -78,6 +78,7 @@ namespace rovin
 		if (state.getJointReferenceFrame() != JointReferenceFrame::JOINTFRAME)
 		{
 			state.needUpdate(true, true, true);
+			state._accumulatedT = state._accumulatedJ = state._accumulatedJDot = false;
 			state.setJointReferenceFrame(JointReferenceFrame::JOINTFRAME);
 		}
 
@@ -296,6 +297,7 @@ namespace rovin
 		if (state.getJointReferenceFrame() != JointReferenceFrame::SPATIAL)
 		{
 			state.needUpdate(true, true, true);
+			state._accumulatedT = state._accumulatedJ = state._accumulatedJDot = false;
 			state.setJointReferenceFrame(JointReferenceFrame::SPATIAL);
 		}
 
@@ -413,13 +415,8 @@ namespace rovin
 
 	Math::SE3 Kinematics::calculateEndeffectorFrame(const SerialOpenChainAssembly& assem, State& state)
 	{
-		SE3 T;
-		for (unsigned int i = 0; i < assem._Tree.size(); i++)
-		{
-			unsigned int mateIdx = assem._Tree[i].first;
-			T *= assem.getTransform(mateIdx, state.getJointStateByMateIndex(mateIdx));
-		}
-		return T * assem._socLink[assem._endeffectorLink]._M;
+		solveForwardKinematics(assem, state, ACCUMULATED_T);
+		return state.getJointStateByMateIndex(assem._Tree[assem._Tree.size() - 1].first)._accumulatedT * assem._socLink[assem._endeffectorLink]._M;
 	}
 
 	Matrix6X Kinematics::computeJacobian(const SerialOpenChainAssembly& assem, State& state)

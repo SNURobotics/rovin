@@ -3,7 +3,7 @@
 #include <string>
 
 #include <rovin/Math/Constant.h>
-#include <rovin/Math/LinearAlgebra.h>
+#include <rovin/Math/Common.h>
 #include <rovin/Model/Assembly.h>
 #include <rovin/Model/SerialOpenChainAssembly.h>
 #include <rovin/Model/State.h>

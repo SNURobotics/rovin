@@ -55,7 +55,7 @@ namespace rovin
 			unsigned int _endeffectorLink;
 
 			std::vector< SerialOpenChainLink, Eigen::aligned_allocator< SerialOpenChainLink >> _socLink;
-			std::vector< SerialOpenChainMate, Eigen::aligned_allocator< SerialOpenChainMate > > _socMate;
+			std::vector< SerialOpenChainMate, Eigen::aligned_allocator< SerialOpenChainMate >> _socMate;
 		};
 	}
 }
