@@ -24,7 +24,7 @@ namespace rovin
 		};
 
 		static Math::VectorX computeClosedLoopConstraintFunction(const Model::Assembly& assem, Model::State& state);
-		static Math::MatrixX computeClosedLoopConstraintJacobian(const Model::Assembly& assem, Model::State& state, const Model::State::RETURN_STATE& return_state);
+		static Math::MatrixX computeClosedLoopConstraintJacobian(const Model::Assembly& assem, Model::State& state, const Model::State::TARGET_JOINT& return_state);
 		static void solveClosedLoopConstraint(const Model::Assembly& assem, Model::State& state);
 
 		//	Update position of each link which are corresponding to input state.

@@ -57,8 +57,11 @@ namespace rovin
 				Math::Matrix6X _accumulatedJDot;
 
 				const Math::VectorX& getq() const { return _q; }
+				Math::Real getq(unsigned int idx) const { return _q[idx]; }
 				const Math::VectorX& getqdot() const { return _qdot; }
+				Math::Real getqdot(unsigned int idx) const { return _qdot[idx]; }
 				const Math::VectorX& getqddot() const { return _qddot; }
+				Math::Real getqddot(unsigned int idx) const { return _qddot[idx]; }
 
 				const int getJointReferenceFrame() const { return _JointReferenceFrame; }
 				void setJointReferenceFrame(const int JointReferenceFrame) { _JointReferenceFrame = JointReferenceFrame; }
@@ -91,11 +94,15 @@ namespace rovin
 				int _JointReferenceFrame;
 			};
 
-			enum RETURN_STATE
+			enum TARGET_JOINT
 			{
+				//	active joint + passive joint, sorted in assembled order
 				ASSEMJOINT,
+				//	active joint + passive joint, sorted in state order ??
 				STATEJOINT,
+				//	only active joint
 				ACTIVEJOINT,
+				//	only passive joint
 				PASSIVEJOINT
 			};
 
@@ -168,12 +175,19 @@ namespace rovin
 			void setActiveJointqddot(const Math::VectorX& qddot);
 			void setPassiveJointqddot(const Math::VectorX& qddot);
 
+			void setActiveJointTorque(const Math::VectorX& torque);
+
 			void addActiveJointqddot(const Math::VectorX& qddot);
 			void addPassiveJointqddot(const Math::VectorX& qddot);
 
-			unsigned int returnDof(const RETURN_STATE& return_state) const;
-			void writeReturnMatrix(Math::MatrixX& returnMatrix, const Math::MatrixX& value, const unsigned int startRow, const unsigned int jointIndex, const RETURN_STATE& return_state) const;
-			void writeReturnVector(Math::VectorX& returnVector, const Math::VectorX& value, const unsigned int jointIndex, const RETURN_STATE& return_state) const;
+			Math::VectorX getJointTorque(const TARGET_JOINT& target) const;
+			Math::VectorX getJointq(const TARGET_JOINT& target) const;
+			Math::VectorX getJointqdot(const TARGET_JOINT& target) const;
+			Math::VectorX getJointqddot(const TARGET_JOINT& target) const;
+
+			unsigned int getDOF(const TARGET_JOINT& return_state) const;
+			void writeReturnMatrix(Math::MatrixX& returnMatrix, const Math::MatrixX& value, const unsigned int startRow, const unsigned int jointIndex, const TARGET_JOINT& return_state) const;
+			void writeReturnVector(Math::VectorX& returnVector, const Math::VectorX& value, const unsigned int jointIndex, const TARGET_JOINT& return_state) const;
 
 			const int getJointReferenceFrame() const { return _JointReferenceFrame; }
 			void setJointReferenceFrame(const int JointReferenceFrame) { _JointReferenceFrame = JointReferenceFrame; }

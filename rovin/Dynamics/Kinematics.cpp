@@ -31,12 +31,12 @@ namespace rovin
 		return f;
 	}
 
-	MatrixX Kinematics::computeClosedLoopConstraintJacobian(const Assembly& assem, State& state, const State::RETURN_STATE& return_state)
+	MatrixX Kinematics::computeClosedLoopConstraintJacobian(const Assembly& assem, State& state, const State::TARGET_JOINT& return_state)
 	{
 		if (assem._ClosedLoopConstraint.size() == 0)
-			return MatrixX::Zero(6, state.returnDof(return_state));
+			return MatrixX::Zero(6, state.getDOF(return_state));
 
-		MatrixX J(assem._ClosedLoopConstraint.size() * 6, state.returnDof(return_state));
+		MatrixX J(assem._ClosedLoopConstraint.size() * 6, state.getDOF(return_state));
 		SE3 T;
 		for (unsigned int i = 0; i < assem._ClosedLoopConstraint.size(); i++)
 		{
@@ -138,7 +138,7 @@ namespace rovin
 		solveClosedLoopConstraint(assem, state);
 
 		utils::Log(state.getActiveJointDof() == 0, "Active Joint는 하나 이상이어야 합니다.", true);
-		MatrixX J(6, state.returnDof(State::STATEJOINT));
+		MatrixX J(6, state.getDOF(State::STATEJOINT));
 		MatrixX ReturnJ;
 
 		if (referenceLinkIndex == -1) referenceLinkIndex = assem._baseLink;
@@ -426,7 +426,7 @@ namespace rovin
 	{
 		solveForwardKinematics(assem, state, ACCUMULATED_J);
 
-		MatrixX J(6, state.returnDof(State::ACTIVEJOINT));
+		MatrixX J(6, state.getDOF(State::ACTIVEJOINT));
 
 		for (unsigned int i = 0; i < assem._Mate.size(); i++)
 		{
