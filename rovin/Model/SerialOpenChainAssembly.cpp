@@ -34,10 +34,10 @@ namespace rovin
 			unsigned int i;
 			for (i = 0; i < _Tree.size(); i++)
 			{
-				if (_Tree[i].second != JointDirection::REGULAR || _Mate[_Tree[i].first]._joint->getJointType() != Joint::SCREWJOINT)
-					break;
+				if (_Tree[i].second == JointDirection::REGULAR && _Mate[_Tree[i].first]._joint->getJointType() == Joint::SCREWJOINT && _Depth[_Mate[_Tree[i].first].getChildLinkIdx()] == i + 1);
+				else break;
 			}
-			utils::Log(i != _Tree.size(), "Serial Open Chain의 조건을 갖춘 Assembly가 아닙니다.", true);
+			utils::Log(i != _Tree.size() || _baseLink != _Mate[_Tree[0].first].getParentLinkIdx(), "Serial Open Chain의 조건을 갖춘 Assembly가 아닙니다.", true);
 
 			_endeffectorLink = _Mate[_Tree[_Tree.size() - 1].first].getChildLinkIdx();
 
@@ -90,7 +90,7 @@ namespace rovin
 				jointState.JUpdated();
 			}
 
-			if ((options & JOINT_JACOBIANDOT) & !jointState.isUpdated(false, false, true))
+			if ((options & JOINT_JACOBIANDOT) && !jointState.isUpdated(false, false, true))
 			{
 				jointState._JDot.setZero();
 				for (int i = 1; i < dof; i++)

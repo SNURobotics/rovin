@@ -41,6 +41,8 @@ namespace rovin
 			/// srInertia ¼Ò¸êÀÚ
 			~Inertia() {}
 
+			operator Matrix6();
+
 			Inertia& operator = (const Inertia&);
 			Inertia operator + (const Inertia&) const;
 			Inertia& operator += (const Inertia&);
