@@ -205,20 +205,31 @@ namespace rovin
 		private:
 			unsigned int _totalJointDof, _activeJointDof;
 
+			//	'LinkState's are stored in assembled order.
 			std::vector< LinkState, Eigen::aligned_allocator< LinkState >> _linkState;
+			//	'JointState's are stored in assembled order.
 			std::vector< JointState, Eigen::aligned_allocator< JointState >> _jointState;
 
+			//	Name of links are stored in assembled order.
 			std::vector< std::string > _linkName;
+			//	Name of joints are stored in assembled order.
 			std::vector< std::string > _jointName;
 
+			//	Map from name of link to index in '_linkName' or '_linkState'.
 			std::map< std::string, unsigned int > _linkIndexMap;
+			//	Map from name of joint to index in '_jointName' or '_jointState'.
 			std::map< std::string, unsigned int > _jointIndexMap;
 
+			//	Notify whether i-th joint (assembled order) is active or not.
 			std::vector< bool > _isActiveJoint;
+			//	Index (in assembled order) of active joints.
 			std::vector< unsigned int > _activeJointList;
+			//	Index (in assembled order) of passive joints.
 			std::vector< unsigned int > _passiveJointList;
 
+			//	DOF index of i-th (assembled order) joint in whole DOF.
 			std::vector< unsigned int > _assemIndex;
+			//	DOF index of i-th (assembled order) joint in active / passive (each) DOF
 			std::vector< unsigned int > _stateIndex;
 
 			bool _TUpdated;
