@@ -30,7 +30,6 @@ int main()
 
 	StatePtr state = openchain->makeState();
 
-
 	//	initialization
 	unsigned int dof = state->getTotalJointDof();
 	VectorX  q, dq, ddq, tau;
@@ -60,10 +59,9 @@ int main()
 	cout << "qdot	: " << state->getJointqdot(State::TARGET_JOINT::ACTIVEJOINT).transpose() << endl;
 	cout << endl << "qddot	: " << state->getJointqddot(State::TARGET_JOINT::ACTIVEJOINT).transpose() << endl;
 
-
+	rovin::Kinematics::solveForwardKinematics(*openchain, *state);
 	SimpleOSG renderer(*openchain, *state, 600, 600);
 	renderer._viewer.run();
-
 
 	return 0;
 }
@@ -76,17 +74,17 @@ void Modeling()
 	shared_ptr< Link > L2 = shared_ptr< Link >(new Link("L2"));
 	shared_ptr< Link > L3 = shared_ptr< Link >(new Link("L3"));
 	shared_ptr< Link > L4 = shared_ptr< Link >(new Link("L4"));
-	L1->setVisualGeometry(shared_ptr< Box >(new Box(2, 10, 2)));
-	L2->setVisualGeometry(shared_ptr< Box >(new Box(6, 2, 2)));
-	L3->setVisualGeometry(shared_ptr< Box >(new Box(2, 10, 2)));
-	L4->setVisualGeometry(shared_ptr< Box >(new Box(6, 2, 2)));
+	L1->setVisualGeometry(shared_ptr< Box >(new Box(0.7, 1.5, 0.7)));
+	L2->setVisualGeometry(shared_ptr< Box >(new Box(0.7, 1.5, 0.7)));
+	L3->setVisualGeometry(shared_ptr< Box >(new Box(0.7, 1.5, 0.7)));
+	L4->setVisualGeometry(shared_ptr< Box >(new Box(0.7, 1.5, 0.7)));
 	openchain->addLink(L1);
 	openchain->addLink(L2);
 	openchain->addLink(L3);
 	openchain->addLink(L4);
-	openchain->addMate(shared_ptr< Joint >(new RevoluteJoint("J1")), "L1", "L2", SE3(Vector3(-6, 0, 0)), SE3(Vector3(0, 4, 0)));
-	openchain->addMate(shared_ptr< Joint >(new RevoluteJoint("J2")), "L2", "L3", SE3(Vector3(0, 4, 0)), SE3(Vector3(6, 0, 0)));
-	openchain->addMate(shared_ptr< Joint >(new RevoluteJoint("J3")), "L3", "L4", SE3(Vector3(6, 0, 0)), SE3(Vector3(0, -4, 0)));
+	openchain->addMate(shared_ptr< Joint >(new RevoluteJoint("J1")), "L1", "L2", SE3(Vector3(1, 0, 0)), SE3(Vector3(1, 0, 0)));
+	openchain->addMate(shared_ptr< Joint >(new RevoluteJoint("J2")), "L2", "L3", SE3(Vector3(1, 0, 0)), SE3(Vector3(1, 0, 0)));
+	openchain->addMate(shared_ptr< Joint >(new RevoluteJoint("J3")), "L3", "L4", SE3(Vector3(1, 0, 0)), SE3(Vector3(1, 0, 0)));
 
 	openchain->completeAssembling("L1");
 }

@@ -299,8 +299,7 @@ namespace rovin
 			state.setJointReferenceFrame(JointReferenceFrame::SPATIAL);
 		}
 
-		if (((options & ACCUMULATED_T) | (options & ACCUMULATED_J) | (options & ACCUMULATED_JDOT) |
-			(options & TRANSFORM) | (options & VELOCITY) | (options & ACCELERATION)) && !state._accumulatedT)
+		if ((options & (ACCUMULATED_T | ACCUMULATED_J | ACCUMULATED_JDOT | TRANSFORM | VELOCITY | ACCELERATION)) && !state._accumulatedT)
 		{
 			SE3 T;
 			state.getLinkState(assem._baseLink)._T = assem._socLink[assem._baseLink]._M;
@@ -329,8 +328,7 @@ namespace rovin
 			state.TUpdated();
 		}
 
-		if (((options & ACCUMULATED_J) | (options & ACCUMULATED_JDOT) |
-			(options & VELOCITY) | (options & ACCELERATION)) && !state._accumulatedJ)
+		if ((options & (ACCUMULATED_J | ACCUMULATED_JDOT | VELOCITY | ACCELERATION)) && !state._accumulatedJ)
 		{
 			for (unsigned int i = 0; i < assem._Tree.size(); i++)
 			{
@@ -366,7 +364,7 @@ namespace rovin
 			state.VUpdated();
 		}
 
-		if (((options & ACCUMULATED_JDOT) | (options & ACCELERATION)) && !state._accumulatedJDot)
+		if ((options & (ACCUMULATED_JDOT| ACCELERATION)) && !state._accumulatedJDot)
 		{
 			Matrix6 adjoint;
 			adjoint.setZero();
@@ -405,7 +403,7 @@ namespace rovin
 
 				VDot += state.getJointStateByMateIndex(mateIdx)._accumulatedJ * state.getJointStateByMateIndex(mateIdx).getqddot() +
 					state.getJointStateByMateIndex(mateIdx)._accumulatedJDot * state.getJointStateByMateIndex(mateIdx).getqdot();
-				state.getLinkState(assem._Mate[mateIdx].getChildLinkIdx(assem._Tree[i].second))._V = VDot;
+				state.getLinkState(assem._Mate[mateIdx].getChildLinkIdx(assem._Tree[i].second))._VDot = VDot;
 			}
 			state.VDotUpdated();
 		}
@@ -413,13 +411,9 @@ namespace rovin
 
 	Math::SE3 Kinematics::calculateEndeffectorFrame(const SerialOpenChainAssembly& assem, State& state)
 	{
-		SE3 T;
-		for (unsigned int i = 0; i < assem._Tree.size(); i++)
-		{
-			unsigned int mateIdx = assem._Tree[i].first;
-			T *= assem.getTransform(mateIdx, state.getJointStateByMateIndex(mateIdx));
-		}
-		return T * assem._socLink[assem._endeffectorLink]._M;
+		solveForwardKinematics(assem, state, ACCUMULATED_T);
+		unsigned int mateIdx = assem._Tree[assem._Tree.size() - 1].first;
+		return state.getJointStateByMateIndex(mateIdx)._accumulatedT * assem._socLink[assem._endeffectorLink]._M;
 	}
 
 	Matrix6X Kinematics::computeJacobian(const SerialOpenChainAssembly& assem, State& state)
@@ -440,6 +434,26 @@ namespace rovin
 		}
 
 		return J;
+	}
+
+	Matrix6X Kinematics::computeJacobianDot(const SerialOpenChainAssembly& assem, State& state)
+	{
+		solveForwardKinematics(assem, state, ACCUMULATED_JDOT);
+
+		MatrixX JDot(6, state.getDOF(State::ACTIVEJOINT));
+
+		for (unsigned int i = 0; i < assem._Mate.size(); i++)
+		{
+			unsigned int mateIdx = assem._Tree[i].first;
+
+			state.writeReturnMatrix(JDot,
+				state.getJointStateByMateIndex(mateIdx)._accumulatedJDot,
+				0,
+				state.getJointIndexByMateIndex(mateIdx),
+				State::ACTIVEJOINT);
+		}
+
+		return JDot;
 	}
 
 	void Kinematics::solveInverseKinematics(const SerialOpenChainAssembly& assem, State& state, const SE3 goalT)

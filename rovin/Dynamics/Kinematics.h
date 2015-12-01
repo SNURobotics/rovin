@@ -42,6 +42,7 @@ namespace rovin
 		static Math::SE3 calculateEndeffectorFrame(const Model::SerialOpenChainAssembly& assem, Model::State& state);
 
 		static Math::Matrix6X computeJacobian(const Model::SerialOpenChainAssembly& assem, Model::State& state);
+		static Math::Matrix6X computeJacobianDot(const Model::SerialOpenChainAssembly& assem, Model::State& state);
 		static void solveInverseKinematics(const Model::SerialOpenChainAssembly& assem, Model::State& state, const Math::SE3 goalT);
 
 	private:

@@ -37,15 +37,23 @@ namespace rovin
 		Kinematics::solveForwardKinematics(assem, state, Kinematics::VELOCITY | Kinematics::ACCELERATION);
 
 		dse3 netF;
+		se3 V;
+		se3 VDot;
+		Matrix6 Adjoint;
 		netF.setZero();
 		for (unsigned int i = 0; i < assem._Tree.size(); i++)
 		{
 			unsigned int mateIdx = assem._Tree[assem._Tree.size() - i - 1].first;
 			unsigned int linkIdx = assem._Mate[assem._Tree[assem._Tree.size() - i - 1].first].getChildLinkIdx();
 
-			netF = netF + externalF[linkIdx] -
-				(Matrix6)assem._socLink[linkIdx]._G*state.getLinkState(linkIdx)._VDot -
-				SE3::adTranspose(state.getLinkState(linkIdx)._V)*(Matrix6)assem._socLink[linkIdx]._G*state.getLinkState(linkIdx)._V;
+			Adjoint = SE3::InvAd(state.getJointStateByMateIndex(mateIdx)._accumulatedT);
+			V = Adjoint * state.getLinkState(linkIdx)._V;
+			VDot = Adjoint * state.getLinkState(linkIdx)._VDot;
+
+			netF = SE3::Ad(state.getJointStateByMateIndex(mateIdx)._accumulatedT).transpose() * netF + externalF[linkIdx] +
+				(Matrix6)assem._socLink[linkIdx]._G*VDot -
+				SE3::adTranspose(V)*(Matrix6)assem._socLink[linkIdx]._G*V;
+			netF = Adjoint.transpose() * netF;
 
 			state.getJointStateByMateIndex(mateIdx)._constraintF = netF;
 			state.getJointStateByMateIndex(mateIdx)._tau = netF.transpose()*state.getJointStateByMateIndex(mateIdx)._accumulatedJ;
