@@ -51,9 +51,12 @@ namespace rovin
 			Inertia operator / (const Real&) const;
 			Inertia& operator /= (const Real&);
 
-			/// 기준 frame을 T만큼 변환 시켜줍니다.
-			void changeFrame(const SE3& T ///< 변환해주고 싶은 SE3
+			///	Change reference frame from {a} to {b}
+			void changeFrame(const SE3& T ///< Transformation from {b} to {a}, T_ba
 				);
+
+			///	Calculate coordinate transformation. It does not change any value in this class.
+			Inertia getTransformed(const SE3& T_ab, bool inverse = false) const;
 		};
 	}
 }

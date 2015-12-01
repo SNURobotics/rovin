@@ -12,6 +12,7 @@
 #include <rovin/Dynamics/Dynamics.h>
 
 #include <rovin/Renderer/SimpleOSG.h>
+#include <rovin/utils/Diagnostic.h>
 
 using namespace std;
 using namespace rovin::Math;
@@ -24,8 +25,6 @@ void Modeling();
 
 int main()
 {
-	SE3 goalT;
-
 	Modeling();
 
 	StatePtr state = openchain->makeState();

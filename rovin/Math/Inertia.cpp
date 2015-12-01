@@ -118,5 +118,17 @@ namespace rovin
 		{
 			static_cast<Matrix6&>(*this) = SE3::InvAd(T).transpose() * static_cast<Matrix6&>(*this) * SE3::InvAd(T);
 		}
+
+		Inertia Inertia::getTransformed(const SE3 & T_ab, bool inverse) const
+		{
+			//	T == T_ab
+			Matrix6 AD;
+			if (!inverse)
+				AD = SE3::Ad(T_ab);
+			else
+				AD = SE3::InvAd(T_ab);
+			return static_cast<Inertia>(AD.transpose() * static_cast<const Matrix6&>(*this) * AD);
+		}
+
 	}
 }
