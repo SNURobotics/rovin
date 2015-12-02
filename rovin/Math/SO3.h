@@ -9,6 +9,7 @@
 
 #include <iostream>
 #include "Constant.h"
+#include "Common.h"
 
 namespace rovin
 {
@@ -92,6 +93,7 @@ namespace rovin
 		static Matrix3 Bracket(const so3 w)
 		{
 			Matrix3 result;
+
 			result(0, 0) = 0;
 			result(0, 1) = -w(2);
 			result(0, 2) = w(1);
@@ -103,6 +105,7 @@ namespace rovin
 			result(2, 0) = -w(1);
 			result(2, 1) = w(0);
 			result(2, 2) = 0;
+
 			return result;
 		}
 	}

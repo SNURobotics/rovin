@@ -46,7 +46,7 @@ namespace rovin
 		}
 #endif
 
-		static void fsincos(Real theta, Real& sine, Real& cosine)
+		static void fsincosTable(Real theta, Real& sine, Real& cosine)
 		{
 			theta -= (int)(theta*Inv_PI_DOUBLE)*PI_DOUBLE;
 			if (theta < 0) theta += PI_DOUBLE;
@@ -88,25 +88,6 @@ namespace rovin
 				//cosine = sqrt(1 - sine*sine);
 				cosine = sineLookupTalbe_Gradient[tmpx] * (theta - PI_HALF - PI) + sineLookupTalbe[tmpx];
 			}
-		}
-
-		static void fsincos_precise(Real theta, Real& sine, Real& cosine)
-		{
-			theta -= (int)(theta*Inv_PI_DOUBLE)*PI_DOUBLE;
-			if (theta < 0) theta += PI_DOUBLE;
-
-			sine = sin(theta);
-			if (theta < PI_HALF)
-			{
-				cosine = sqrt(1 - sine*sine);
-				return;
-			}
-			else if (theta < PI + PI_HALF)
-			{
-				cosine = -sqrt(1 - sine*sine);
-				return;
-			}
-			cosine = sqrt(1 - sine*sine);
 		}
 	}
 }

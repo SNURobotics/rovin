@@ -7,6 +7,7 @@
 #include <rovin/Math/LinearAlgebra.h>
 #include <rovin/Math/LieGroup.h>
 #include <rovin/Model/Assembly.h>
+#include <rovin/Model/SerialOpenChainAssembly.h>
 #include <rovin/Model/RevoluteJoint.h>
 #include <rovin/Dynamics/Kinematics.h>
 
@@ -16,9 +17,10 @@ using namespace std;
 using namespace rovin::Math;
 using namespace rovin::Model;
 
-AssemblyPtr robot;
+socAssemblyPtr robot;
+AssemblyPtr robot_gen;
 
-unsigned int _DOF = 6;
+unsigned int _DOF = 60;
 
 void Modeling(unsigned int);
 
@@ -27,6 +29,7 @@ int main()
 	srand(time(NULL));
 
 	Modeling(_DOF);
+	robot_gen = static_pointer_cast<Assembly>(robot);
 
 	list< string > activeJoint;
 	for (unsigned int i = 1; i <= _DOF; i++)
@@ -44,14 +47,19 @@ int main()
 
 	//fourBar->Solve_Closedloop_Constraint(state);
 
-	PERFORM_TEST(rovin::Kinematics::solveForwardKinematics(*robot, *state), 1e+6);
+	PERFORM_TEST(rovin::Kinematics::solveForwardKinematics(*robot, *state), 2e+5);
+	PERFORM_TEST(rovin::Kinematics::solveForwardKinematics(*robot, *state), 2e+5);
+	PERFORM_TEST(rovin::Kinematics::solveForwardKinematics(*robot, *state), 2e+5);
+	PERFORM_TEST(rovin::Kinematics::solveForwardKinematics(*robot_gen, *state), 2e+5);
+	PERFORM_TEST(rovin::Kinematics::solveForwardKinematics(*robot_gen, *state), 2e+5);
+	PERFORM_TEST(rovin::Kinematics::solveForwardKinematics(*robot_gen, *state), 2e+5);
 
 	return 0;
 }
 
 void Modeling(unsigned int DOF)
 {
-	robot = shared_ptr< Assembly >(new Assembly("PERFORMANCE"));
+	robot = socAssemblyPtr(new socAssembly("PERFORMANCE"));
 
 	shared_ptr< Link > base = shared_ptr< Link >(new Link("L0"));
 	robot->addLink(base);
@@ -62,5 +70,5 @@ void Modeling(unsigned int DOF)
 		robot->addMate(shared_ptr< Joint >(new RevoluteJoint("J" + to_string(i))), "L" + to_string(i - 1), "L" + to_string(i), SE3(), SE3());
 	}
 
-	robot->completeAssembling("L1");
+	robot->completeAssembling("L0");
 }

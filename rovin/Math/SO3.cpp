@@ -1,7 +1,6 @@
 #include <cassert>
 #include <cmath>
 #include "SO3.h"
-#include "Numeric.h"
 
 using namespace std;
 
@@ -30,7 +29,7 @@ namespace rovin
 		SO3 SO3::operator * (const SO3& operand) const
 		{
 			SO3 result;
-			result._e.noalias() = _e * operand._e;
+			result._e = _e * operand._e;
 			return result;
 		}
 
@@ -166,7 +165,7 @@ namespace rovin
 			else
 			{
 				Real s, c;
-				Math::fsincos_precise(theta, s, c);
+				Math::fsincos(theta, s, c);
 				Real itheta = 1.0 / theta;
 				st_t = s*itheta;
 				itheta *= itheta;
@@ -190,34 +189,23 @@ namespace rovin
 
 		so3 SO3::Log(const SO3& R)
 		{
-			so3 result;
+			Real theta = 0.5*(R._e(0, 0) + R._e(1, 1) + R._e(2, 2) - 1.0), t_st;
 
-			if (R._e.isApprox(R._e.transpose()))
+			if (theta < RealEps - 1.0)
 			{
-				if (R._e.isApprox(Matrix3::Identity()))
-				{
-					result << 0, 0, 0;
-				}
-				else
-				{
-					Matrix3 tmp1 = (R._e - Matrix3::Identity()) / 2;
-					Real tmp2 = tmp1.trace() / 2;
-					result(0) = -tmp2 + tmp1(0, 0);
-					result(1) = -tmp2 + tmp1(1, 1);
-					result(2) = -tmp2 + tmp1(2, 2);
-				}
-			}
-			else
-			{
-				Real theta = acos((R._e.trace() - 1) / 2);
-				Matrix3 tmp = (R._e - R._e.transpose()) / (2 * sin(theta));
-				result(0) = tmp(2, 1);
-				result(1) = tmp(0, 2);
-				result(2) = tmp(1, 0);
-				result = result * theta;
+				if (R._e(0, 0) > 1.0 - RealEps) return so3(PI, 0.0, 0.0);
+				else if (R._e(1, 1) > 1.0 - RealEps) return so3(0.0, PI, 0.0);
+				else if (R._e(2, 2) > 1.0 - RealEps) return so3(0.0, 0.0, PI);
+
+				return so3(PI_DIVIDED_BY_SQRT2 * sqrt((R._e(1, 0) * R._e(1, 0) + R._e(2, 0) * R._e(2, 0)) / (1.0 - R._e(0, 0))),
+					PI_DIVIDED_BY_SQRT2 * sqrt((R._e(0, 1) * R._e(0, 1) + R._e(2, 1) * R._e(2, 1)) / (1.0 - R._e(1, 1))),
+					PI_DIVIDED_BY_SQRT2 * sqrt((R._e(0, 2) * R._e(0, 2) + R._e(1, 2) * R._e(1, 2)) / (1.0 - R._e(2, 2))));
 			}
 
-			return result;
+			theta = acos(theta);
+			if (theta < RealEps)	t_st = (Real)3.0 / ((Real)6.0 - theta * theta);
+			else					t_st = theta / (2.0 * sin(theta));
+			return so3(t_st * (R._e(2, 1) - R._e(1, 2)), t_st * (R._e(0, 2) - R._e(2, 0)), t_st * (R._e(1, 0) - R._e(0, 1)));
 		}
 
 		SO3 SO3::Projection(const Matrix3& R)

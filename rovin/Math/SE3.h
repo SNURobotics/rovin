@@ -50,10 +50,6 @@ namespace rovin
 			*/
 			const Matrix4 matrix() const;
 
-			/// 3개 SE3 곱셈
-			static SE3 multiply(const SE3&, const SE3&, const SE3&);
-			static SE3 multiply(const SE3&, const SE3&, const SE3&, const SE3&);
-
 			/// 회전부분을 SO3인 R으로 설정합니다.
 			void setRotation(const SO3& R);
 			/// 회전부분을 임의의 행렬 M으로 설정합니다. 이 경우에는 _M이 SO3의 성질을 만족하는지 확인합니다.
@@ -83,13 +79,15 @@ namespace rovin
 			static Matrix6 Ad(const SE3& T);
 			///
 			static se3 Ad(const SE3& T, const se3& S);
+			/// T^(-1)의 Large Adjoint를 해줍니다.
+			static Matrix6 InvAd(const SE3& T);
 			///
 			static se3 InvAd(const SE3& T, const se3& S);
-			/// T^(-1)의 Large Adjoint를 해줍니다.
-			static Matrix6 invAd(const SE3& T);
 
 			/// Small Adjoint인 [S]를 계산해줍니다.
 			static Matrix6 ad(const se3& S);
+			/// Small Adjoint인 [S]^T를 계산해줍니다.
+			static Matrix6 adTranspose(const se3& S);
 
 		private:
 			SO3 _R;
@@ -99,13 +97,29 @@ namespace rovin
 		/// [S]를 계산해줍니다.
 		static Matrix4 Bracket(const se3& S)
 		{
-			so3 w = S.block(0, 0, 3, 1);
-			Vector3 v = S.block(3, 0, 3, 1);
-
 			Matrix4 result;
-			result.setZero();
-			result.block<3, 3>(0, 0) = Bracket(w);
-			result.block<3, 1>(0, 3) = v;
+
+			result(0, 0) = 0;
+			result(0, 1) = -S(2);
+			result(0, 2) = S(1);
+
+			result(1, 0) = S(2);
+			result(1, 1) = 0;
+			result(1, 2) = -S(0);
+
+			result(2, 0) = -S(1);
+			result(2, 1) = S(0);
+			result(2, 2) = 0;
+
+			result(0, 3) = S(3);
+			result(1, 3) = S(4);
+			result(2, 3) = S(5);
+
+			result(3, 0) = 0;
+			result(3, 1) = 0;
+			result(3, 2) = 0;
+			result(3, 3) = 0;
+
 			return result;
 		}
 	}

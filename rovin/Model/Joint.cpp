@@ -4,9 +4,10 @@
 
 namespace rovin {
 	namespace Model {
-		Joint::Joint(const std::string & name, unsigned int dof)
+		Joint::Joint(const JOINTTYPE& jointType, const std::string & name, unsigned int dof)
 			:_name((utils::checkName(name) ? (name) : (assert(0 && "Invalid name."), "")))
-			,_dof((dof>=0)?(dof): (assert(0 && "DOF of joint cannot be negative"), 0))
+			, _jointType(jointType)
+			, _dof((dof>=0)?(dof): (assert(0 && "DOF of joint cannot be negative"), 0))
 		{
 			if (dof > 0)
 			{

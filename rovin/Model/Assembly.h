@@ -19,6 +19,7 @@
 namespace rovin
 {
 	class Kinematics;
+	class Dynamics;
 
 	namespace Model
 	{
@@ -28,6 +29,9 @@ namespace rovin
 
 		typedef std::shared_ptr< Assembly > AssemblyPtr;
 
+		enum JointDirection			{ REGULAR, REVERSE };
+		enum JointReferenceFrame	{ JOINTFRAME=0, SPATIAL=1, BODY=2 };
+
 		/**
 		*	\class Assembly
 		*	\brief Link와 joint를 연결시켜주고 모델에 대한 정보를 저장하는 클래스입니다.
@@ -35,6 +39,7 @@ namespace rovin
 		class Assembly
 		{
 			friend class Kinematics;
+			friend class Dynamics;
 
 		public:
 			class Mate
@@ -46,12 +51,19 @@ namespace rovin
 
 				Math::SE3 _Tmj;
 				Math::SE3 _Tja;
-				Math::SE3 _InvTmj;
-				Math::SE3 _InvTja;
 
 				Mate(const Model::JointPtr& joint, const unsigned int mountLinkIdx, const unsigned int actionLinkIdx,
-					const Math::SE3& Tmj, const Math::SE3& Tja) : _joint(joint), _mountLinkIdx(mountLinkIdx), _actionLinkIdx(actionLinkIdx),
-					_Tmj(Tmj), _Tja(Tja), _InvTmj(Tmj.inverse()), _InvTja(Tja.inverse()) {}
+					const Math::SE3& Tmj, const Math::SE3& Tja);
+
+				unsigned int getParentLinkIdx(const JointDirection& jointDirection = JointDirection::REGULAR) const;
+				unsigned int getChildLinkIdx(const JointDirection& jointDirection = JointDirection::REGULAR) const;
+			};
+
+			enum JOINT_KINEMATICS_OPTION
+			{
+				JOINT_TRANSFORM = 1 << 0,
+				JOINT_JACOBIAN = 1 << 1,
+				JOINT_JACOBIANDOT = 1 << 2
 			};
 
 			Assembly(const std::string& assemblyName) : 
@@ -103,7 +115,15 @@ namespace rovin
 			void setAssemblyMode();
 			void completeAssembling(const std::string& baseLinkName);
 
-		private:
+			void updateJointKinematics(const unsigned int mateIdx, State::JointState& jointState, const unsigned int options) const;
+
+			Math::SE3 getTransform(const unsigned int mateIdx, State::JointState& jointState, const JointDirection& jointDirection) const;
+			Math::Matrix6X getJacobian(const unsigned int mateIdx, State::JointState& jointState, const JointDirection& jointDirection) const;
+			Math::Matrix6X getJacobianDot(const unsigned int mateIdx, State::JointState& jointState, const JointDirection& jointDirection) const;
+
+			static std::pair< unsigned int, JointDirection > reverseDirection(const std::pair< unsigned int, JointDirection >& target);
+
+		protected:
 			std::string _assemblyName;
 
 			bool _complete;
@@ -117,6 +137,8 @@ namespace rovin
 
 			unsigned int _baseLink;
 			std::vector< std::pair< unsigned int, Model::JointDirection >> _Tree;
+			std::vector< std::pair< unsigned int, Model::JointDirection >> _Parent;
+			std::vector< unsigned int > _Depth;
 			std::vector< std::vector< std::pair< unsigned int, Model::JointDirection >>> _ClosedLoopConstraint;
 		};
 	}
