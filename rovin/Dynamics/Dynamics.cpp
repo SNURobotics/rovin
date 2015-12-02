@@ -23,7 +23,7 @@ namespace rovin
 
 	void Dynamics::solveInverseDynamics(const SerialOpenChainAssembly& assem, State& state, const vector< pair< unsigned int, dse3 >>& F)
 	{
-		vector< dse3 , Eigen::aligned_allocator<dse3>> externalF;
+		vector< dse3, Eigen::aligned_allocator<dse3>> externalF;
 		externalF.resize(assem.getLinkList().size());
 		for (unsigned int i = 0; i < externalF.size(); i++)
 		{
@@ -69,24 +69,30 @@ namespace rovin
 		for (unsigned int i = 0; i < extForce.size(); i++)
 			extF[extForce[i].first] += extForce[i].second;
 
-		Kinematics::solveForwardKinematics(assem, state, Kinematics::VELOCITY);
+		Kinematics::solveForwardKinematics(assem, state, Kinematics::VELOCITY | Kinematics::ACCUMULATED_J | Kinematics::ACCUMULATED_T);
 
 		//
 		//	Initialization
 		//
 
+		//	Define indices.
 		unsigned int lastMateIdx = assem._Tree.size() - 1;
 		unsigned int cLinkIdx = assem._Mate[assem._Tree[lastMateIdx].first].getChildLinkIdx();
 		unsigned int pLinkIdx = assem._Mate[assem._Tree[lastMateIdx].first].getParentLinkIdx();
+		//	J_a[i] means articulated inertia of child link of i-th mate.
 		vector<Matrix6, Eigen::aligned_allocator<Matrix6>>	J_a(assem._Tree.size());
+		//	Bias force applied on child link of i-th mate.
 		vector<dse3, Eigen::aligned_allocator<dse3>>	bias(assem._Tree.size());
+		//	Inertia of child link of i-th mate w.r.t. spatial frame.
+		Inertia linkInertia = assem._socLink[cLinkIdx]._G.getTransformed(state.getJointStateByMateIndex(assem._Tree[lastMateIdx].first)._accumulatedT, true);
 
-		J_a[lastMateIdx] = assem._socLink[cLinkIdx]._G;
-		bias[lastMateIdx] = -SE3::adTranspose(state.getLinkState(cLinkIdx)._V) * assem._socLink[cLinkIdx]._G*state.getLinkState(cLinkIdx)._V;
+
+		J_a[lastMateIdx] = linkInertia;
+		bias[lastMateIdx] = -SE3::adTranspose(state.getLinkState(cLinkIdx)._V) * linkInertia * state.getLinkState(cLinkIdx)._V;
 		if (!extF[lastMateIdx + 1].isZero())
 			bias[lastMateIdx] -= SE3::InvAd(state.getLinkState(cLinkIdx)._T).transpose() * extF[lastMateIdx + 1];
 
-		//	Intermediate variables to efficient computation.
+		//	Intermediate variables for efficient computation.
 		Matrix6X Ja_S;
 		MatrixX inv_ST_Ja_S;
 		se3 ad_V_S_qdot;
@@ -100,32 +106,25 @@ namespace rovin
 			//	Define indices.
 			cLinkIdx = assem._Mate[assem._Tree[idx].first].getChildLinkIdx();
 			pLinkIdx = assem._Mate[assem._Tree[idx].first].getParentLinkIdx();
-			State::JointState&	jStat = state.getJointStateByMateIndex(idx);
+			State::JointState&	jStat = state.getJointStateByMateIndex(assem._Tree[idx].first);
 
 			//	Pre-calculate frequently used variables.
-			Ja_S = (Matrix6)J_a[idx] * assem._socMate[assem._Tree[idx].first]._axes;
-			inv_ST_Ja_S = (assem._socMate[assem._Tree[idx].first]._axes.transpose()*Ja_S).inverse();
-			ad_V_S_qdot = SE3::ad(state.getLinkState(cLinkIdx)._V) * (assem._socMate[assem._Tree[idx].first]._axes * jStat.getqdot());
+			linkInertia = assem._socLink[pLinkIdx]._G.getTransformed(state.getJointStateByMateIndex(assem._Tree[idx - 1].first)._accumulatedT, true);
+			Ja_S = (Matrix6)J_a[idx] * jStat._accumulatedJ;
+			inv_ST_Ja_S = (jStat._accumulatedJ.transpose()*Ja_S).inverse();
+			ad_V_S_qdot = SE3::ad(state.getLinkState(cLinkIdx)._V) * (jStat._accumulatedJ * jStat.getqdot());
 
 			//	Articulated inertia of parent link of 'idx'-th mate.
-
-			//DEBUG//
-			//cout << endl << assem._socLink[pLinkIdx]._G << endl << endl;
-			//cout << (Matrix6)assem._socLink[pLinkIdx]._G
-			//	+ J_a[idx]
-			//	- Ja_S * inv_ST_Ja_S * Ja_S.transpose() << endl;
-			//DEBUG//
-
 			J_a[idx - 1] =
-				(Matrix6)assem._socLink[pLinkIdx]._G
+				static_cast<Matrix6&>(linkInertia)
 				+ J_a[idx]
 				- Ja_S * inv_ST_Ja_S * Ja_S.transpose();
 			//	Bias force of parent link of 'idx'-th mate.
 			bias[idx - 1] =
-				-SE3::adTranspose(state.getLinkState(pLinkIdx)._V) * assem._socLink[pLinkIdx]._G*state.getLinkState(pLinkIdx)._V
+				-SE3::adTranspose(state.getLinkState(pLinkIdx)._V) * linkInertia * state.getLinkState(pLinkIdx)._V
 				+ bias[idx]
 				+ J_a[idx] * ad_V_S_qdot
-				+ Ja_S * inv_ST_Ja_S * (jStat._tau - Ja_S.transpose() * ad_V_S_qdot - assem._socMate[assem._Tree[idx].first]._axes.transpose()*bias[idx]);
+				+ Ja_S * inv_ST_Ja_S * (jStat._tau - Ja_S.transpose() * ad_V_S_qdot - jStat._accumulatedJ.transpose()*bias[idx]);
 			//	Apply external force if exists.
 			if (!extF[idx].isZero())
 				bias[idx - 1] -= SE3::InvAd(state.getLinkState(pLinkIdx)._T).transpose() * extF[idx];
@@ -139,19 +138,19 @@ namespace rovin
 			//	Define indices.
 			cLinkIdx = assem._Mate[assem._Tree[idx].first].getChildLinkIdx();
 			pLinkIdx = assem._Mate[assem._Tree[idx].first].getParentLinkIdx();
-			State::JointState&	jStat = state.getJointStateByMateIndex(idx);
+			State::JointState&	jStat = state.getJointStateByMateIndex(assem._Tree[idx].first);
 
 			//	Pre-calculate frequently used variables.
 			//	TODO: Avoid duplicated calculation. (Most of these need only a single calculation among back/forward iteration)
-			Ja_S = (Matrix6)J_a[idx] * assem._socMate[assem._Tree[idx].first]._axes;
-			inv_ST_Ja_S = (assem._socMate[assem._Tree[idx].first]._axes.transpose()*Ja_S).inverse();
-			ad_V_S_qdot = SE3::ad(state.getLinkState(cLinkIdx)._V) * (assem._socMate[assem._Tree[idx].first]._axes * jStat.getqdot());
-
+			Ja_S = (Matrix6)J_a[idx] * jStat._accumulatedJ;
+			inv_ST_Ja_S = (jStat._accumulatedJ.transpose()*Ja_S).inverse();
+			ad_V_S_qdot = SE3::ad(state.getLinkState(cLinkIdx)._V) * (jStat._accumulatedJ * jStat.getqdot());
+			 
 			VectorX qddot =
-				inv_ST_Ja_S * (jStat._tau - Ja_S.transpose()*(state.getLinkState(pLinkIdx)._VDot + ad_V_S_qdot) - assem._socMate[assem._Tree[idx].first]._axes.transpose()*bias[idx]);
+				inv_ST_Ja_S * (jStat._tau - Ja_S.transpose()*(state.getLinkState(pLinkIdx)._VDot + ad_V_S_qdot) - jStat._accumulatedJ.transpose()*bias[idx]);
 			state.setJointqddot(assem._Tree[idx].first, qddot);
 
-			state.getLinkState(cLinkIdx)._VDot = assem._socMate[assem._Tree[idx].first]._axes * qddot + state.getLinkState(pLinkIdx)._VDot + ad_V_S_qdot;
+			state.getLinkState(cLinkIdx)._VDot = jStat._accumulatedJ * qddot + state.getLinkState(pLinkIdx)._VDot + ad_V_S_qdot;
 		}
 
 	}
