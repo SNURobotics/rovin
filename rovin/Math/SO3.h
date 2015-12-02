@@ -9,6 +9,7 @@
 
 #include <iostream>
 #include "Constant.h"
+#include "Common.h"
 
 namespace rovin
 {

@@ -4,7 +4,6 @@
 
 #include <rovin/Math/Inertia.h>
 #include <rovin/Math/Constant.h>
-#include <rovin/Math/LinearAlgebra.h>
 #include <rovin/Math/LieGroup.h>
 #include <rovin/Model/Assembly.h>
 #include <rovin/Model/RevoluteJoint.h>

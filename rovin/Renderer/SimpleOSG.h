@@ -1,6 +1,7 @@
 #pragma once
 
-#include <rovin/Math/Constant.h>
+#include <rovin/Math/Common.h>
+#include <rovin/Math/LieGroup.h>
 #include <rovin/Model/Assembly.h>
 
 #include <osg/io_utils>
