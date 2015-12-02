@@ -27,6 +27,9 @@
     <ClCompile Include="Optimization.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
+    <ClCompile Include="Common.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Inertia.h">
@@ -50,10 +53,10 @@
     <ClInclude Include="Spline.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="Optimization.h">
+    <ClInclude Include="Common.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="Common.h">
+    <ClInclude Include="Optimization.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
   </ItemGroup>

@@ -138,6 +138,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Common.cpp" />
     <ClCompile Include="Inertia.cpp" />
     <ClCompile Include="Optimization.cpp" />
     <ClCompile Include="SE3.cpp" />

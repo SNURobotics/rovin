@@ -1,103 +1,426 @@
 #include "Optimization.h"
 
+#include <iostream>
+
 using namespace std;
+using namespace Eigen;
 
 namespace rovin
 {
 	namespace Math
 	{
-		MatrixX Function::Jacobian(const VectorX& x) const
+		LineSearch::LineSearch(const Algorithm& algo)
 		{
-			int n = x.size();
-
-			VectorX e(n);
-			e.setZero();
-			e(0) = 1.0;
-
-			VectorX Fp = func(x + _eps*e);
-			VectorX Fn = func(x - _eps*e);
-
-			int m = Fp.size();
-
-			MatrixX J(m, n);
-			J.col(0) = (Fp - Fn) / (2 * _eps);
-
-			for (int i = 1; i < n; i++)
+			if (algo == LineSearch::Algorithm::Backtracking)
 			{
-				e(i - 1) = 0.0;
-				e(i) = 1.0;
-
-				Fp = func(x + _eps*e);
-				Fn = func(x - _eps*e);
-
-				J.col(i) = (Fp - Fn) / (2 * _eps);
+				_algorithm = LineSearch::Algorithm::Backtracking;
+				_alpha0 = 1.0;
+				_tau = 0.90;
+				_c = 0.01;
 			}
-
-			return J;
 		}
 
-		std::vector< MatrixX > Function::Hessian(const VectorX& x) const
+		Real LineSearch::solve(const VectorX& x, const VectorX& P)
 		{
-			Real eps_square = _eps*_eps;
-
-			int n = x.size();
-
-			VectorX ei(n);
-			VectorX ej(n);
-			ei.setZero();
-			ej.setZero();
-
-			VectorX F = func(x);
-			int m = F.size();
-
-			MatrixX Fval(m, n);
-			for (int i = 0; i < n; i++)
+			if (_algorithm == LineSearch::Algorithm::Backtracking)
 			{
-				ei(i) = 1.0;
-				Fval.col(i) = func(x + _eps*ei);
-				ei(i) = 0.0;
+				return BacktrackingMethod(x, P);
+			}
+			return _tau;
+		}
+
+		Real LineSearch::BacktrackingMethod(const VectorX& x, const VectorX& P)
+		{
+			_alpha = _alpha0;
+			Real t = -_c*((*_objectiveFunc).Jacobian(x)*P)(0);
+			Real fval = (*_objectiveFunc)(x)(0);
+			while (RealLess(fval - (*_objectiveFunc)(x + _alpha*P)(0), _alpha*t))
+			{
+				_alpha *= _tau;
+			}
+			return _alpha;
+		}
+
+		QPOptimization::QPOptimization(const QPOptimization::Algorithm& algo) : QPOptimization(MatrixX(), VectorX(), MatrixX(), VectorX(), MatrixX(), VectorX(), algo) {}
+
+		QPOptimization::QPOptimization(const MatrixX& G, const VectorX& g, const MatrixX& A, const VectorX& b, const MatrixX& C, const VectorX& d, const Algorithm& algo) :
+			_G(G), _g(g), _A(A), _b(b), _C(C), _d(d), _Display(false)
+		{
+			if (algo == QPOptimization::Algorithm::InteriorPoint)
+			{
+				_algorithm = QPOptimization::Algorithm::InteriorPoint;
+				_maxIteration = 150;
+				_stepSize = 0.95;
+				_tolCon = 1e-8;
+			}
+		}
+
+		VectorX QPOptimization::solve(const VectorX& x)
+		{
+			if (_algorithm == QPOptimization::InteriorPoint)
+			{
+				return InteriorPointMethod(x);
+			}
+			return x;
+		}
+
+		VectorX QPOptimization::InteriorPointMethod(const VectorX& x)
+		{
+			_xf = x;
+
+			int xN = _xf.size();
+			if (_G.cols() == xN && _G.rows() == xN && _g.size() == xN);
+			else return _xf;
+
+			if (_A.rows() == 0)
+			{
+				_A = MatrixX::Zero(1, xN);
+				_b = VectorX::Zero(1);
+			}
+			int eqN = _A.rows();
+			if (_A.cols() == xN && _b.size() == eqN);
+			else return _xf;
+			if (!OptRealEqual(_A*(_A.transpose()*_A).ldlt().solve(_A.transpose()*_b) - _b, 0.0))
+			{
+				_exit = ExitFlag::InfeasibleProblem;
+				return _xf;
 			}
 
-			ei(0) = 1.0;
-			ej(0) = 1.0;
-			VectorX F1 = func(x + _eps*ei + _eps*ej);
-			ei(0) = 0.0;
-			ej(0) = 0.0;
-
-			VectorX Hij = (F1 - Fval.col(0) - Fval.col(0) + F) / eps_square;
-
-			vector< MatrixX > H;
-			for (int i = 0; i < m; i++)
+			if (_C.rows() == 0)
 			{
-				H.push_back(MatrixX(n, n));
-				H[i](0, 0) = Hij(i);
+				_C = MatrixX::Zero(1, xN);
+				_d = VectorX::Zero(1);
 			}
+			int ineqN = _C.rows();
+			if (_C.cols() == xN && _d.size() == ineqN);
+			else return _xf;
 
-			for (int i = 0; i < n; i++)
+			_y = VectorX::Ones(eqN);
+			_z = VectorX::Ones(ineqN);
+			_s = VectorX::Ones(ineqN);
+			VectorX e = VectorX::Ones(ineqN);
+
+			MatrixX S, Z, invS, invZ, SAff, ZAff;
+			S = _s.asDiagonal();
+			Z = _z.asDiagonal();
+			invS = S;
+			invZ = Z;
+
+			VectorX residualL, residualA, residualC, residualSZ;
+			residualL = _G*_xf + _g - _A.transpose()*_y + _C.transpose()*_z;
+			residualA = _A*_xf - _b;
+			residualC = _s + _C*_xf - _d;
+			residualSZ = S*Z*e;
+
+			Real mu, muAff, sigma;
+			mu = (_s.transpose()*_z)(0) / (Real)ineqN;
+
+			MatrixX Gbar(xN + eqN, xN + eqN);
+			Real alpha;
+			VectorX delta, deltaX, deltaY, deltaZ, deltaS;
+			Real alphaAff;
+			VectorX deltaAff, deltaXAff, deltaYAff, deltaZAff, deltaSAff;
+
+			Eigen::LDLT< MatrixX > GbarLDL;
+			VectorX extendedResidual(xN + eqN);
+
+			Gbar.setZero();
+			Gbar.block(0, xN, xN, eqN) = -_A.transpose();
+			Gbar.block(xN, 0, eqN, xN) = _A;
+
+			for (_Iter = 0; _Iter < _maxIteration; _Iter++)
 			{
-				ei(i) = 1.0;
-				for (int j = 0; j < n; j++)
+				int i;
+				for (i = 0; i < ineqN; i++)
 				{
-					ej(j) = 1.0;
-					if (i == 0 && j == 0);
-					else
-					{
-						F1 = func(x + _eps*ei + _eps*ej);
-
-						Hij = (F1 - Fval.col(i) - Fval.col(j) + F) / eps_square;
-
-						for (int k = 0; k < m; k++)
-						{
-							H[k](i, j) = Hij(k);
-						}
-					}
-
-					ej(j) = 0.0;
+					invS(i, i) = 1.0 / S(i, i);
 				}
-				ei(i) = 0.0;
+				for (i = 0; i < ineqN; i++)
+				{
+					invZ(i, i) = 1.0 / Z(i, i);
+				}
+				Gbar.block(0, 0, xN, xN) = _G + _C.transpose()*invS*Z*_C;
+				GbarLDL = Gbar.ldlt();
+
+				extendedResidual.block(0, 0, xN, 1) = -residualL - _C.transpose()*(invS*Z)*(residualC - invZ*residualSZ);
+				extendedResidual.block(xN, 0, eqN, 1) = -residualA;
+
+				deltaAff = GbarLDL.solve(extendedResidual);
+				deltaXAff = deltaAff.block(0, 0, xN, 1);
+				deltaYAff = deltaAff.block(0, 0, eqN, 1);
+				deltaZAff = invS*Z*_C*deltaXAff + invS*Z*(residualC - invZ*residualSZ);
+				deltaSAff = -invZ*(residualSZ + S*deltaZAff);
+
+				alphaAff = 1.0;
+				for (i = 0; i < ineqN; i++)
+				{
+					if (RealLess(deltaSAff(i), 0.0))
+					{
+						alphaAff = min(alphaAff, -_s(i) / deltaSAff(i));
+					}
+				}
+				for (i = 0; i < ineqN; i++)
+				{
+					if (RealLess(deltaZAff(i), 0.0))
+					{
+						alphaAff = min(alphaAff, -_z(i) / deltaZAff(i));
+					}
+				}
+
+				muAff = ((_s + alphaAff*deltaSAff).transpose()*(_z + alphaAff*deltaZAff))(0) / (Real)ineqN;
+				sigma = muAff / mu;
+				sigma = sigma * sigma * sigma;
+
+				SAff = deltaSAff.asDiagonal();
+				ZAff = deltaZAff.asDiagonal();
+				residualSZ += SAff*ZAff*e - sigma*mu*e;
+
+				extendedResidual.block(0, 0, xN, 1) = -residualL - _C.transpose()*(invS*Z)*(residualC - invZ*residualSZ);
+				extendedResidual.block(xN, 0, eqN, 1) = -residualA;
+
+				delta = GbarLDL.solve(extendedResidual);
+				deltaX = delta.block(0, 0, xN, 1);
+				deltaY = delta.block(0, 0, eqN, 1);
+				deltaZ = invS*Z*_C*deltaX + invS*Z*(residualC - invZ*residualSZ);
+				deltaS = -invZ*(residualSZ + S*deltaZ);
+
+				alpha = 1.0;
+				for (i = 0; i < ineqN; i++)
+				{
+					if (RealLess(deltaS(i), 0.0))
+					{
+						alpha = min(alpha, -_s(i) / deltaS(i));
+					}
+				}
+				for (i = 0; i < ineqN; i++)
+				{
+					if (RealLess(deltaZ(i), 0.0))
+					{
+						alpha = min(alpha, -_z(i) / deltaZ(i));
+					}
+				}
+
+				_xf += _stepSize*alpha*deltaX;
+				_y += _stepSize*alpha*deltaY;
+				_s += _stepSize*alpha*deltaS;
+				_z += _stepSize*alpha*deltaZ;
+
+				S = _s.asDiagonal();
+				Z = _z.asDiagonal();
+
+				residualL = _G*_xf + _g - _A.transpose()*_y + _C.transpose()*_z;
+				residualA = _A*_xf - _b;
+				residualC = _s + _C*_xf - _d;
+				residualSZ = S*Z*e;
+
+				mu = (_s.transpose()*_z)(0) / (Real)ineqN;
+
+				if (OptRealLessEqual(abs(mu), _tolCon))
+				{
+					_exit = ExitFlag::SolutionFound;
+					break;
+				}
+			}
+			if (!(OptRealEqual(_A*_xf-_b, 0.0) && OptRealLessEqual(_C*_xf-_d, 0.0)) || !OptRealLessEqual(_xf, 1/OptEps))
+			{
+				_exit = ExitFlag::InfeasibleProblem;
+			}
+			else if (_Iter == _maxIteration)
+			{
+				_exit = ExitFlag::ExceedMaxIternation;
+			}
+			return _xf;
+		}
+
+		VectorX NonlinearOptimization::MeritFunction::func(const VectorX& x) const
+		{
+			VectorX result(1);
+			result(0) = (*_f)(x)(0) + _theta*((*_ceq)(x).cwiseAbs().sum() + max((*_cineq)(x), 0.0).sum());
+			return result;
+		}
+
+		VectorX NonlinearOptimization::ConstraintFunction::func(const VectorX& x) const
+		{
+			VectorX result(_eqN + _ineqN);
+			result.head(_eqN) = (*_ceq)(x.head(_xN));
+			result.tail(_ineqN) = (*_cineq)(x.head(_xN)) + x.tail(_ineqN);
+			return result;
+		}
+
+		NonlinearOptimization::NonlinearOptimization(const Algorithm& algo) : _Display(false)
+		{
+			if (algo == NonlinearOptimization::Algorithm::SQP)
+			{
+				_algorithm = NonlinearOptimization::Algorithm::SQP;
+				_tolCon = 1e-5;
+				_maxIteration = 5000;
+			}
+		}
+
+		VectorX NonlinearOptimization::solve(const VectorX& x)
+		{
+			if (_algorithm == NonlinearOptimization::SQP)
+			{
+				return SQPMethod(x);
+			}
+			return x;
+		}
+
+		VectorX NonlinearOptimization::SQPMethod(const VectorX& x)
+		{
+			_xf = x;
+
+			int xN = _xf.size();
+			int eqN = (*_eqFunc)(_xf).size();
+			int ineqN = (*_ineqFunc)(_xf).size();
+
+			VectorX lambda = VectorX::Zero(eqN);
+			VectorX mu = VectorX::Zero(ineqN);
+
+			// direction
+			VectorX d(xN);
+
+			// InitialGuess
+			NewtonRapshon nr;
+			FunctionPtr constraintFunction = FunctionPtr(new ConstraintFunction(xN, eqN, ineqN));
+			static_pointer_cast<ConstraintFunction>(constraintFunction)->_ceq = _eqFunc;
+			static_pointer_cast<ConstraintFunction>(constraintFunction)->_cineq = _ineqFunc;
+			VectorX xnr(xN + ineqN), eta(xN + ineqN);
+			MatrixX nrJ;
+			bool flag;
+			xnr.head(xN) = _xf;
+			xnr.tail(ineqN).setOnes();
+			nr._func = constraintFunction;
+			xnr = nr.solve(xnr);
+			while (true)
+			{
+				eta.setZero();
+				flag = false;
+				for (int i = xN; i < xN + ineqN; i++)
+				{
+					if (OptRealLessEqual(xnr(i), 0.0))
+					{
+						eta(i) = -xnr(i) + 10;
+						flag = true;
+					}
+				}
+				if (!flag) break;
+				nrJ = static_pointer_cast<ConstraintFunction>(constraintFunction)->Jacobian(xnr);
+				xnr += eta - nrJ.transpose()*(nrJ*nrJ.transpose()).ldlt().solve(nrJ*eta);
+			}
+			cout << xnr << endl;
+			_xf = xnr.head(xN);
+
+			// QPOptimization
+			QPOptimization qpSolver;
+			qpSolver._G = PDCorrection((*_objectiveFunc).Hessian(_xf)[0]);
+			qpSolver._g = (*_objectiveFunc).Jacobian(_xf).transpose();
+			qpSolver._A = (*_eqFunc).Jacobian(_xf);
+			qpSolver._b = -(*_eqFunc)(_xf);
+			qpSolver._C = (*_ineqFunc).Jacobian(_xf);
+			qpSolver._d = -(*_ineqFunc)(_xf);
+			qpSolver._y = VectorX::Zero(eqN);
+			qpSolver._z = VectorX::Zero(ineqN);
+			qpSolver._exit = QPOptimization::ExitFlag::SolutionFound;
+
+			// Merit Function
+			FunctionPtr meritFunction = FunctionPtr(new MeritFunction());
+			static_pointer_cast<MeritFunction>(meritFunction)->_f = _objectiveFunc;
+			static_pointer_cast<MeritFunction>(meritFunction)->_ceq = _eqFunc;
+			static_pointer_cast<MeritFunction>(meritFunction)->_cineq = _ineqFunc;
+			static_pointer_cast<MeritFunction>(meritFunction)->_theta = 0.0;
+
+			// LineSearch
+			LineSearch linesearchSolver;
+			linesearchSolver._objectiveFunc = meritFunction;
+			linesearchSolver._alpha0 = 1.0;
+
+			Real alpha, theta, fval, fval_last;
+			MatrixX H(xN, xN);
+			std::vector< MatrixX > Hessian;
+			VectorX y, z;
+
+			d = VectorX::Zero(xN);
+			fval = (*_objectiveFunc)(_xf)(0);
+			// DISPLAY
+
+			for (_Iter = 0; _Iter < _maxIteration; _Iter++)
+			{
+				if (qpSolver._exit != QPOptimization::ExitFlag::InfeasibleProblem)
+				{
+					y = qpSolver._y;
+					z = qpSolver._z;
+				}
+				d = qpSolver.solve(d);
+				if (qpSolver._exit == QPOptimization::ExitFlag::InfeasibleProblem)
+				{
+					d = qpSolver._G.ldlt().solve(-qpSolver._g).normalized();
+				}
+
+				theta = RealMin;
+				for (int i = 0; i < eqN; i++)
+				{
+					theta = max(std::abs(qpSolver._y(i)), theta);
+				}
+				for (int i = 0; i < ineqN; i++)
+				{
+					theta = max(qpSolver._z(i), theta);
+				}
+				if (RealBiggerEqual(static_pointer_cast<MeritFunction>(meritFunction)->_theta, theta));
+				else static_pointer_cast<MeritFunction>(meritFunction)->_theta = max(static_pointer_cast<MeritFunction>(meritFunction)->_theta * 2, theta);
+				alpha = max(linesearchSolver.solve(_xf, d), 0.15);
+				_xf += alpha*d;
+
+				// DISPLAY
+				fval_last = fval;
+				fval = (*_objectiveFunc)(_xf)(0);
+				//cout << fval << " " << alpha*d.norm() << endl;
+
+				if (OptRealLessEqual(alpha*d.norm(), _tolCon) || OptRealEqual(fval_last, fval))
+				{
+					break;
+				}
+
+				H = (*_objectiveFunc).Hessian(_xf)[0];
+				if (qpSolver._exit != QPOptimization::ExitFlag::InfeasibleProblem)
+				{
+					qpSolver._y = y + alpha*(qpSolver._y - y);
+					qpSolver._z = z + alpha*(qpSolver._z - z);
+
+					Hessian = (*_eqFunc).Hessian(_xf);
+					for (int i = 0; i < eqN; i++)
+					{
+						H += qpSolver._y(i) * Hessian[i];
+					}
+					Hessian = (*_ineqFunc).Hessian(_xf);
+					for (int i = 0; i < eqN; i++)
+					{
+						H += qpSolver._z(i) * Hessian[i];
+					}
+				}
+				qpSolver._G = PDCorrection(H);
+				qpSolver._g = (*_objectiveFunc).Jacobian(_xf).transpose();
+				qpSolver._A = (*_eqFunc).Jacobian(_xf);
+				qpSolver._b = -(*_eqFunc)(_xf);
+				qpSolver._C = (*_ineqFunc).Jacobian(_xf);
+				qpSolver._d = -(*_ineqFunc)(_xf);
 			}
 
-			return H;
+			return _xf;
+		}
+
+		VectorX NewtonRapshon::solve(const VectorX& x)
+		{
+			_xf = x;
+
+			VectorX f;
+
+			while (!OptRealEqual(f = (*_func)(_xf), 0.0))
+			{
+				_xf += pInv((*_func).Jacobian(_xf))*(-f);
+			}
+
+			return _xf;
 		}
 	}
 }

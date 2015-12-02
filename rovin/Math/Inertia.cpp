@@ -15,21 +15,21 @@ namespace rovin
 	{
 		Inertia::Inertia(const Real& Ixx, const Real& Iyy, const Real& Izz, const Real& m)
 		{
-			(*this) << (Matrix3)Eigen::DiagonalMatrix<Real, 3>(Ixx, Iyy, Izz), Matrix3::Zero(),
+			static_cast<Matrix6&>(*this) << (Matrix3)Eigen::DiagonalMatrix<Real, 3>(Ixx, Iyy, Izz), Matrix3::Zero(),
 				Matrix3::Zero(), Matrix3::Identity()*m;
 		}
 
 		Inertia::Inertia(const Matrix3& I, const Real& m)
 		{
 			assert(I.isApprox(I.transpose()));
-			(*this) << I, Matrix3::Zero(),
+			static_cast<Matrix6&>(*this) << I, Matrix3::Zero(),
 				Matrix3::Zero(), Matrix3::Identity()*m;
 		}
 
 		Inertia::Inertia(const Matrix3& I, const Vector3& p, const Real& m)
 		{
 			assert(I.isApprox(I.transpose()));
-			(*this) << I, -Bracket(p),
+			static_cast<Matrix6&>(*this) << I, -Bracket(p),
 				Bracket(p), Matrix3::Identity()*m;
 		}
 
@@ -47,7 +47,7 @@ namespace rovin
 			_I(2, 0) = -I(4);
 			_I(2, 1) = -I(5);
 			_I(2, 2) = I(2);
-			(*this) << _I, -Bracket(p),
+			static_cast<Matrix6&>(*this) << _I, -Bracket(p),
 				Bracket(p), Matrix3::Identity()*m;
 		}
 
@@ -61,57 +61,62 @@ namespace rovin
 			assert(abs(_p(0, 0)) < RealEps && abs(_p(1, 1)) < RealEps && abs(_p(2, 2)) < RealEps);
 			assert(_m.isApprox(Matrix3::Identity()*_m(0, 0)));
 
-			(Matrix6)(*this) = I;
+			static_cast<Matrix6&>(*this) = I;
+		}
+
+		Inertia::operator Matrix6()
+		{
+			return static_cast<Matrix6&>(*this);
 		}
 
 		Inertia& Inertia::operator = (const Inertia& I)
 		{
-			(Matrix6)(*this) = (Matrix6&)I;
+			static_cast<Matrix6&>(*this) = static_cast<const Matrix6&>(I);
 			return *this;
 		}
 
 		Inertia Inertia::operator + (const Inertia& I) const
 		{
 			Inertia result;
-			(Matrix6)result = (Matrix6)(*this) + (Matrix6&)I;
+			static_cast<Matrix6&>(result) = *static_cast<const Matrix6*>(this) + static_cast<const Matrix6&>(I);
 			return result;
 		}
 
 		Inertia& Inertia::operator += (const Inertia& I)
 		{
-			(Matrix6)(*this) += (Matrix6&)I;
+			static_cast<Matrix6&>(*this) += static_cast<const Matrix6&>(I);
 			return *this;
 		}
 
 		Inertia Inertia::operator * (const Real& constant) const
 		{
 			Inertia result;
-			(Matrix6)result = (Matrix6)(*this) * constant;
+			static_cast<Matrix6&>(result) = static_cast<const Matrix6&>(*this) * constant;
 			return result;
 		}
 
 		Inertia& Inertia::operator *= (const Real& constant)
 		{
-			(Matrix6)(*this) *= constant;
+			static_cast<Matrix6&>(*this) *= constant;
 			return *this;
 		}
 
 		Inertia Inertia::operator / (const Real& constant) const
 		{
 			Inertia result;
-			(Matrix6)result = (Matrix6)(*this) / constant;
+			static_cast<Matrix6&>(result) = static_cast<const Matrix6&>(*this) / constant;
 			return result;
 		}
 
 		Inertia& Inertia::operator /= (const Real& constant)
 		{
-			(Matrix6)(*this) /= constant;
+			*static_cast<Matrix6*>(this) /= constant;
 			return *this;
 		}
 
 		void Inertia::changeFrame(const SE3& T)
 		{
-			(Matrix6)(*this) = SE3::InvAd(T).transpose() * (Matrix6)(*this) * SE3::InvAd(T);
+			static_cast<Matrix6&>(*this) = SE3::InvAd(T).transpose() * static_cast<Matrix6&>(*this) * SE3::InvAd(T);
 		}
 	}
 }

@@ -308,6 +308,13 @@ namespace rovin
 			needUpdate(false, false, true);
 		}
 
+		void State::setActiveJointTorque(const Math::VectorX & torque)
+		{
+			for (unsigned int i = 0; i < _activeJointList.size(); i++)
+				_jointState[_activeJointList[i]]._tau
+				= torque.block(_stateIndex[_activeJointList[i]], 0, _jointState[_activeJointList[i]]._dof, 1);
+		}
+
 		void State::addActiveJointq(const Math::VectorX& q)
 		{
 			for (unsigned int i = 0; i < _activeJointList.size(); i++)
@@ -369,27 +376,113 @@ namespace rovin
 			needUpdate(false, false, true);
 		}
 
-		unsigned int State::returnDof(const RETURN_STATE& return_state) const
+		Math::VectorX State::getJointTorque(const TARGET_JOINT& target) const
 		{
-			if (return_state == RETURN_STATE::STATEJOINT)
+			Math::VectorX tau(getDOF(target));
+
+			if (target == TARGET_JOINT::ASSEMJOINT)
+				for (unsigned int i = 0; i < _jointState.size(); i++)
+					for (unsigned j = 0; j < _jointState[i]._dof; j++)
+						tau[_assemIndex[i] + j] = _jointState[i]._tau[j];
+
+
+			if (target == TARGET_JOINT::STATEJOINT || target == TARGET_JOINT::ACTIVEJOINT)
+				for (unsigned int i = 0; i < _activeJointList.size(); i++)
+					for (unsigned int j = 0; j < _jointState[_activeJointList[i]]._dof; j++)
+						tau[_stateIndex[_activeJointList[i]] + j] = _jointState[_activeJointList[i]]._tau[j];
+			
+			if (target == TARGET_JOINT::STATEJOINT || target == TARGET_JOINT::PASSIVEJOINT)
+				for (unsigned int i = 0; i < _passiveJointList.size(); i++)
+					for (unsigned int j = 0; j < _jointState[_passiveJointList[i]]._dof; j++)
+						tau[_stateIndex[_passiveJointList[i]] + j] = _jointState[_passiveJointList[i]]._tau[j];
+
+			return tau;
+		}
+
+		Math::VectorX State::getJointq(const TARGET_JOINT & target) const
+		{
+			Math::VectorX q(getDOF(target));
+			if (target == TARGET_JOINT::ASSEMJOINT)
+				for (unsigned int i = 0; i < _jointState.size(); i++)
+					for (unsigned j = 0; j < _jointState[i]._dof; j++)
+						q[_assemIndex[i] + j] = _jointState[i].getq(j);
+
+			if (target == TARGET_JOINT::STATEJOINT || target == TARGET_JOINT::ACTIVEJOINT)
+				for (unsigned int i = 0; i < _activeJointList.size(); i++)
+					for (unsigned int j = 0; j < _jointState[_activeJointList[i]]._dof; j++)
+						q[_stateIndex[_activeJointList[i]] + j] = _jointState[_activeJointList[i]].getq(j);
+			
+			if (target == TARGET_JOINT::STATEJOINT || target == TARGET_JOINT::PASSIVEJOINT)
+				for (unsigned int i = 0; i < _passiveJointList.size(); i++)
+					for (unsigned int j = 0; j < _jointState[_passiveJointList[i]]._dof; j++)
+						q[_stateIndex[_passiveJointList[i]] + j] = _jointState[_passiveJointList[i]].getq(j);
+			
+			return q;
+		}
+
+		Math::VectorX State::getJointqdot(const TARGET_JOINT & target) const
+		{
+			Math::VectorX dq(getDOF(target));
+			if (target == TARGET_JOINT::ASSEMJOINT)
+				for (unsigned int i = 0; i < _jointState.size(); i++)
+					for (unsigned j = 0; j < _jointState[i]._dof; j++)
+						dq[_assemIndex[i] + j] = _jointState[i].getqdot(j);
+
+			if (target == TARGET_JOINT::STATEJOINT || target == TARGET_JOINT::ACTIVEJOINT)
+				for (unsigned int i = 0; i < _activeJointList.size(); i++)
+					for (unsigned int j = 0; j < _jointState[_activeJointList[i]]._dof; j++)
+						dq[_stateIndex[_activeJointList[i]] + j] = _jointState[_activeJointList[i]].getqdot(j);
+
+			if (target == TARGET_JOINT::STATEJOINT || target == TARGET_JOINT::PASSIVEJOINT)
+				for (unsigned int i = 0; i < _passiveJointList.size(); i++)
+					for (unsigned int j = 0; j < _jointState[_passiveJointList[i]]._dof; j++)
+						dq[_stateIndex[_passiveJointList[i]] + j] = _jointState[_passiveJointList[i]].getqdot(j);
+
+			return dq;
+		}
+
+		Math::VectorX State::getJointqddot(const TARGET_JOINT & target) const
+		{
+			Math::VectorX ddq(getDOF(target));
+			if (target == TARGET_JOINT::ASSEMJOINT)
+				for (unsigned int i = 0; i < _jointState.size(); i++)
+					for (unsigned j = 0; j < _jointState[i]._dof; j++)
+						ddq[_assemIndex[i] + j] = _jointState[i].getqddot(j);
+
+			if (target == TARGET_JOINT::STATEJOINT || target == TARGET_JOINT::ACTIVEJOINT)
+				for (unsigned int i = 0; i < _activeJointList.size(); i++)
+					for (unsigned int j = 0; j < _jointState[_activeJointList[i]]._dof; j++)
+						ddq[_stateIndex[_activeJointList[i]] + j] = _jointState[_activeJointList[i]].getqddot(j);
+
+			if (target == TARGET_JOINT::STATEJOINT || target == TARGET_JOINT::PASSIVEJOINT)
+				for (unsigned int i = 0; i < _passiveJointList.size(); i++)
+					for (unsigned int j = 0; j < _jointState[_passiveJointList[i]]._dof; j++)
+						ddq[_stateIndex[_passiveJointList[i]] + j] = _jointState[_passiveJointList[i]].getqddot(j);
+
+			return ddq;
+		}
+
+		unsigned int State::getDOF(const TARGET_JOINT& return_state) const
+		{
+			if (return_state == TARGET_JOINT::STATEJOINT)
 			{
 				return _totalJointDof;
 			}
-			else if (return_state == RETURN_STATE::ACTIVEJOINT)
+			else if (return_state == TARGET_JOINT::ACTIVEJOINT)
 			{
 				return _activeJointDof;
 			}
-			else if (return_state == RETURN_STATE::PASSIVEJOINT)
+			else if (return_state == TARGET_JOINT::PASSIVEJOINT)
 			{
 				return _totalJointDof - _activeJointDof;
 			}
 			return _totalJointDof;
 		}
 
-		void State::writeReturnMatrix(Math::MatrixX& returnMatrix, const Math::MatrixX& value, const unsigned int startRow, const unsigned int jointIndex, const RETURN_STATE& return_state) const
+		void State::writeReturnMatrix(Math::MatrixX& returnMatrix, const Math::MatrixX& value, const unsigned int startRow, const unsigned int jointIndex, const TARGET_JOINT& return_state) const
 		{
 			unsigned int Idx = _assemIndex[jointIndex];
-			if (return_state == RETURN_STATE::STATEJOINT)
+			if (return_state == TARGET_JOINT::STATEJOINT)
 			{
 				if (_isActiveJoint[jointIndex])
 				{
@@ -400,17 +493,17 @@ namespace rovin
 					Idx = _stateIndex[jointIndex] + _activeJointDof;
 				}
 			}
-			else if (return_state == RETURN_STATE::ACTIVEJOINT || return_state == RETURN_STATE::PASSIVEJOINT)
+			else if (return_state == TARGET_JOINT::ACTIVEJOINT || return_state == TARGET_JOINT::PASSIVEJOINT)
 			{
 				Idx = _stateIndex[jointIndex];
 			}
 			returnMatrix.block(startRow, Idx, value.rows(), value.cols()) = value;
 		}
 
-		void State::writeReturnVector(Math::VectorX& returnVector, const Math::VectorX& value, const unsigned int jointIndex, const RETURN_STATE& return_state) const
+		void State::writeReturnVector(Math::VectorX& returnVector, const Math::VectorX& value, const unsigned int jointIndex, const TARGET_JOINT& return_state) const
 		{
 			unsigned int Idx = _assemIndex[jointIndex];
-			if (return_state == RETURN_STATE::STATEJOINT)
+			if (return_state == TARGET_JOINT::STATEJOINT)
 			{
 				if (_isActiveJoint[jointIndex])
 				{
@@ -421,7 +514,7 @@ namespace rovin
 					Idx = _stateIndex[jointIndex] + _activeJointDof;
 				}
 			}
-			else if (return_state == RETURN_STATE::ACTIVEJOINT || return_state == RETURN_STATE::PASSIVEJOINT)
+			else if (return_state == TARGET_JOINT::ACTIVEJOINT || return_state == TARGET_JOINT::PASSIVEJOINT)
 			{
 				Idx = _stateIndex[jointIndex];
 			}

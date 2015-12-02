@@ -50,6 +50,19 @@ namespace rovin
 			return false;
 		}
 
+		static bool RealEqual(const VectorX& operand1, const Real& operand2)
+		{
+			unsigned int n = operand1.size();
+			for (unsigned int i = 0; i < n; i++)
+			{
+				if (!RealEqual(operand1(i), operand2))
+				{
+					return false;
+				}
+			}
+			return true;
+		}
+
 		static bool RealLessEqual(const Real& operand1, const Real& operand2)
 		{
 			if (operand1 < operand2 + RealEps + RealEps*std::abs(operand1))
@@ -57,6 +70,19 @@ namespace rovin
 				return true;
 			}
 			return false;
+		}
+
+		static bool RealLessEqual(const VectorX& operand1, const Real& operand2)
+		{
+			unsigned int n = operand1.size();
+			for (unsigned int i = 0; i < n; i++)
+			{
+				if (!RealLessEqual(operand1(i), operand2))
+				{
+					return false;
+				}
+			}
+			return true;
 		}
 
 		static bool RealLess(const Real& operand1, const Real& operand2)

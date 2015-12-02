@@ -8,64 +8,63 @@ using namespace rovin::Math;
 
 class objective : public Function
 {
+public:
+	objective() {}
 	VectorX func(const VectorX& x) const
 	{
 		Eigen::Matrix< double, 1, 1 > f;
-		f(0) = x(0)*x(1)+x(0)*x(0)*x(0)+x(1)*x(1)*x(1)+x(0)+x(1);
+		f(0) = x(1)*x(3) - x(1)*x(1)*x(2)*x(3);
 		return f;
 	}
 };
 class equality : public Function
 {
+public:
+	equality() {}
 	VectorX func(const VectorX& x) const
 	{
 		Eigen::Matrix< double, 1, 1 > f;
-		f(0) = x(0)*x(0) + x(1)*x(1) - 5;
+		f(0) = +x(0)*x(0)*x(0) + x(1)*x(1)*x(1) - x(2)*x(3)*x(3)*x(3) - 5;
 		return f;
 	}
 };
 class inequality : public Function
 {
+public:
+	inequality() {}
 	VectorX func(const VectorX& x) const
 	{
-		Vector2 f;
-		f(0) = x(0)+5;
-		f(1) = x(1)+5;
+		VectorX f(4);
+		f(0) = x(0) - 10;
+		f(1) = x(1) - 10;
+		f(2) = -x(0) + 1;
+		f(3) = -x(1) + 1;
 		return f;
 	}
 };
 
 int main()
 {
-	//Matrix3 L, G, C;
-	//Vector3 g;
-	//Vector3 A;
-	//Eigen::Matrix<double, 1, 1> b;
-	//Vector3 d;
+	FunctionPtr obj_f = FunctionPtr(new objective());
+	FunctionPtr eq_f = FunctionPtr(new equality());
+	FunctionPtr ineq_f = FunctionPtr(new inequality());
 
-	//L << 1, 2, 3, -2, -3, -4, 4, 3, 2;
-	//G = L*L.transpose();
-	//g << 1, 2, 3;
-	//A << 1, 1, 1;
-	//b << 5;
-	//C.setIdentity();
-	//d << 0, 0, 0;
+	Vector4 x;
+	x << 1 ,   1 , 10 , 10;
 
-	//Vector3 x;
-	//x << 1, 2, 3;
-	//x = QuadraticProgrammingEq(G, g, A, b, C, d, x);
-	//cout << x << endl;
-	objective obj_f;
-	equality eq_f;
-	inequality ineq_f;
+	NonlinearOptimization nonlinearSolver;
+	nonlinearSolver._objectiveFunc = obj_f;
+	nonlinearSolver._eqFunc = eq_f;
+	nonlinearSolver._ineqFunc = ineq_f;
 
-	Vector2 x;
-	x << 0, 0;
-
-	Vector2 xf = NonlinearProgramming(obj_f, ineq_f, eq_f, x);
-
-	cout << xf << endl;
-	cout << obj_f(xf) << endl;
+	double c = clock();
+	x = nonlinearSolver.solve(x);
+	cout << nonlinearSolver._Iter << endl;
+	cout << "x : " << endl << x << endl;
+	cout << "obj : " << endl << (*obj_f)(x) << endl;
+	cout << "eq : " << endl << (*eq_f)(x) << endl;
+	cout << "ineq : " << endl << (*ineq_f)(x) << endl;
+	cout << clock() - c << endl;
 
 	return 0;
 }
