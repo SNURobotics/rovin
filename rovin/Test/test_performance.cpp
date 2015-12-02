@@ -47,12 +47,12 @@ int main()
 
 	//fourBar->Solve_Closedloop_Constraint(state);
 
-	PERFORM_TEST(rovin::Kinematics::solveForwardKinematics(*robot, *state), 2e+5);
-	PERFORM_TEST(rovin::Kinematics::solveForwardKinematics(*robot, *state), 2e+5);
-	PERFORM_TEST(rovin::Kinematics::solveForwardKinematics(*robot, *state), 2e+5);
-	PERFORM_TEST(rovin::Kinematics::solveForwardKinematics(*robot_gen, *state), 2e+5);
-	PERFORM_TEST(rovin::Kinematics::solveForwardKinematics(*robot_gen, *state), 2e+5);
-	PERFORM_TEST(rovin::Kinematics::solveForwardKinematics(*robot_gen, *state), 2e+5);
+	PERFORM_TEST(rovin::Kinematics::solveForwardKinematics(*robot, *state); , 2e+5);
+	PERFORM_TEST(rovin::Kinematics::solveForwardKinematics(*robot, *state); , 2e+5);
+	PERFORM_TEST(rovin::Kinematics::solveForwardKinematics(*robot, *state); , 2e+5);
+	PERFORM_TEST(rovin::Kinematics::solveForwardKinematics(*robot_gen, *state); , 2e+5);
+	PERFORM_TEST(rovin::Kinematics::solveForwardKinematics(*robot_gen, *state); , 2e+5);
+	PERFORM_TEST(rovin::Kinematics::solveForwardKinematics(*robot_gen, *state); , 2e+5);
 
 	return 0;
 }

@@ -20,6 +20,7 @@ namespace rovin
 		class Assembly;
 
 		typedef std::shared_ptr< State > StatePtr;
+		enum JointReferenceFrame { JOINTFRAME = 0, SPATIAL = 1, EE = 2 };
 
 		class State
 		{
@@ -48,12 +49,18 @@ namespace rovin
 				Math::VectorX _tau;
 				Math::dse3 _constraintF;
 
+				//	exp([S_i] * theta_i).
 				std::vector< Math::SE3 > _T;
+				//	Jacobian Matrix at zero position (only depends on state of current joint).
 				Math::Matrix6X _J;
+				//	Time derivative of Jacobian Matrix.
 				Math::Matrix6X _JDot;
 				
+				//	Products of exp([S_i] * theta_i) from base.
 				Math::SE3 _accumulatedT;
+				//	Jacobian at current state. (Adjoint of _J with ).
 				Math::Matrix6X _accumulatedJ;
+				//	Time derivative of Jacobian at current state.
 				Math::Matrix6X _accumulatedJDot;
 
 				const Math::VectorX& getq() const { return _q; }
@@ -74,10 +81,11 @@ namespace rovin
 				void JDotUpdated() { _JDotUpdated = true; }
 
 			private:
+				//	Warning: Do access in 'State'. //
 				void setq(const Math::VectorX& q) { _q = q; needUpdate(true, true, true); }
 				void setqdot(const Math::VectorX& qdot) { _qdot = qdot; needUpdate(false, false, true); }
 				void setqddot(const Math::VectorX& qddot) { _qddot = qddot; needUpdate(false, false, false); }
-
+				//	Warning: Do access in 'State'. //
 				void addq(const Math::VectorX& q) { _q += q; needUpdate(true, true, true); }
 				void addqdot(const Math::VectorX& qdot) { _qdot += qdot; needUpdate(false, false, true); }
 				void addqddot(const Math::VectorX& qddot) { _qddot += qddot; needUpdate(false, false, false); }
@@ -119,6 +127,7 @@ namespace rovin
 			const LinkState& getLinkState(const unsigned int linkIndex) const;
 			const LinkState& getLinkState(const std::string& linkName) const;
 
+			//const JointState& getJointState(const TARGET_JOINT& target, int idx);
 			const JointState& getJointState(const unsigned int jointIndex) const;
 			const JointState& getJointStateByMateIndex(const unsigned int mateIndex) const;
 			const JointState& getJointState(const std::string& jointName) const;
@@ -139,6 +148,7 @@ namespace rovin
 			void setJointq(const unsigned int jointIdx, const Math::VectorX& q) { setJointq(_jointState[jointIdx], q); }
 			void setJointq(const std::string& jointName, const Math::VectorX& q) { setJointq(getJointState(jointName), q); }
 			void setJointq(JointState& jointState, const Math::VectorX& q) { jointState.setq(q); _accumulatedT = _accumulatedJ = _accumulatedJDot = false; needUpdate(true, true, true); }
+			//void setJointq(const TARGET_JOINT& target, )
 
 			const Math::VectorX& getJointq(const unsigned int jointIdx) const { return getJointq(_jointState[jointIdx]); }
 			const Math::VectorX& getJointq(const std::string& jointName) const { return getJointq(getJointState(jointName)); }
@@ -232,11 +242,13 @@ namespace rovin
 			//	DOF index of i-th (assembled order) joint in active / passive (each) DOF
 			std::vector< unsigned int > _stateIndex;
 
+			//	whether those terms are up-to-date or not.
 			bool _TUpdated;
 			bool _VUpdated;
 			bool _VDotUpdated;
-
-			int _JointReferenceFrame;
+			
+			//	
+			JointReferenceFrame _JointReferenceFrame;
 
 		public:
 			bool _accumulatedT;

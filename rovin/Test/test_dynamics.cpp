@@ -14,6 +14,8 @@
 #include <rovin/Renderer/SimpleOSG.h>
 #include <rovin/utils/Diagnostic.h>
 
+#include <rovin/Test/test_OpenChainAssem.h>
+
 using namespace std;
 using namespace rovin::Math;
 using namespace rovin::Model;
@@ -58,7 +60,16 @@ int main()
 	cout << "qdot	: " << state->getJointqdot(State::TARGET_JOINT::ACTIVEJOINT).transpose() << endl;
 	cout << endl << "qddot	: " << state->getJointqddot(State::TARGET_JOINT::ACTIVEJOINT).transpose() << endl;
 
-	rovin::Kinematics::solveForwardKinematics(*openchain, *state);
+	serialChain<3> A;
+
+	VectorX temp_q(dof);
+	temp_q.setRandom();
+	PERFORM_TEST(
+		state->addActiveJointq(temp_q);
+	rovin::Dynamics::solveForwardDynamics(*openchain, *state);
+	, 1e+5);
+
+
 	SimpleOSG renderer(*openchain, *state, 600, 600);
 	renderer._viewer.run();
 

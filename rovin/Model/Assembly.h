@@ -30,7 +30,7 @@ namespace rovin
 		typedef std::shared_ptr< Assembly > AssemblyPtr;
 
 		enum JointDirection			{ REGULAR, REVERSE };
-		enum JointReferenceFrame	{ JOINTFRAME=0, SPATIAL=1, BODY=2 };
+		
 
 		/**
 		*	\class Assembly
