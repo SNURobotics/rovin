@@ -20,15 +20,15 @@ int main()
 	StatePtr state = myModel.makeState();
 
 	//	initialization
-	unsigned int dof = state->getTotalJointDof();
+	unsigned int dof = state->getDOF(State::STATEJOINT);
 	VectorX  q, dq, ddq, tau;
 	//	set q, qdot, qddot as uniform random number between -1 and 1
 	q = VectorX::Random(dof, 1);
 	dq = VectorX::Random(dof, 1);
 	ddq = VectorX::Random(dof, 1);
-	state->setActiveJointq(q);
-	state->setActiveJointqdot(dq);
-	state->setActiveJointqddot(ddq);
+	state->setJointq(State::ACTIVEJOINT, q);
+	state->setJointqdot(State::ACTIVEJOINT, dq);
+	state->setJointqddot(State::ACTIVEJOINT, ddq);
 	//	solve inv. dyn.
 	rovin::Dynamics::solveInverseDynamics(myModel, *state);
 
@@ -53,7 +53,7 @@ int main()
 	VectorX temp_q(dof);
 	temp_q.setRandom();
 	PERFORM_TEST(
-		state->addActiveJointq(temp_q);
+		state->addJointq(State::ACTIVEJOINT, temp_q);
 	rovin::Dynamics::solveForwardDynamics(myModel, *state);
 	, 1e+5);
 

@@ -52,7 +52,7 @@ int main()
 	////////////////////////
 	VectorX q(3);
 	q.setRandom();
-	state->setActiveJointq(q);
+	state->setJointq(State::ACTIVEJOINT, q);
 	////////////////////////
 
 	cout << q << endl;
@@ -73,13 +73,13 @@ int main()
 
 	///
 	q << PI / 3, PI / 4, -PI / 4;
-	state->setActiveJointq(q);
+	state->setJointq(State::ACTIVEJOINT, q);
 	rovin::Kinematics::solveForwardKinematics(*fourBar, *state);
 	cout << state->getLinkState("L4")._T << endl;
 	SE3 goalT = state->getLinkState("L4")._T;
 
 	q.setRandom();
-	state->setActiveJointq(q);
+	state->setJointq(State::ACTIVEJOINT, q);
 	rovin::Kinematics::solveForwardKinematics(*fourBar, *state);
 	cout << state->getJointState("J1").getq() << endl;
 	cout << state->getJointState("J2").getq() << endl;

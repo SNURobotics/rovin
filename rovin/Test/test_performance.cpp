@@ -42,7 +42,7 @@ int main()
 	////////////////////////
 	VectorX q(_DOF);
 	q.setRandom();
-	state->setActiveJointq(q);
+	state->setJointq(State::ACTIVEJOINT, q);
 	////////////////////////
 
 	//fourBar->Solve_Closedloop_Constraint(state);

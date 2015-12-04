@@ -31,14 +31,14 @@ int main()
 
 	VectorX q(3);
 	q << PI / 2, PI / 2, PI / 2;
-	state->setActiveJointq(q);
+	state->setJointq(State::ACTIVEJOINT, q);
 
 	rovin::Kinematics::solveForwardKinematics(*openchain, *state);
 	goalT = state->getLinkState("L4")._T;
 	cout << state->getLinkState("L4")._T << endl;
 
 	q << 0, PI / 4, -PI / 4;
-	state->setActiveJointq(q);
+	state->setJointq(State::ACTIVEJOINT, q);
 
 	rovin::Kinematics::solveForwardKinematics(*openchain, *state);
 	cout << state->getLinkState("L4")._T << endl;

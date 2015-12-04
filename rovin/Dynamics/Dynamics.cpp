@@ -34,7 +34,7 @@ namespace rovin
 			externalF[F[i].first] += F[i].second;
 		}
 
-		Kinematics::solveForwardKinematics(assem, state, Kinematics::VELOCITY | Kinematics::ACCELERATION);
+		Kinematics::solveForwardKinematics(assem, state, State::LINKS_VEL | State::LINKS_ACC);
 
 		dse3 netF;
 		se3 V;
@@ -69,7 +69,7 @@ namespace rovin
 		for (unsigned int i = 0; i < extForce.size(); i++)
 			extF[extForce[i].first] += extForce[i].second;
 
-		Kinematics::solveForwardKinematics(assem, state, Kinematics::VELOCITY | Kinematics::ACCUMULATED_J | Kinematics::ACCUMULATED_T);
+		Kinematics::solveForwardKinematics(assem, state, State::LINKS_VEL | State::JOINTS_JACOBIAN | State::JOINTS_T_FROM_BASE);
 
 		//
 		//	Initialization

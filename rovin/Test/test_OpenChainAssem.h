@@ -38,8 +38,7 @@ public:
 			_joints[i] = shared_ptr< Joint >(new RevoluteJoint(string("J") + std::to_string(i)));
 			this->addMate(_joints[i], _links[i]->getName(), _links[i + 1]->getName(), SE3(Vector3(1, 0, 0)), SE3(Vector3(1, 0, 0)));
 		}
-
-		openchain->completeAssembling(_links[0]->getName());
+		this->completeAssembling(_links[0]->getName());
 	}
 
 	unsigned int _dof;
