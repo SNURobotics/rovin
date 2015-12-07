@@ -26,16 +26,16 @@ int main()
 	so3 w;
 	w << 1, 2, 3;
 	cout << SO3::Exp_new(w, 5) << endl;
-	PERFORM_TEST(SO3::Exp_new(w, 5), 1e+7);
+	PERFORM_TEST(SO3::Exp_new(w, 5);, 1e+7);
 	cout << SO3::Exp(w, 5) << endl;
-	PERFORM_TEST(SO3::Exp(w, 5), 1e+7);
+	PERFORM_TEST(SO3::Exp(w, 5);, 1e+7);
 	
 	se3 S;
 	S << 1, 2, 3, 4, 5, 6;
 	cout << SE3::Exp(S, 5) << endl;
-	PERFORM_TEST(SE3::Exp(S, 5), 1e+7);
+	PERFORM_TEST(SE3::Exp(S, 5);, 1e+7);
 	cout << SE3::Exp_new(S, 5) << endl;
-	PERFORM_TEST(SE3::Exp_new(S, 5), 1e+7);
+	PERFORM_TEST(SE3::Exp_new(S, 5);, 1e+7);
 	*/
 
 	Modeling();
@@ -52,7 +52,7 @@ int main()
 	////////////////////////
 	VectorX q(3);
 	q.setRandom();
-	state->setActiveJointq(q);
+	state->setJointq(State::ACTIVEJOINT, q);
 	////////////////////////
 
 	cout << q << endl;
@@ -62,7 +62,7 @@ int main()
 
 	//cout << rovin::Kinematics::computeJacobian(*fourBar, *state, "L4", "L1") << endl;
 
-	//PERFORM_TEST(B = pinv(A), 1e+5);
+	//PERFORM_TEST(B = pinv(A);, 1e+5);
 	
 
 	cout << state->getJointState("J1").getq() << endl;
@@ -73,13 +73,13 @@ int main()
 
 	///
 	q << PI / 3, PI / 4, -PI / 4;
-	state->setActiveJointq(q);
+	state->setJointq(State::ACTIVEJOINT, q);
 	rovin::Kinematics::solveForwardKinematics(*fourBar, *state);
 	cout << state->getLinkState("L4")._T << endl;
 	SE3 goalT = state->getLinkState("L4")._T;
 
 	q.setRandom();
-	state->setActiveJointq(q);
+	state->setJointq(State::ACTIVEJOINT, q);
 	rovin::Kinematics::solveForwardKinematics(*fourBar, *state);
 	cout << state->getJointState("J1").getq() << endl;
 	cout << state->getJointState("J2").getq() << endl;

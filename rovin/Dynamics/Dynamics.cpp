@@ -34,11 +34,9 @@ namespace rovin
 			externalF[F[i].first] += F[i].second;
 		}
 
-		Kinematics::solveForwardKinematics(assem, state, Kinematics::VELOCITY | Kinematics::ACCELERATION);
+		Kinematics::solveForwardKinematics(assem, state, State::LINKS_VEL | State::LINKS_ACC);
 
 		dse3 netF;
-		se3 V;
-		se3 VDot;
 		Matrix6 Adjoint;
 		netF.setZero();
 		for (unsigned int i = 0; i < assem._Tree.size(); i++)
@@ -47,13 +45,10 @@ namespace rovin
 			unsigned int linkIdx = assem._Mate[assem._Tree[assem._Tree.size() - i - 1].first].getChildLinkIdx();
 
 			Adjoint = SE3::InvAd(state.getJointStateByMateIndex(mateIdx)._accumulatedT);
-			V = Adjoint * state.getLinkState(linkIdx)._V;
-			VDot = Adjoint * state.getLinkState(linkIdx)._VDot;
 
-			netF = SE3::Ad(state.getJointStateByMateIndex(mateIdx)._accumulatedT).transpose() * netF + externalF[linkIdx] +
-				(Matrix6)assem._socLink[linkIdx]._G*VDot -
-				SE3::adTranspose(V)*(Matrix6)assem._socLink[linkIdx]._G*V;
-			netF = Adjoint.transpose() * netF;
+			netF = netF + externalF[linkIdx] +
+				Adjoint.transpose()*((Matrix6)assem._socLink[linkIdx]._G*(Adjoint * state.getLinkState(linkIdx)._VDot)) -
+				SE3::adTranspose(state.getLinkState(linkIdx)._V)*(Adjoint.transpose()*((Matrix6)assem._socLink[linkIdx]._G*(Adjoint * state.getLinkState(linkIdx)._V)));
 
 			state.getJointStateByMateIndex(mateIdx)._constraintF = netF;
 			state.getJointStateByMateIndex(mateIdx)._tau = netF.transpose()*state.getJointStateByMateIndex(mateIdx)._accumulatedJ 
@@ -84,12 +79,12 @@ namespace rovin
 			solveInverseDynamics(assem, state, Fext);
 		}
 
-		Kinematics::solveForwardKinematics(assem, state, Kinematics::VELOCITY | Kinematics::ACCELERATION);
+		Kinematics::solveForwardKinematics(assem, state, State::LINKS_VEL | State::LINKS_ACC);
 
 		int qN = dqdp.rows();
 		int pN = dqdp.cols();
 		int linkN = assem.getLinkList().size();
-		int DOF = state.getTotalJointDof();
+		int DOF = state.getDOF(State::TARGET_JOINT::ASSEMJOINT);
 
 		bool extForceExist = false;
 		if (dFextdp.size() != 0 || d2Fextdp2.size() != 0) extForceExist = true;
@@ -406,7 +401,7 @@ namespace rovin
 		for (unsigned int i = 0; i < extForce.size(); i++)
 			extF[extForce[i].first] += extForce[i].second;
 
-		Kinematics::solveForwardKinematics(assem, state, Kinematics::VELOCITY | Kinematics::ACCUMULATED_J | Kinematics::ACCUMULATED_T);
+		Kinematics::solveForwardKinematics(assem, state, State::LINKS_VEL | State::JOINTS_JACOBIAN | State::JOINTS_T_FROM_BASE);
 
 		//
 		//	Initialization

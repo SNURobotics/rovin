@@ -36,7 +36,7 @@ int main()
 	BSplinePointToPointOptimization BsplinePTP;
 	BsplinePTP.setSOCRobotModel(openchain);
 	BsplinePTP.setFinalTimeAndTimeStep(1.0, 3);
-	dof = openchain->makeState()->getActiveJointDof();
+	dof = openchain->makeState()->getDOF(State::TARGET_JOINT::ACTIVEJOINT);
 
 
 	bool checkq0 = true;

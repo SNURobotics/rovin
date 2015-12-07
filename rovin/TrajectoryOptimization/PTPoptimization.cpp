@@ -68,7 +68,7 @@ namespace rovin
 		{
 			_socAssem = socAssem;
 			_defaultState = socAssem->makeState();
-			_nDOF = _defaultState->getActiveJointDof();
+			_nDOF = _defaultState->getDOF(State::TARGET_JOINT::ACTIVEJOINT);
 		}
 
 		void PointToPointOptimization::setFinalTimeAndTimeStep(const Math::Real tf, const int nStep)
@@ -251,7 +251,7 @@ namespace rovin
 					Dynamics::solveInverseDynamics(*_socAssem, *_stateTrj[i]);
 				}
 
-				_tau = MatrixX(_stateTrj[0]->getTotalJointDof(),_stateTrj.size());
+				_tau = MatrixX(_stateTrj[0]->getDOF(State::TARGET_JOINT::ASSEMJOINT),_stateTrj.size());
 				for (unsigned int i = 0; i < _stateTrj.size(); i++)
 				{
 					// tau[i] = _stateTrj[i]->getActiveJointTau();
@@ -294,8 +294,8 @@ namespace rovin
 
 			std::shared_ptr<nonLinearInequalityConstraint> nonLinearIneqFunc = std::shared_ptr<nonLinearInequalityConstraint>(new nonLinearInequalityConstraint());
 			
-			nonLinearIneqFunc->_tauMax.resize(_defaultState->getTotalJointDof());
-			nonLinearIneqFunc->_tauMin.resize(_defaultState->getTotalJointDof());
+			nonLinearIneqFunc->_tauMax.resize(_defaultState->getDOF(State::TARGET_JOINT::ASSEMJOINT));
+			nonLinearIneqFunc->_tauMin.resize(_defaultState->getDOF(State::TARGET_JOINT::ASSEMJOINT));
 			int dof = 0;
 			for (unsigned int i = 0; i < _socAssem->getMateList().size(); i++)
 			{
@@ -615,7 +615,7 @@ namespace rovin
 				joint_l = 0;
 				for (unsigned int l = 0; l < activeJointIdx.size(); l++)
 				{
-					tempJointPtr = _socAssem->getJointPtr(_defaultState->getActiveJointList()[activeJointIdx[l]]);
+					tempJointPtr = _socAssem->getJointPtrByMateIndex(_defaultState->getJointID(State::TARGET_JOINT::ACTIVEJOINT, activeJointIdx[l]));
 					tempUpperLimit = tempJointPtr->getLimitPosUpper();
 					tempLowerLimit = tempJointPtr->getLimitPosLower();
 					for (unsigned int j = 0; j < tempJointPtr->getDOF(); j++)
@@ -723,7 +723,7 @@ namespace rovin
 					joint_l = 0;
 					for (unsigned int l = 0; l < activeJointIdx.size(); l++)
 					{
-						tempJointPtr = _socAssem->getJointPtr(_defaultState->getActiveJointList()[activeJointIdx[l]]);
+						tempJointPtr = _socAssem->getJointPtrByMateIndex(_defaultState->getJointID(State::TARGET_JOINT::ACTIVEJOINT, activeJointIdx[l]));
 						tempUpperLimit = tempJointPtr->getLimitVelUpper();
 						tempLowerLimit = tempJointPtr->getLimitVelLower();
 						for (unsigned int j = 0; j < tempJointPtr->getDOF(); j++)
@@ -743,7 +743,7 @@ namespace rovin
 					joint_l = 0;
 					for (unsigned int l = 0; l < activeJointIdx.size(); l++)
 					{
-						tempJointPtr = _socAssem->getJointPtr(_defaultState->getActiveJointList()[activeJointIdx[l]]);
+						tempJointPtr = _socAssem->getJointPtrByMateIndex(_defaultState->getJointID(State::TARGET_JOINT::ACTIVEJOINT, activeJointIdx[l]));
 						tempUpperLimit = tempJointPtr->getLimitAccupper();
 						tempLowerLimit = tempJointPtr->getLimitAccLower();
 						for (unsigned int j = 0; j < tempJointPtr->getDOF(); j++)
@@ -763,7 +763,7 @@ namespace rovin
 					joint_l = 0;
 					for (unsigned int l = 0; l < activeJointIdx.size(); l++)
 					{
-						tempJointPtr = _socAssem->getJointPtr(_defaultState->getActiveJointList()[activeJointIdx[l]]);
+						tempJointPtr = _socAssem->getJointPtrByMateIndex(_defaultState->getJointID(State::TARGET_JOINT::ACTIVEJOINT, activeJointIdx[l]));
 						//////////////////////////////////////////////////////////////// change to jerk
 						tempUpperLimit = tempJointPtr->getLimitVelUpper();
 						tempLowerLimit = tempJointPtr->getLimitVelLower();

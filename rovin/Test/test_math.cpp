@@ -218,14 +218,14 @@ int main()
 	//eA.setRandom();
 	//eB.setRandom();
 	//
-	//PERFORM_TEST(C = A*B, 1e+6);
-	//PERFORM_TEST(eC = eA*eB, 1e+6);
+	//PERFORM_TEST(C = A*B;, 1e+6);
+	//PERFORM_TEST(eC = eA*eB;, 1e+6);
 
 	//cout << C << endl;
 	//cout << eC << endl;
 
-	//PERFORM_TEST(RMatrix D(4, 4), 1e+7);
-	//PERFORM_TEST(Math::SE3 eD, 1e+7);
+	//PERFORM_TEST(RMatrix D(4, 4);, 1e+7);
+	//PERFORM_TEST(Math::SE3 eD;, 1e+7);
 
 	//omp_set_num_threads(10);
 	//cout << Eigen::nbThreads() << endl;
@@ -241,8 +241,8 @@ int main()
 	//cout << std::setprecision(15) << sin(x) << endl;
 	//cout << std::setprecision(15) << abs(Math::fsin(x) - sin(x)) << endl;
 
-	//PERFORM_TEST(SE3_1 = Exp(se3_1), 1e+8);
-	//PERFORM_TEST(SE3_rovin = Math::SE3::Exp(se3_rovin1, se3_rovin2), 1e+8);
+	//PERFORM_TEST(SE3_1 = Exp(se3_1);, 1e+8);
+	//PERFORM_TEST(SE3_rovin = Math::SE3::Exp(se3_rovin1, se3_rovin2);, 1e+8);
 	//cout << SE3_1 << endl;
 	//cout << std::setprecision(15) << SE3_rovin << endl;
 	//cout << Log(SE3_1) << endl;
@@ -254,17 +254,17 @@ int main()
 	test4();
 
 	cout << "3" << endl;
-	PERFORM_TEST(test3(), 1e+8);
+	PERFORM_TEST(test3(); , 1e+8);
 	cout << "4" << endl;
 	B << 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12;
 	cout << B << endl;
-	PERFORM_TEST(test4(), 1e+8);
+	PERFORM_TEST(test4(); , 1e+8);
 	cout << A << endl;
 	MB.setRandom();
 	cout << "1" << endl;
-	PERFORM_TEST(test1(), 1e+8);
+	PERFORM_TEST(test1(); , 1e+8);
 	cout << "2" << endl;
-	PERFORM_TEST(test2(), 1e+8);
+	PERFORM_TEST(test2(); , 1e+8);
 	//cout << SE3_1_sq << endl;
 	cout << SE3_rovin_sq << endl;
 
@@ -275,8 +275,8 @@ int main()
 	//Math::so3 so3_rovin(1, 2, 3);
 	//Math::SO3 SO3_rovin;
 
-	//PERFORM_TEST(SO3_srLib = Exp(so3_srLib), 1e+7);
-	//PERFORM_TEST(SO3_rovin = Math::SO3::Exp(so3_rovin), 1e+7);
+	//PERFORM_TEST(SO3_srLib = Exp(so3_srLib);, 1e+7);
+	//PERFORM_TEST(SO3_rovin = Math::SO3::Exp(so3_rovin);, 1e+7);
 
 	//cout << SO3_srLib(0,0) << endl;
 	//cout << SO3_rovin << endl;
@@ -288,9 +288,9 @@ int main()
 	//C.setRandom();
 	//D.setRandom();
 
-	//PERFORM_TEST(A = B*C*D*D, 1e+6);
+	//PERFORM_TEST(A = B*C*D*D;, 1e+6);
 	//cout << A << endl;
-	//PERFORM_TEST(A = (((B*C).eval()*D).eval()*D).eval(), 1e+6);
+	//PERFORM_TEST(A = (((B*C).eval()*D).eval()*D).eval();, 1e+6);
 	//cout << A << endl;
 	return 0;
 }

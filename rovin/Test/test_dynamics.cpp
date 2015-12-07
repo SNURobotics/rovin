@@ -14,6 +14,8 @@
 #include <rovin/Renderer/SimpleOSG.h>
 #include <rovin/utils/Diagnostic.h>
 
+#include <rovin/Test/test_OpenChainAssem.h>
+
 using namespace std;
 using namespace rovin::Math;
 using namespace rovin::Model;
@@ -40,11 +42,11 @@ public:
 		q = x + 0.5*x.cwiseAbs2() + q0;
 		dq = dp + x.cwiseProduct(dp) + dq0;
 		ddq = x.cwiseProduct(ddp) + dp.cwiseAbs2() + ddp + ddq0;
-		state->setActiveJointq(q);
-		state->setActiveJointqdot(dq);
-		state->setActiveJointqddot(ddq);
+		state->setJointq(State::TARGET_JOINT::ACTIVEJOINT, q);
+		state->setJointqdot(State::TARGET_JOINT::ACTIVEJOINT, dq);
+		state->setJointqddot(State::TARGET_JOINT::ACTIVEJOINT, ddq);
 		//	solve inv. dyn.
-		rovin::Kinematics::solveForwardKinematics(*openchain, *state, rovin::Kinematics::VELOCITY | rovin::Kinematics::ACCELERATION);
+		//rovin::Kinematics::solveForwardKinematics(*openchain, *state, rovin::Kinematics::VELOCITY | rovin::Kinematics::ACCELERATION);
 		rovin::Dynamics::solveInverseDynamics(*openchain, *state);
 		return state->getJointTorque(State::TARGET_JOINT::STATEJOINT);
 		//return SE3::InvAd(state->getJointState("J2")._accumulatedT)*state->getLinkState("L3")._V;
@@ -71,7 +73,7 @@ int main()
 
 
 	//	initialization
-	unsigned int dof = state->getTotalJointDof();
+	unsigned int dof = state->getDOF(State::TARGET_JOINT::ACTIVEJOINT);
 	VectorX p(dof),dp(dof),ddp(dof);
 	p.setRandom();
 	dp.setRandom();
@@ -87,9 +89,9 @@ int main()
 	ddq0 = VectorX::Random(dof, 1);
 
 
-	state->setActiveJointq(q0+p+0.5*p.cwiseProduct(p));
-	state->setActiveJointqdot(dp+dp.cwiseProduct(p)+dq0);
-	state->setActiveJointqddot(ddp+dp.cwiseAbs2()+ddp.cwiseProduct(p)+ddq0);
+	state->setJointq(State::TARGET_JOINT::ACTIVEJOINT, q0+p+0.5*p.cwiseProduct(p));
+	state->setJointqdot(State::TARGET_JOINT::ACTIVEJOINT, dp+dp.cwiseProduct(p)+dq0);
+	state->setJointqddot(State::TARGET_JOINT::ACTIVEJOINT, ddp+dp.cwiseAbs2()+ddp.cwiseProduct(p)+ddq0);
 	//	solve inv. dyn.
 	rovin::Dynamics::solveInverseDynamics(*openchain, *state);
 
@@ -99,6 +101,9 @@ int main()
 	cout << "qdot	: " << (dp + dp.cwiseProduct(p) + dq0).transpose() << endl;
 	cout << "qddot	: " << (ddp + dp.cwiseAbs2() + ddp.cwiseProduct(p) + ddq0).transpose() << endl;
 	cout << endl << "tau	: " << state->getJointTorque(State::TARGET_JOINT::STATEJOINT).transpose() << endl;
+
+	rovin::Dynamics::solveForwardDynamics(*openchain, *state);
+	cout << endl << "tau	: " << state->getJointqddot(State::TARGET_JOINT::STATEJOINT).transpose() << endl;
 	
 
 	cout << "=== differentiate inverse dynamics ===" << endl;
@@ -123,7 +128,7 @@ int main()
 		d2qdp2[i](i, i) = 1.0;
 	}
 	PERFORM_TEST(
-		state->addActiveJointq(VectorX::Zero(dof));
+		state->addJointq(State::TARGET_JOINT::ACTIVEJOINT, VectorX::Zero(dof));
 		tauDeriv = rovin::Dynamics::differentiateInverseDynamics(*openchain, *state, dqdp, dqdotdp, dqddotdp, d2qdp2);
 		, 1);
 	
@@ -198,7 +203,6 @@ int main()
 	//rovin::Kinematics::solveForwardKinematics(*openchain, *state);
 	//SimpleOSG renderer(*openchain, *state, 600, 600);
 	//renderer._viewer.run();
-
 
 	return 0;
 }
