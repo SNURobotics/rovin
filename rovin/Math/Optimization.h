@@ -129,7 +129,7 @@ namespace rovin
 
 			FunctionPtr _objectiveFunc;
 			FunctionPtr _eqFunc;
-			FunctionPtr _ineqFunc;
+			FunctionPtr _ineqFunc;// < 0
 
 			unsigned int _maxIteration;
 			Real _tolCon;
@@ -150,6 +150,33 @@ namespace rovin
 
 			FunctionPtr _func;
 			Real _tolCon;
+		};
+
+		class ProjectToFeasibleSpace
+		{
+			class AugmentedFunction : public Function
+			{
+			public:
+				AugmentedFunction(const int xN, const int inEqN);
+
+				VectorX func(const VectorX& x) const;
+				MatrixX Jacobian(const VectorX& x) const;
+
+				int _xN;
+				int _inEqN;
+
+				FunctionPtr _eqConstraintFunc;
+				FunctionPtr _inEqConstraintFunc;
+			};
+		public:
+			ProjectToFeasibleSpace();
+
+			VectorX project(const VectorX& x);
+
+			FunctionPtr _eqConstraintFunc;
+			FunctionPtr _inEqConstraintFunc;
+			Real _tolCon;
+			int _maxIter;
 		};
 
 		static const Real	OptEps = std::sqrt(RealEps);

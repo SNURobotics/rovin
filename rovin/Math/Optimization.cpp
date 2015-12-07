@@ -221,7 +221,7 @@ namespace rovin
 					break;
 				}
 			}
-			if (!(OptRealEqual(_A*_xf-_b, 0.0) && OptRealLessEqual(_C*_xf-_d, 0.0)) || !OptRealLessEqual(_xf, 1/OptEps))
+			if (!(OptRealEqual(_A*_xf - _b, 0.0) && OptRealLessEqual(_C*_xf - _d, 0.0)) || !OptRealLessEqual(_xf, 1 / OptEps))
 			{
 				_exit = ExitFlag::InfeasibleProblem;
 			}
@@ -281,35 +281,10 @@ namespace rovin
 			VectorX d(xN);
 
 			// InitialGuess
-			NewtonRapshon nr;
-			FunctionPtr constraintFunction = FunctionPtr(new ConstraintFunction(xN, eqN, ineqN));
-			static_pointer_cast<ConstraintFunction>(constraintFunction)->_ceq = _eqFunc;
-			static_pointer_cast<ConstraintFunction>(constraintFunction)->_cineq = _ineqFunc;
-			VectorX xnr(xN + ineqN), eta(xN + ineqN);
-			MatrixX nrJ;
-			bool flag;
-			xnr.head(xN) = _xf;
-			xnr.tail(ineqN).setOnes();
-			nr._func = constraintFunction;
-			xnr = nr.solve(xnr);
-			while (true)
-			{
-				eta.setZero();
-				flag = false;
-				for (int i = xN; i < xN + ineqN; i++)
-				{
-					if (OptRealLessEqual(xnr(i), 0.0))
-					{
-						eta(i) = -xnr(i) + 10;
-						flag = true;
-					}
-				}
-				if (!flag) break;
-				nrJ = static_pointer_cast<ConstraintFunction>(constraintFunction)->Jacobian(xnr);
-				xnr += eta - nrJ.transpose()*(nrJ*nrJ.transpose()).ldlt().solve(nrJ*eta);
-			}
-			cout << xnr << endl;
-			_xf = xnr.head(xN);
+			ProjectToFeasibleSpace projectToFeasibleSpace;
+			projectToFeasibleSpace._eqConstraintFunc = _eqFunc;
+			projectToFeasibleSpace._inEqConstraintFunc = _ineqFunc;
+			_xf = projectToFeasibleSpace.project(_xf);
 
 			// QPOptimization
 			QPOptimization qpSolver;
@@ -414,13 +389,95 @@ namespace rovin
 			_xf = x;
 
 			VectorX f;
-
+			MatrixX J;
 			while (!OptRealEqual(f = (*_func)(_xf), 0.0))
 			{
-				_xf += pInv((*_func).Jacobian(_xf))*(-f);
+				J = (*_func).Jacobian(_xf);
+				_xf += J.transpose()*(J*J.transpose()).ldlt().solve(-f);
 			}
 
 			return _xf;
+		}
+		ProjectToFeasibleSpace::ProjectToFeasibleSpace()
+		{
+			_tolCon = 1e-6;
+			_maxIter = 10000;
+		}
+		VectorX ProjectToFeasibleSpace::project(const VectorX & x0)
+		{
+			int xN = x0.size();
+			int inEqN = (*_inEqConstraintFunc)(x0).size();
+
+			FunctionPtr augmentedFunc = FunctionPtr(new AugmentedFunction(xN, inEqN));
+			static_pointer_cast<AugmentedFunction> (augmentedFunc)->_eqConstraintFunc = _eqConstraintFunc;
+			static_pointer_cast<AugmentedFunction> (augmentedFunc)->_inEqConstraintFunc = _inEqConstraintFunc;
+			VectorX xAug(xN + inEqN);
+			xAug.head(xN) = x0;
+			xAug.tail(inEqN) = VectorX::Ones(inEqN);
+			NewtonRapshon nr;
+			nr._func = augmentedFunc;
+			xAug = nr.solve(xAug);
+			VectorX updateDir(xN + inEqN);
+			MatrixX J;
+			VectorX f;
+			int iter = 0;
+			while (1)
+			{
+				iter++;
+				updateDir.setZero();
+				for (int i = 0; i < inEqN; i++)
+				{
+					if (xAug(xN + i) < _tolCon)
+						updateDir(xN + i) = - xAug(xN + i) + 1;
+				}
+				f = (*augmentedFunc)(xAug);
+				if (updateDir.squaredNorm() > 0.0 || f.squaredNorm() > _tolCon)
+				{
+					J = (*augmentedFunc).Jacobian(xAug);
+					updateDir = updateDir - J.transpose()
+						*(J*J.transpose()).ldlt().solve(J*updateDir);
+					xAug += -J.transpose() * (J*J.transpose()).ldlt().solve(f) + updateDir;
+				}
+				else
+					break;
+				if (iter > _maxIter)
+				{
+					cout << "Projection Failed !!!" << endl;
+					break;
+				}
+			}
+			return xAug.head(xN);
+		}
+		ProjectToFeasibleSpace::AugmentedFunction::AugmentedFunction(const int xN, const int inEqN)
+		{
+			_xN = xN;
+			_inEqN = inEqN;
+		}
+		VectorX ProjectToFeasibleSpace::AugmentedFunction::func(const VectorX & x) const
+		{
+			VectorX xF = x.head(_xN);
+			VectorX s = x.tail(_inEqN);
+
+			VectorX valEq = (*_eqConstraintFunc)(xF);
+			VectorX valInEq = (*_inEqConstraintFunc)(xF) + s;
+			VectorX val(valEq.size() + valInEq.size());
+			val.head(valEq.size()) = valEq;
+			val.tail(valInEq.size()) = valInEq;
+			return val;
+		}
+		MatrixX ProjectToFeasibleSpace::AugmentedFunction::Jacobian(const VectorX & x) const
+		{
+			VectorX xF = x.head(_xN);
+
+			MatrixX valEq = (*_eqConstraintFunc).Jacobian(xF);
+			MatrixX valInEq = (*_inEqConstraintFunc).Jacobian(xF);
+			MatrixX val(valEq.rows() + valInEq.rows(), x.size());
+			val.setZero();
+			val.block(0, 0, valEq.rows(), _xN) = valEq;
+			val.block(valEq.rows(), 0, _inEqN, _xN) = valInEq;
+			for (int i = 0; i < _inEqN; i++)
+				val(valEq.rows() + i, _xN + i) = 1.0;
+			return val;
 		}
 	}
 }

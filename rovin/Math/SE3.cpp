@@ -394,9 +394,6 @@ namespace rovin
 		{
 			Matrix6 result;
 
-			so3 w = S.block(0, 0, 3, 1);
-			Vector3 v = S.block(3, 0, 3, 1);
-
 			result(0, 0) = 0;
 			result(0, 1) = S(2);
 			result(0, 2) = -S(1);

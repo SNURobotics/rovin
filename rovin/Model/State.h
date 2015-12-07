@@ -199,6 +199,11 @@ namespace rovin
 			void VUpdated() { _VUpdated = true; }
 			void VDotUpdated() { _VDotUpdated = true; }
 
+			unsigned int getAssemIndex(const unsigned int jointID)
+			{
+				return _assemIndex[jointID];
+			}
+
 		private:
 			State(const std::vector< std::string >& linkNameList, const std::vector< std::pair< std::string, unsigned int >>& jointNameList);
 

@@ -8,16 +8,21 @@ namespace rovin
 {
 	namespace Math
 	{
-		template< int CoefficientN, int OrderK, unsigned int Dimension >
+		template< int CoefficientN, int OrderK, int Dimension >
 		class BSpline
 		{
 		public:
+			BSpline()
+			{
+
+			}
+
 			BSpline(const Math::VectorX& knots, const Eigen::Matrix<Real, Dimension, -1>& controlPoints)
 			{
 				_knots = knots;
 				_controlPoints = controlPoints;
 
-				assert(_knots.rows() - _N <= 0 && "BSpline을 만들 수 없습니다.");
+				assert(_knots.rows() - _controlPoints.cols() >= 0 && "BSpline을 만들 수 없습니다.");
 
 				_N = _controlPoints.cols();
 				_K = _knots.rows() - _N;
@@ -38,8 +43,8 @@ namespace rovin
 					if (RealLessEqual(_knots(i - 1), _knots(i)));
 					else break;
 				}
-				assert(i != _N + _K && "knots는 nondecreasing 함수여야 합니다.");
-				assert(!flag && "The extreme knots should be different.");
+				assert(i == _N + _K && "knots는 nondecreasing 함수여야 합니다.");
+				assert(flag && "The extreme knots should be different.");
 
 				for (int j = 1; j <= _D; j++)
 				{
@@ -146,10 +151,11 @@ namespace rovin
 				if (!RealEqual(_knots(_N + _D), _knots(_N)))
 				{
 					new_controlPoint.col(cPntCount++) = -_D * _controlPoints.col(_N - 1) / (_knots(_N + _D) - _knots(_N));
-					for (int i = _N; i <= _N + _D; i++)
-					{
-						new_knots(knotCount++) = _knots(i);
-					}
+					new_knots(knotCount++) = _knots(_N);
+				}
+				for (int i = _N + 1; i <= _N + _D; i++)
+				{
+					new_knots(knotCount++) = _knots(i);
 				}
 				return BSpline<-1, -1, Dimension>(new_knots, new_controlPoint);
 			}

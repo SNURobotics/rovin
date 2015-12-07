@@ -77,7 +77,7 @@ namespace rovin
 			for (int i = 0; i < n; i++)
 			{
 				ei(i) = 1.0;
-				for (int j = 0; j < n; j++)
+				for (int j = 0; j <= i; j++)
 				{
 					ej(j) = 1.0;
 					if (i == 0 && j == 0);
@@ -90,6 +90,7 @@ namespace rovin
 						for (int k = 0; k < m; k++)
 						{
 							H[k](i, j) = Hij(k);
+							H[k](j, i) = Hij(k);
 						}
 					}
 
@@ -264,5 +265,24 @@ namespace rovin
 
 			return H;
 		}
+
+		VectorX LinearFunction::func(const Math::VectorX & x) const
+		{
+			return A*x + b;
+		}
+
+		MatrixX LinearFunction::Jacobian(const Math::VectorX & x) const
+		{
+			return A;
+		}
+
+		std::vector<MatrixX> LinearFunction::Hessian(const VectorX & x) const
+		{
+			vector<MatrixX> Hess(b.size());
+			for (int i = 0; i < b.size(); i++)
+				Hess[i] = MatrixX::Zero(x.size(), x.size());
+			return Hess;
+		}
+
 	}
 }

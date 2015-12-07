@@ -56,8 +56,345 @@ namespace rovin
 			netF = Adjoint.transpose() * netF;
 
 			state.getJointStateByMateIndex(mateIdx)._constraintF = netF;
-			state.getJointStateByMateIndex(mateIdx)._tau = netF.transpose()*state.getJointStateByMateIndex(mateIdx)._accumulatedJ;
+			state.getJointStateByMateIndex(mateIdx)._tau = netF.transpose()*state.getJointStateByMateIndex(mateIdx)._accumulatedJ 
+				+ assem.getJointPtrByMateIndex(mateIdx)->getConstDamper().cwiseProduct(state.getJointStateByMateIndex(mateIdx).getqdot());
+			for (unsigned int j = 0; j < assem.getJointPtrByMateIndex(mateIdx)->getDOF(); j++)
+			{
+				if ( RealBigger(state.getJointStateByMateIndex(mateIdx).getqdot()(j), 0) )
+					state.getJointStateByMateIndex(mateIdx)._tau(j) += assem.getJointPtrByMateIndex(mateIdx)->getConstFriction()(j);
+				else if (RealLess(state.getJointStateByMateIndex(mateIdx).getqdot()(j), 0))
+					state.getJointStateByMateIndex(mateIdx)._tau(j) -= assem.getJointPtrByMateIndex(mateIdx)->getConstFriction()(j);
+			}
+				
 		}
+	}
+
+	pair<vector<Eigen::Matrix<Real, 1, -1>>, vector<MatrixX>> Dynamics::differentiateInverseDynamics(const Model::SerialOpenChainAssembly & assem, Model::State & state,
+		const Math::MatrixX& dqdp, const Math::MatrixX& dqdotdp, const Math::MatrixX& dqddotdp,
+		const std::vector<Math::MatrixX>& d2qdp2, ///< pN matrices of d/dk(dq/dp) (k = 1, ..., pN)
+		const std::vector<Math::MatrixX>& d2qdotdp2, ///< pN matrices of d/dk(dqdot/dp) (k = 1, ..., pN) 
+		const std::vector<Math::MatrixX>& d2qddotdp2, ///< pN matrices of d/dk(dqddot/dp) (k = 1, ..., pN) 
+		const std::vector<std::pair<unsigned int, Math::dse3>>& Fext, ///< linkN spatial forces Fi (i = 1, ..., linkN)
+		const std::vector<std::pair<unsigned int, Math::MatrixX>>& dFextdp, ///< linkN matrices of dFi/dp (i = 1, ..., linkN)
+		const std::vector<std::pair<unsigned int, std::vector< Math::MatrixX >>>& d2Fextdp2, ///< linkN matrices of (pN matrices of d/dpk(dFi/dp), k = 1, ..., pN), (i = 1, ..., linkN)
+		const bool needInverseDynamics)
+	{
+		if (needInverseDynamics)
+		{
+			solveInverseDynamics(assem, state, Fext);
+		}
+
+		Kinematics::solveForwardKinematics(assem, state, Kinematics::VELOCITY | Kinematics::ACCELERATION);
+
+		int qN = dqdp.rows();
+		int pN = dqdp.cols();
+		int linkN = assem.getLinkList().size();
+		int DOF = state.getTotalJointDof();
+
+		bool extForceExist = false;
+		if (dFextdp.size() != 0 || d2Fextdp2.size() != 0) extForceExist = true;
+
+		
+		// variables for forward iteration
+		vector< se3, Eigen::aligned_allocator<se3> > Vb(linkN), Vbdot(linkN);
+		vector< MatrixX > dVbdp(linkN), dVbdotdp(linkN);
+		vector< vector< MatrixX >> d2Vbdp2(linkN), d2Vbdotdp2(linkN);
+
+		Matrix6 invAdeSiqi;
+		se3 Si;
+		Matrix6 adSi;
+		se3 currVb, currVbdot;
+		se3 pastVbdot;
+		MatrixX currdVbdp, currdVbdotdp;
+		MatrixX pastdVbdp, pastdVbdotdp;
+		vector< MatrixX > currd2Vbdp2, currd2Vbdotdp2;
+
+
+		// variables for backward iteration
+		SE3 Tacci;
+		Matrix6 AdTransTacci;
+		Matrix6 invAdTranseSi1qi1;
+		se3 Si1;
+		Matrix6 adTransSi1;
+
+		vector<Eigen::Matrix<Real, 1, -1>> dtaudp(DOF, Eigen::Matrix<Real, 1, -1>::Zero(pN));
+		vector<MatrixX> d2taudp2(DOF, MatrixX::Zero(pN, pN));
+
+		vector<MatrixX> dFbdp(linkN);
+		vector<vector<MatrixX>> d2Fbdp2(linkN);
+
+		dse3 currFb;
+		dse3 pastFb;
+		MatrixX currdFbdp;
+		MatrixX pastdFbdp;
+		vector<MatrixX> currd2Fbdp2;
+
+
+		// forward iteration
+		Vb[assem._baseLink] = currVb = state.getLinkState(assem._baseLink)._V;
+		Vbdot[assem._baseLink] = currVbdot = state.getLinkState(assem._baseLink)._VDot;
+		dVbdp[assem._baseLink] = currdVbdp = MatrixX::Zero(6, pN);
+		dVbdotdp[assem._baseLink] = currdVbdotdp = MatrixX::Zero(6, pN);
+		d2Vbdp2[assem._baseLink] = currd2Vbdp2 = vector< MatrixX >(pN, MatrixX::Zero(6, pN));
+		d2Vbdotdp2[assem._baseLink] = currd2Vbdotdp2 = vector< MatrixX >(pN, MatrixX::Zero(6, pN));
+		for (unsigned int i = 0; i < assem._Tree.size(); i++)
+		{
+			unsigned int mateID = assem._Tree[i].first;
+			unsigned int plinkID = assem._Mate[mateID].getParentLinkIdx();
+			unsigned int clinkID = assem._Mate[mateID].getChildLinkIdx();
+			unsigned int dofIdx;
+
+			currVb = Vb[plinkID];
+			currVbdot = Vbdot[plinkID];
+			currdVbdp = dVbdp[plinkID];
+			currdVbdotdp = dVbdotdp[plinkID];
+			currd2Vbdp2 = d2Vbdp2[plinkID];
+			currd2Vbdotdp2 = d2Vbdotdp2[plinkID];
+
+			for (unsigned int j = 0; j < state.getJointStateByMateIndex(mateID)._dof; j++)
+			{
+				if (j == 0) invAdeSiqi = SE3::Ad(state.getJointStateByMateIndex(mateID)._T[0].inverse());
+				else invAdeSiqi = SE3::Ad(state.getJointStateByMateIndex(mateID)._T[j].inverse() * state.getJointStateByMateIndex(mateID)._T[j - 1]);
+
+				pastVbdot = currVbdot;
+				pastdVbdp = currdVbdp;
+				pastdVbdotdp = currdVbdotdp;
+
+				dofIdx = state.getAssemIndex(mateID) + j;
+				Si = assem._socMate[mateID]._axes.col(j);
+				adSi = SE3::ad(Si);
+				currVb = invAdeSiqi*currVb + Si*state.getJointState(mateID).getqdot(j);
+				currVbdot = invAdeSiqi*currVbdot + Si*state.getJointState(mateID).getqddot(j) +
+					SE3::ad(currVb)*Si*state.getJointState(mateID).getqdot(j);
+
+				currdVbdp = invAdeSiqi*currdVbdp + Si*dqdotdp.row(dofIdx) -
+					(adSi*currVb)*dqdp.row(dofIdx);
+				currdVbdotdp = invAdeSiqi*currdVbdotdp + Si*dqddotdp.row(dofIdx) -
+					(adSi*(invAdeSiqi*pastVbdot))*dqdp.row(dofIdx) -
+					adSi*currdVbdp*state.getJointState(mateID).getqdot(j) -
+					(adSi*currVb)*dqdotdp.row(dofIdx);
+
+				for (int k = 0; k < pN; k++)
+				{
+					currd2Vbdp2[k] = invAdeSiqi*currd2Vbdp2[k]  - 
+						adSi*invAdeSiqi*pastdVbdp*dqdp(dofIdx, k) - 
+						(adSi*currdVbdp.col(k))*dqdp.row(dofIdx);
+					if (d2qdp2.size() != 0)
+					{
+						currd2Vbdp2[k] -= (adSi*currVb)*d2qdp2[k].row(dofIdx);
+					}
+					if (d2qdotdp2.size() != 0)
+					{
+						currd2Vbdp2[k] += Si*d2qdotdp2[k].row(dofIdx);
+					}
+					currd2Vbdotdp2[k] = invAdeSiqi*currd2Vbdotdp2[k]  -
+						adSi*(
+							invAdeSiqi*pastdVbdotdp*dqdp(dofIdx, k) +
+							currd2Vbdp2[k] * state.getJointState(mateID).getqdot(j) +
+							currdVbdp*dqdotdp(dofIdx, k)
+							) -
+						(adSi*(invAdeSiqi*pastdVbdotdp.col(k)))*dqdp.row(dofIdx) -
+						(adSi*currdVbdp.col(k))*dqdotdp.row(dofIdx) +
+						(adSi*(adSi*(invAdeSiqi*pastVbdot)))*dqdp.row(dofIdx)*dqdp(dofIdx, k);
+					if (d2qdp2.size() != 0)
+					{
+						currd2Vbdotdp2[k] -= (adSi*(invAdeSiqi*pastVbdot))*d2qdp2[k].row(dofIdx);
+					}
+					if (d2qdotdp2.size() != 0)
+					{
+						currd2Vbdotdp2[k] -= (adSi*currVb)*d2qdotdp2[k].row(dofIdx);
+					}
+					if (d2qddotdp2.size() != 0)
+					{
+						currd2Vbdotdp2[k] += Si*d2qddotdp2[k].row(dofIdx);
+					}
+				}
+				
+			}
+
+			Vb[clinkID] = currVb;
+			Vbdot[clinkID] = currVbdot;
+			dVbdp[clinkID] = currdVbdp;
+			dVbdotdp[clinkID] = currdVbdotdp;
+			d2Vbdp2[clinkID] = currd2Vbdp2;
+			d2Vbdotdp2[clinkID] = currd2Vbdotdp2;
+		}
+
+		// backward iteration
+		vector< MatrixX, Eigen::aligned_allocator<MatrixX>> extForce(assem.getLinkList().size());
+		for (unsigned int i = 0; i < extForce.size(); i++)
+			extForce[i] = MatrixX::Zero(6, 1);
+		for (unsigned int i = 0; i < Fext.size(); i++)
+			extForce[Fext[i].first] += Fext[i].second;
+
+		vector< MatrixX, Eigen::aligned_allocator<MatrixX>> dextForcedp(assem.getLinkList().size());
+		for (unsigned int i = 0; i < dextForcedp.size(); i++)
+			dextForcedp[i] = MatrixX::Zero(6, pN);
+		for (unsigned int i = 0; i < dFextdp.size(); i++)
+			dextForcedp[dFextdp[i].first] += dFextdp[i].second;
+
+		vector< vector< MatrixX >, Eigen::aligned_allocator< vector< MatrixX >>> d2extForcedp2(assem.getLinkList().size());
+		for (unsigned int i = 0; i < d2extForcedp2.size(); i++)
+			d2extForcedp2[i] = vector< MatrixX >(pN, MatrixX::Zero(6, pN));
+		for (unsigned int i = 0; i < d2Fextdp2.size(); i++)
+			for (int j = 0; j < pN; j++)
+				d2extForcedp2[d2Fextdp2[i].first][j] += d2Fextdp2[i].second[j];
+
+		
+
+		// add external force
+		if (extForceExist)
+		{
+			vector< vector < Matrix6, Eigen::aligned_allocator< Matrix6 >>> adJTransdqdpk(linkN, vector< Matrix6, Eigen::aligned_allocator< Matrix6 > >(pN, Matrix6::Zero()));
+			vector< vector< vector < Matrix6, Eigen::aligned_allocator< Matrix6 >> >> adadJJdqdpdqkdpl(linkN, vector< vector< Matrix6, Eigen::aligned_allocator< Matrix6 > >>(pN, vector< Matrix6, Eigen::aligned_allocator< Matrix6 > >(pN, Matrix6::Zero())));
+			vector< vector< vector < Matrix6, Eigen::aligned_allocator< Matrix6 >> >> adJTransd2qdpkdpl(linkN, vector< vector< Matrix6, Eigen::aligned_allocator< Matrix6 > >>(pN, vector< Matrix6, Eigen::aligned_allocator< Matrix6 > >(pN, Matrix6::Zero())));
+			
+			for (unsigned int i = 0; i < assem._Tree.size(); i++)
+			{
+				unsigned int mateID = assem._Tree[i].first;
+				unsigned int plinkID = assem._Mate[mateID].getParentLinkIdx();
+				unsigned int clinkID = assem._Mate[mateID].getChildLinkIdx();
+				unsigned int dofIdx;
+
+				adJTransdqdpk[clinkID] = adJTransdqdpk[plinkID];
+				adadJJdqdpdqkdpl[clinkID] = adadJJdqdpdqkdpl[plinkID];
+				adJTransd2qdpkdpl[clinkID] = adJTransd2qdpkdpl[plinkID];
+				for (unsigned int j = 0; j < state.getJointStateByMateIndex(mateID)._dof; j++)
+				{
+					dofIdx = state.getAssemIndex(mateID) + j;
+					for (int k = 0; k < pN; k++)
+					{
+						adJTransdqdpk[clinkID][k] += SE3::adTranspose(state.getJointState(mateID)._accumulatedJ.col(j))*dqdp(dofIdx, k);
+						for (int l = 0; l < pN; l++)
+						{
+							adadJJdqdpdqkdpl[clinkID][k][l] += SE3::adTranspose(adJTransdqdpk[clinkID][k].transpose()*state.getJointState(mateID)._accumulatedJ.col(j))*dqdp(dofIdx, l);
+							if (d2qdp2.size() != 0)
+								adJTransd2qdpkdpl[clinkID][k][l] += SE3::adTranspose(state.getJointState(mateID)._accumulatedJ.col(j))*d2qdp2[k](dofIdx, l);
+						}
+					}
+				}
+
+				Tacci = state.getJointStateByMateIndex(mateID)._accumulatedT;
+				AdTransTacci = SE3::Ad(Tacci).transpose();
+				for (int k = 0; k < pN; k++)
+				{
+					d2extForcedp2[clinkID][k] = d2extForcedp2[clinkID][k];
+					for (int l = 0; l < pN; l++)
+					{
+						d2extForcedp2[clinkID][k].col(l) += adJTransdqdpk[clinkID][k] * dextForcedp[clinkID].col(l) +
+							adJTransdqdpk[clinkID][l] * dextForcedp[clinkID].col(k) +
+							adJTransdqdpk[clinkID][k] * adJTransdqdpk[clinkID][l] * extForce[clinkID] +
+							adJTransd2qdpkdpl[clinkID][k][l] * extForce[clinkID] +
+							adadJJdqdpdqkdpl[clinkID][k][l] * extForce[clinkID];
+					}
+					d2extForcedp2[clinkID][k] = AdTransTacci * d2extForcedp2[clinkID][k];
+				}
+
+				for (int k = 0; k < pN; k++)
+				{
+					dextForcedp[clinkID].col(k) += adJTransdqdpk[clinkID][k] * extForce[clinkID];
+				}
+				dextForcedp[clinkID] = AdTransTacci * dextForcedp[clinkID];
+			}
+		}
+
+
+		dFbdp[assem._endeffectorLink] = dextForcedp[assem._endeffectorLink];
+		d2Fbdp2[assem._endeffectorLink] = d2extForcedp2[assem._endeffectorLink];
+		for (unsigned int i = 0; i < assem._Tree.size(); i++)
+		{
+			unsigned int mateID = assem._Tree[assem._Tree.size() - i - 1].first;
+			unsigned int plinkID = assem._Mate[mateID].getParentLinkIdx();
+			unsigned int clinkID = assem._Mate[mateID].getChildLinkIdx();
+			unsigned int dofIdx;
+
+			Tacci = state.getJointStateByMateIndex(mateID)._accumulatedT;
+			AdTransTacci = SE3::Ad(Tacci).transpose();
+
+			currFb = AdTransTacci*state.getJointStateByMateIndex(mateID)._constraintF;
+			
+			if (dFbdp[clinkID].rows() == 0)
+				currdFbdp.setZero(6, pN);
+			else
+				currdFbdp = dFbdp[clinkID];
+			if (d2Fbdp2[clinkID].size() == 0)
+			{
+				for (int k = 0; k < pN; k++)
+					currd2Fbdp2[k].setZero(6, pN);
+			}
+			else
+				currd2Fbdp2 = d2Fbdp2[clinkID];
+			for (unsigned int j = 0; j < state.getJointStateByMateIndex(mateID)._dof; j++)
+			{
+				dofIdx = state.getAssemIndex(mateID) + state.getJointStateByMateIndex(mateID)._dof - j - 1;
+				if (j == state.getJointStateByMateIndex(mateID)._dof - 1) invAdTranseSi1qi1 = SE3::InvAd(state.getJointStateByMateIndex(mateID)._T[state.getJointStateByMateIndex(mateID)._dof - j - 1]).transpose();
+				else invAdTranseSi1qi1 = SE3::Ad(state.getJointStateByMateIndex(mateID)._T[state.getJointStateByMateIndex(mateID)._dof - j - 1].inverse() * state.getJointStateByMateIndex(mateID)._T[state.getJointStateByMateIndex(mateID)._dof - j - 2]).transpose();
+
+				Si1 = assem._socMate[mateID]._axes.col(state.getJointStateByMateIndex(mateID)._dof - j - 1);
+				adTransSi1 = -SE3::adTranspose(Si1);
+
+				if (j == 0)
+				{
+					currdFbdp += (Matrix6&)assem._socLink[clinkID]._G*dVbdotdp[clinkID];
+					for (int k = 0; k < pN; k++)
+					{
+						currdFbdp.col(k) -= SE3::adTranspose(dVbdp[clinkID].col(k))*((Matrix6&)assem._socLink[clinkID]._G*Vb[clinkID]);
+					}
+					currdFbdp += -SE3::adTranspose(Vb[clinkID])*(Matrix6&)assem._socLink[clinkID]._G*dVbdp[clinkID] +
+						dextForcedp[clinkID];
+				}
+				if (j == 0)
+				{
+					for (int k = 0; k < pN; k++)
+					{
+						currd2Fbdp2[k] += (Matrix6&)assem._socLink[clinkID]._G*d2Vbdotdp2[clinkID][k]
+							- SE3::adTranspose(Vb[clinkID])*assem._socLink[clinkID]._G*d2Vbdp2[clinkID][k]
+							+ d2extForcedp2[clinkID][k];
+
+						for (int l = 0; l <= k; l++)
+						{
+							currd2Fbdp2[k].col(l) -= (SE3::adTranspose(d2Vbdp2[clinkID][k].col(l))*((Matrix6&)assem._socLink[clinkID]._G*Vb[clinkID]))
+								+ (SE3::adTranspose(dVbdp[clinkID].col(l))*((Matrix6&)assem._socLink[clinkID]._G*dVbdp[clinkID].col(k)))
+								+ (SE3::adTranspose(dVbdp[clinkID].col(k))*((Matrix6&)assem._socLink[clinkID]._G*dVbdp[clinkID].col(l)));
+							if (l != k)
+							{
+								currd2Fbdp2[l].col(k) = currd2Fbdp2[k].col(l);
+							}
+						}
+
+					}
+				}
+
+				dtaudp[dofIdx] = Si1.transpose()*currdFbdp + assem.getJointPtrByMateIndex(mateID)->getConstDamper()(j)*dqdotdp.row(dofIdx);
+				for (int k = 0; k < pN; k++)
+				{
+					d2taudp2[dofIdx].row(k) = Si1.transpose()*currd2Fbdp2[k];
+				}
+
+				pastFb = currFb;
+				pastdFbdp = currdFbdp;
+
+				currFb = invAdTranseSi1qi1*currFb;
+				currdFbdp = invAdTranseSi1qi1*currdFbdp + (invAdTranseSi1qi1*(adTransSi1*pastFb))*dqdp.row(dofIdx);
+
+				for (int k = 0; k < pN; k++)
+				{
+					currd2Fbdp2[k] = invAdTranseSi1qi1*(currd2Fbdp2[k] + adTransSi1*pastdFbdp*dqdp(dofIdx, k)) +
+						(invAdTranseSi1qi1*(adTransSi1*pastdFbdp.col(k)))*dqdp.row(dofIdx) +
+						(invAdTranseSi1qi1*(adTransSi1*(adTransSi1*pastFb)))*dqdp.row(dofIdx)*dqdp(dofIdx, k);
+					if (d2qdp2.size() != 0)
+					{
+						currd2Fbdp2[k] += (invAdTranseSi1qi1*(adTransSi1*pastFb))*d2qdp2[k].row(dofIdx);
+					}
+				}
+			}
+			dFbdp[plinkID] = currdFbdp;
+			d2Fbdp2[plinkID] = currd2Fbdp2;
+		}
+
+
+
+		return pair<vector<Eigen::Matrix<Real, 1, -1>>, vector<MatrixX>>(dtaudp, d2taudp2);
 	}
 
 	void Dynamics::solveForwardDynamics(const Model::SerialOpenChainAssembly & assem, Model::State & state, const std::vector<std::pair<unsigned int, Math::dse3>>& extForce)

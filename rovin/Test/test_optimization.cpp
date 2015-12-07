@@ -39,6 +39,7 @@ public:
 		f(1) = x(1) - 10;
 		f(2) = -x(0) + 1;
 		f(3) = -x(1) + 1;
+		
 		return f;
 	}
 };
@@ -50,7 +51,7 @@ int main()
 	FunctionPtr ineq_f = FunctionPtr(new inequality());
 
 	Vector4 x;
-	x << 1 ,   1 , 10 , 10;
+	x << 1000 ,   1000 , 1000 , 1000;
 
 	NonlinearOptimization nonlinearSolver;
 	nonlinearSolver._objectiveFunc = obj_f;
