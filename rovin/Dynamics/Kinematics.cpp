@@ -317,6 +317,37 @@ namespace rovin
 			//state.needUpdate(true, true, true);
 		}
 
+		if ((options & (State::LINKS_VEL | State::LINKS_ACC)) == (State::LINKS_VEL | State::LINKS_ACC) && (!state.getInfoUpToDate(State::LINKS_VEL) || !state.getInfoUpToDate(State::LINKS_ACC)))
+		{
+			se3 V;
+			se3 VDot;
+			se3 temp;
+			V.setZero();
+			VDot.setZero();
+			VDot(5) = 9.8;
+
+			state.getLinkState(assem._baseLink)._V = V;
+			state.getLinkState(assem._baseLink)._VDot = VDot;
+			for (unsigned int i = 0; i < assem._Tree.size(); i++)
+			{
+				unsigned int mateIdx = assem._Tree[i].first;
+				state.getJointStateByMateIndex(mateIdx)._accumulatedJ.resize(6, state.getJointState(mateIdx).getDOF());
+				for (unsigned int j = 0; j < state.getJointState(mateIdx).getDOF(); j++)
+				{
+					if (i == 0) temp = assem.getJacobian(mateIdx, state.getJointStateByMateIndex(mateIdx)).col(j);
+					else temp = SE3::Ad(state.getJointStateByMateIndex(assem._Tree[i - 1].first)._accumulatedT, assem.getJacobian(mateIdx, state.getJointStateByMateIndex(mateIdx)).col(j));
+					state.getJointStateByMateIndex(mateIdx)._accumulatedJ.col(j) = temp;
+					VDot += temp*state.getJointStateByMateIndex(mateIdx).getqddot()(j) + SE3::ad(V, temp)*state.getJointStateByMateIndex(mateIdx).getqdot()(j);
+					V += temp*state.getJointStateByMateIndex(mateIdx).getqdot()(j);
+				}
+				state.getLinkState(assem._Mate[mateIdx].getChildLinkIdx(assem._Tree[i].second))._V = V;
+				state.getLinkState(assem._Mate[mateIdx].getChildLinkIdx(assem._Tree[i].second))._VDot = VDot;
+			}
+			state.setInfoUpToDate(State::JOINTS_JACOBIAN);
+			state.setInfoUpToDate(State::LINKS_VEL);
+			state.setInfoUpToDate(State::LINKS_ACC);
+		}
+
 		if ((options & State::LINKS_POS) && !state.getInfoUpToDate(State::LINKS_POS))
 		{
 			state.getLinkState(assem._baseLink)._T = assem._socLink[assem._baseLink]._M;
@@ -330,7 +361,9 @@ namespace rovin
 			state.setInfoUpToDate(State::LINKS_POS);
 		}
 
-		if ((options & (State::JOINTS_JACOBIAN | State::JOINTS_JACOBIAN_DOT | State::LINKS_VEL | State::LINKS_ACC)) && !state.getInfoUpToDate(State::JOINTS_JACOBIAN))
+		if (((options & (State::JOINTS_JACOBIAN | State::JOINTS_JACOBIAN_DOT)) && !state.getInfoUpToDate(State::JOINTS_JACOBIAN)) ||
+			((options & State::LINKS_VEL) && !state.getInfoUpToDate(State::LINKS_VEL)) ||
+			((options & State::LINKS_ACC) && !state.getInfoUpToDate(State::LINKS_ACC)))
 		{
 			for (unsigned int i = 0; i < assem._Tree.size(); i++)
 			{
@@ -364,7 +397,8 @@ namespace rovin
 			state.setInfoUpToDate(State::LINKS_VEL);
 		}
 
-		if ((options & (State::JOINTS_JACOBIAN_DOT | State::LINKS_ACC)) && !state.getInfoUpToDate(State::JOINTS_JACOBIAN_DOT))
+		if (((options & State::JOINTS_JACOBIAN_DOT) && !state.getInfoUpToDate(State::JOINTS_JACOBIAN_DOT)) ||
+			((options & State::LINKS_ACC) && !state.getInfoUpToDate(State::LINKS_ACC)))
 		{
 			Matrix6 adjoint;
 			adjoint.setZero();

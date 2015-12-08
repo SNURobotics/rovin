@@ -83,7 +83,7 @@ int main()
 
 	setBoundaryValues(checkq0, checkqf, checkdq0, checkdqf, checkddq0, checkddqf);
 
-	int optdof = 3;
+	int optdof = 6;
 	VectorU optActiveJointIdx(optdof);
 	for (int i = 0; i < optdof; i++)
 		optActiveJointIdx(i) = i;

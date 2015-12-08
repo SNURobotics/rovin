@@ -345,11 +345,12 @@ namespace rovin
 			int eqN = (*_eqFunc)(_xf).size();
 			int ineqN = (*_ineqFunc)(_xf).size();
 
-			opt = nlopt::opt(nlopt::LD_MMA, xN);
+			opt = nlopt::opt(nlopt::LD_SLSQP, xN);
 			opt.set_min_objective(objective, this);
 			opt.add_inequality_mconstraint(mineqconstraint, this, vector<Real>(ineqN, 1e-8));
-			//opt.add_equality_mconstraint(meqconstraint, this, vector<Real>(ineqN, 1e-8));
+			//opt.add_equality_mconstraint(meqconstraint, this, vector<Real>(eqN, 1e-8));
 			opt.set_xtol_rel(1e-4);
+			opt.set_ftol_rel(1e-4);
 
 			std::vector<Real> xi(xN);
 			for (int i = 0; i < xN; i++)

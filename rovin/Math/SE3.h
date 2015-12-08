@@ -88,6 +88,9 @@ namespace rovin
 			static Matrix6 ad(const se3& S);
 			/// Small Adjoint인 [S]^T를 계산해줍니다.
 			static Matrix6 adTranspose(const se3& S);
+			///
+			static se3 ad(const se3& S1, const se3& S2);
+			static se3 adTranspose(const se3& S1, const se3& S2);
 
 		private:
 			SO3 _R;

@@ -34,7 +34,7 @@ namespace rovin
 			externalF[F[i].first] += F[i].second;
 		}
 
-		Kinematics::solveForwardKinematics(assem, state, State::LINKS_VEL | State::LINKS_ACC);
+		Kinematics::solveForwardKinematics(assem, state, State::JOINTS_JACOBIAN | State::LINKS_VEL | State::LINKS_ACC);
 
 		dse3 netF;
 		Matrix6 Adjoint;
@@ -47,8 +47,8 @@ namespace rovin
 			Adjoint = SE3::InvAd(state.getJointStateByMateIndex(mateIdx)._accumulatedT);
 
 			netF = netF + externalF[linkIdx] +
-				Adjoint.transpose()*((Matrix6)assem._socLink[linkIdx]._G*(Adjoint * state.getLinkState(linkIdx)._VDot)) -
-				SE3::adTranspose(state.getLinkState(linkIdx)._V)*(Adjoint.transpose()*((Matrix6)assem._socLink[linkIdx]._G*(Adjoint * state.getLinkState(linkIdx)._V)));
+				Adjoint.transpose()*((Matrix6&)assem._socLink[linkIdx]._G*(Adjoint * state.getLinkState(linkIdx)._VDot)) -
+				SE3::adTranspose(state.getLinkState(linkIdx)._V)*(Adjoint.transpose()*((Matrix6&)assem._socLink[linkIdx]._G*(Adjoint * state.getLinkState(linkIdx)._V)));
 
 			state.getJointStateByMateIndex(mateIdx)._constraintF = netF;
 			state.getJointStateByMateIndex(mateIdx)._tau = netF.transpose()*state.getJointStateByMateIndex(mateIdx)._accumulatedJ
@@ -79,7 +79,7 @@ namespace rovin
 			solveInverseDynamics(assem, state, Fext);
 		}
 
-		Kinematics::solveForwardKinematics(assem, state, State::LINKS_VEL | State::LINKS_ACC);
+		Kinematics::solveForwardKinematics(assem, state, State::JOINTS_JACOBIAN | State::LINKS_VEL | State::LINKS_ACC);
 
 		int qN = dqdp.rows();
 		int pN = dqdp.cols();
@@ -125,6 +125,8 @@ namespace rovin
 		MatrixX pastdFbdp;
 		vector<MatrixX> currd2Fbdp2;
 
+		se3 temp;
+
 
 		// forward iteration
 		Vb[assem._baseLink] = currVb = state.getLinkState(assem._baseLink)._V;
@@ -167,7 +169,7 @@ namespace rovin
 				adSi = SE3::ad(Si);
 				currVb = invAdeSiqi*currVb + Si*state.getJointState(mateID).getqdot(j);
 				currVbdot = invAdeSiqi*currVbdot + Si*state.getJointState(mateID).getqddot(j) +
-					SE3::ad(currVb)*Si*state.getJointState(mateID).getqdot(j);
+					SE3::ad(currVb, Si)*state.getJointState(mateID).getqdot(j);
 
 				currdVbdp = invAdeSiqi*currdVbdp + Si*dqdotdp.row(dofIdx) -
 					(adSi*currVb)*dqdp.row(dofIdx);
@@ -175,6 +177,8 @@ namespace rovin
 					(adSi*(invAdeSiqi*pastVbdot))*dqdp.row(dofIdx) -
 					adSi*currdVbdp*state.getJointState(mateID).getqdot(j) -
 					(adSi*currVb)*dqdotdp.row(dofIdx);
+				//for (int k = 0; k < currdVbdotdp.cols(); k++)
+				//	currdVbdotdp.col(k) -= SE3::ad(Si, currdVbdp.col(k)*state.getJointState(mateID).getqdot(j));
 
 				if (calcHessian)
 				{
@@ -319,7 +323,6 @@ namespace rovin
 			}
 		}
 
-
 		dFbdp[assem._endeffectorLink] = dextForcedp[assem._endeffectorLink];
 		if (calcHessian)
 		{
@@ -363,12 +366,13 @@ namespace rovin
 
 				if (j == 0)
 				{
-					currdFbdp += (Matrix6&)assem._socLink[clinkID]._G*dVbdotdp[clinkID];
+					currdFbdp.noalias() += (Matrix6&)assem._socLink[clinkID]._G*dVbdotdp[clinkID];
+					temp = (Matrix6&)assem._socLink[clinkID]._G*Vb[clinkID];
 					for (int k = 0; k < pN; k++)
 					{
-						currdFbdp.col(k) -= SE3::adTranspose(dVbdp[clinkID].col(k))*((Matrix6&)assem._socLink[clinkID]._G*Vb[clinkID]);
+						currdFbdp.col(k).noalias() -= SE3::adTranspose(dVbdp[clinkID].col(k), temp);
 					}
-					currdFbdp += -SE3::adTranspose(Vb[clinkID])*(Matrix6&)assem._socLink[clinkID]._G*dVbdp[clinkID] +
+					currdFbdp.noalias() += -SE3::adTranspose(Vb[clinkID])*(Matrix6&)assem._socLink[clinkID]._G*dVbdp[clinkID] +
 						dextForcedp[clinkID];
 				}
 				if (calcHessian)

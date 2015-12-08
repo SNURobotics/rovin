@@ -1025,7 +1025,7 @@ namespace rovin
 		Math::VectorX BSplinePointToPointOptimization::inequalityTestConstraint::func(const Math::VectorX & x) const
 		{
 			
-			const MatrixX& tauTrj = _sharedDID->getTau(x);
+			//const MatrixX& tauTrj = _sharedDID->getTau(x);
 
 			VectorX val(1);
 

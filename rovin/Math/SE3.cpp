@@ -225,6 +225,22 @@ namespace rovin
 			return result;
 		}
 
+		se3 SE3::Ad(const SE3& T, const se3& S)
+		{
+			Real Rw1, Rw2, Rw3;
+			Rw1 = T._R._e(0, 0)*S(0) + T._R._e(0, 1)*S(1) + T._R._e(0, 2)*S(2);
+			Rw2 = T._R._e(1, 0)*S(0) + T._R._e(1, 1)*S(1) + T._R._e(1, 2)*S(2);
+			Rw3 = T._R._e(2, 0)*S(0) + T._R._e(2, 1)*S(1) + T._R._e(2, 2)*S(2);
+			se3 result;
+			result(0) = Rw1;
+			result(1) = Rw2;
+			result(2) = Rw3;
+			result(3) = -T._p(2)*Rw2 + T._p(1)*Rw3 + T._R._e(0, 0)*S(3) + T._R._e(0, 1)*S(4) + T._R._e(0, 2)*S(5);
+			result(4) = T._p(2)*Rw1 - T._p(0)*Rw3 + T._R._e(1, 0)*S(3) + T._R._e(1, 1)*S(4) + T._R._e(1, 2)*S(5);
+			result(5) = -T._p(1)*Rw1 + T._p(0)*Rw2 + T._R._e(2, 0)*S(3) + T._R._e(2, 1)*S(4) + T._R._e(2, 2)*S(5);
+			return result;
+		}
+
 		Matrix6 SE3::Ad(const SE3& T)
 		{
 			Matrix6 result;
@@ -442,6 +458,30 @@ namespace rovin
 			result(5, 4) = -S(0);
 			result(5, 5) = 0;
 
+			return result;
+		}
+
+		se3 SE3::ad(const se3& S1, const se3& S2)
+		{
+			se3 result;
+			result(0) = -S1(2)*S2(1) + S1(1)*S2(2);
+			result(1) = S1(2)*S2(0) - S1(0)*S2(2);
+			result(2) = -S1(1)*S2(0) + S1(0)*S2(1);
+			result(3) = -S1(5)*S2(1) + S1(4)*S2(2) - S1(2)*S2(4) + S1(1)*S2(5);
+			result(4) = S1(5)*S2(0) - S1(3)*S2(2) + S1(2)*S2(3) - S1(0)*S2(5);
+			result(5) = -S1(4)*S2(0) + S1(3)*S2(1) - S1(1)*S2(3) + S1(0)*S2(4);
+			return result;
+		}
+
+		se3 SE3::adTranspose(const se3& S1, const se3& S2)
+		{
+			se3 result;
+			result(0) = S1(2)*S2(1) - S1(1)*S2(2) + S1(5)*S2(4) - S1(4)*S2(5);
+			result(1) = -S1(2)*S2(0) + S1(0)*S2(2) - S1(5)*S2(3) + S1(3)*S2(5);
+			result(2) = S1(1)*S2(0) - S1(0)*S2(1) + S1(4)*S2(3) - S1(3)*S2(4);
+			result(3) = S1(2)*S2(4) - S1(1)*S2(5);
+			result(4) = -S1(2)*S2(3) + S1(0)*S2(5);
+			result(5) = S1(1)*S2(3) - S1(0)*S2(4);
 			return result;
 		}
 	}
