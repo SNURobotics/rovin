@@ -90,7 +90,7 @@ int main()
 
 	
 	BsplinePTP.setBoundaryCondition(q0, qf, dq0, dqf, ddq0, ddqf);
-	BsplinePTP.setConstraintRange(true, true, true, true);
+	BsplinePTP.setConstraintRange(true, true, false, false);
 	bool useWaypoint = true;
 	vector<pair<VectorX, Real>> wayPoints(2);
 	if (useWaypoint)
@@ -119,15 +119,15 @@ int main()
 
 	BsplinePTP.run(BSplinePointToPointOptimization::Effort);
 
-	MatrixX Aeq_opt = BsplinePTP.Aeq_opt;
-	MatrixX Aeq_nopt = BsplinePTP.Aeq_nopt;
-	MatrixX beq_opt = BsplinePTP.beq_opt;
-	MatrixX beq_nopt = BsplinePTP.beq_nopt;
+	MatrixX Aeq_opt = BsplinePTP._Aeq_opt;
+	MatrixX Aeq_nopt = BsplinePTP._Aeq_nopt;
+	MatrixX beq_opt = BsplinePTP._beq_opt;
+	MatrixX beq_nopt = BsplinePTP._beq_nopt;
 
-	MatrixX Aineq_opt = BsplinePTP.Aineq_opt;
-	MatrixX bineq_opt = BsplinePTP.bineq_opt;
-	MatrixX Aineq_nopt = BsplinePTP.Aineq_nopt;
-	MatrixX bineq_nopt = BsplinePTP.bineq_nopt;
+	MatrixX Aineq_opt = BsplinePTP._Aineq_opt;
+	MatrixX bineq_opt = BsplinePTP._bineq_opt;
+	MatrixX Aineq_nopt = BsplinePTP._Aineq_nopt;
+	MatrixX bineq_nopt = BsplinePTP._bineq_nopt;
 
 	//cout << "Aineq = " << endl;
 	//cout << Aineq_opt << endl;

@@ -38,7 +38,7 @@ namespace rovin
 			void addWayPoint(std::pair<Math::VectorX, Math::Real>& wayPoint);
 			void setOptimizingJointIndex(const Math::VectorU& optActiveJointIdx);
 
-			void setConstraintRange(bool posConstraintExist = (false), bool velConstraintExist = (false), bool accConstraintExist = (false), bool jerkConstraintExist = (false));
+			void setConstraintRange(bool posConstraintExist = (false), bool velConstraintExist = (false), bool torqueConstraintExist = (false), bool accConstraintExist = (false), bool jerkConstraintExist = (false));
 
 		public:
 			Model::socAssemblyPtr _socAssem;
@@ -48,10 +48,12 @@ namespace rovin
 
 			// Final time
 			Math::Real _tf;
+			// number of time step
+			int _nStep;
+			// time step (determined from tf and nStep)
 			Math::Real _dt;
 
-			///////////////////////////////
-			int _nStep;
+			
 
 			// Boundary values
 			Math::VectorX _q0;
@@ -75,10 +77,11 @@ namespace rovin
 			// Constraints
 			bool _posConstraintExist;
 			bool _velConstraintExist;
+			bool _torqueConstraintExist;
 			bool _accConstraintExist;
-			bool _jerkConstraintExist;
+			//bool _jerkConstraintExist;
 
-			///////////////////
+			// functions in optimization
 			Math::FunctionPtr _objectiveFunc;
 			Math::FunctionPtr _eqFunc;
 			Math::FunctionPtr _ineqFunc;
@@ -112,11 +115,10 @@ namespace rovin
 				const std::vector<std::vector<Math::MatrixX>>& getd2taudp2(const Math::VectorX& controlPoint);
 				void compareControlPoint(const Math::VectorX& controlPoint);
 
-				// should be called after getTau
+				// should be called after getTau (if not call compareControlPoint function while setting solveInverseDynamics option false)
 				const Math::MatrixX& getJointVal(const Math::VectorU& activeJointIdx);
 				const Math::MatrixX& getJointVel(const Math::VectorU& activeJointIdx);
 				const Math::MatrixX& getJointAcc(const Math::VectorU& activeJointIdx);
-
 
 			public:
 				Model::socAssemblyPtr _socAssem;
@@ -139,20 +141,21 @@ namespace rovin
 				Math::BSpline<-1, -1, -1> _optJointValSpline;
 				Math::BSpline<-1, -1, -1> _optJointVelSpline;
 				Math::BSpline<-1, -1, -1> _optJointAccSpline;
-				Math::BSpline<-1, -1, -1> _optJointJerkSpline;
 
 				Math::BSpline<-1, -1, -1> _noptJointValSpline;
 				Math::BSpline<-1, -1, -1> _noptJointVelSpline;
 				Math::BSpline<-1, -1, -1> _noptJointAccSpline;
-				Math::BSpline<-1, -1, -1> _noptJointJerkSpline;
 
+				// joint torque and derivatives
 				Math::MatrixX _tau;
 				std::vector<Math::MatrixX> _dtaudp;
 				std::vector<std::vector<Math::MatrixX>> _d2taudp2;
 
+				// joint value, velocity, acceleration, jerk
 				Math::MatrixX _jointValTrj;
 				Math::MatrixX _jointVelTrj;
 				Math::MatrixX _jointAccTrj;
+				Math::MatrixX _jointJerkTrj;
 
 				Math::VectorX _currentControlPoint;
 
@@ -213,20 +216,11 @@ namespace rovin
 				Math::FunctionPtr _nonLinearIneqConstraint;
 			};
 
-			class inequalityTestConstraint : public Math::Function
-			{
-			public:
-				inequalityTestConstraint() {}
-
-				Math::VectorX func(const Math::VectorX& x) const;
-
-				std::shared_ptr<SharedDID> _sharedDID;
-			};
-
 			class nonLinearInequalityConstraint : public Math::Function 
 			{
 			public:
-				nonLinearInequalityConstraint();
+				nonLinearInequalityConstraint() {}
+				void loadConstraint(const Model::socAssemblyPtr& socAssem, Math::VectorU& optActiveJointIdx, unsigned int optActiveDOF, bool velConstraintExist = (false), bool torqueConstraintExist = (false), bool accConstraintExist = (false));
 
 				Math::VectorX func(const Math::VectorX& x) const;
 				Math::MatrixX Jacobian(const Math::VectorX& x) const;
@@ -235,30 +229,68 @@ namespace rovin
 				std::shared_ptr<SharedDID> _sharedDID;
 				Math::VectorX _tauMin;
 				Math::VectorX _tauMax;
-				Math::VectorX _qMin;
-				Math::VectorX _qMax;
 				Math::VectorX _qdotMin;
 				Math::VectorX _qdotMax;
 				Math::VectorX _qddotMin;
 				Math::VectorX _qddotMax;
+				Model::StatePtr _defaultState;
+				bool _velConstraintExist;
+				bool _torqueConstraintExist;
+				bool _accConstraintExist;
+				int _nConstraint;
 			};
+
+			class nonLinearInequalitySmallConstraint : public Math::Function
+			{
+			public:
+				nonLinearInequalitySmallConstraint() {}
+				void loadConstraint(const Model::socAssemblyPtr& socAssem);
+
+				Math::VectorX func(const Math::VectorX& x) const;
+				Math::MatrixX Jacobian(const Math::VectorX& x) const;
+				std::vector<Math::MatrixX> Hessian(const Math::VectorX& x) const;
+
+				std::shared_ptr<SharedDID> _sharedDID;
+				Math::VectorX _tauMin;
+				Math::VectorX _tauMax;
+			};
+
+
+
+			////////////////////////////////////////// test function
+			class trajectoryCheck : public Math::Function
+			{
+			public: 
+				trajectoryCheck() {}
+
+				Math::VectorX func(const Math::VectorX& x) const;
+				Math::VectorU _activeJointIdx;
+				std::shared_ptr<SharedDID> _sharedDID;
+				int _timeStep;
+			};
+
 
 			class nonLinearInequalityTestConstraint : public Math::Function
 			{
 			public:
 				nonLinearInequalityTestConstraint() {}
 
+				void loadConstraint(const Model::socAssemblyPtr& socAssem, Math::VectorU& optActiveJointIdx, unsigned int optActiveDOF, bool velConstraintExist = (false), bool torqueConstraintExist = (false), bool accConstraintExist = (false));
+
 				Math::VectorX func(const Math::VectorX& x) const;
-				
+
 				std::shared_ptr<SharedDID> _sharedDID;
 				Math::VectorX _tauMin;
 				Math::VectorX _tauMax;
-				Math::VectorX _qMin;
-				Math::VectorX _qMax;
 				Math::VectorX _qdotMin;
 				Math::VectorX _qdotMax;
 				Math::VectorX _qddotMin;
 				Math::VectorX _qddotMax;
+				Model::StatePtr _defaultState;
+				bool _velConstraintExist;
+				bool _torqueConstraintExist;
+				bool _accConstraintExist;
+				int _nConstraint;
 			};
 
 			////////////////////// run
@@ -273,8 +305,13 @@ namespace rovin
 			void checkKnotVectorFeasibility();
 			std::pair<Math::MatrixX, Math::VectorX> generateLinearEqualityConstraint(const Math::VectorU& activeJointIdx, const int activeJointDOF);
 			void generateLinearEqualityConstraint();
-			std::pair<Math::MatrixX, Math::VectorX> generateLinearInequalityConstraint(const Math::VectorU& activeJointIdx, const int activeJointDOF);
-			void generateLinearInequalityConstraint();
+			
+			std::pair<Math::MatrixX, Math::VectorX> generateLinearInequalityConstraint(const Math::VectorU& activeJointIdx, const int activeJointDOF);		// consider joint value only
+			void generateLinearInequalityConstraint();		// consider joint value only
+			
+			std::pair<Math::MatrixX, Math::VectorX> generateLinearInequalityConstraint2(const Math::VectorU& activeJointIdx, const int activeJointDOF);		// consider joint value, velocity, jerk, torque also
+			void generateLinearInequalityConstraint2();		// consider joint value, velocity, jerk, torque also
+			
 			void generateNoptControlPoint();
 			void setdqdp();
 
@@ -299,16 +336,16 @@ namespace rovin
 			std::vector<Math::MatrixX> _dqddotdp;
 
 			// Equality constraint matrix (A*x + b = 0)
-			Math::MatrixX Aeq_opt;
-			Math::VectorX beq_opt;
-			Math::MatrixX Aeq_nopt;
-			Math::VectorX beq_nopt;
+			Math::MatrixX _Aeq_opt;
+			Math::VectorX _beq_opt;
+			Math::MatrixX _Aeq_nopt;
+			Math::VectorX _beq_nopt;
 
 			// Linear inequality constraint matrix (A*x + b <= 0)
-			Math::MatrixX Aineq_opt;
-			Math::VectorX bineq_opt;
-			Math::MatrixX Aineq_nopt;
-			Math::VectorX bineq_nopt;
+			Math::MatrixX _Aineq_opt;
+			Math::VectorX _bineq_opt;
+			Math::MatrixX _Aineq_nopt;
+			Math::VectorX _bineq_nopt;
 
 		};
 

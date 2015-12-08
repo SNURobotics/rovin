@@ -109,12 +109,13 @@ namespace rovin
 			_noptActiveJointDOF = noptJointDOF;
 		}
 
-		void PointToPointOptimization::setConstraintRange(bool posConstraintExist, bool velConstraintExist, bool accConstraintExist, bool jerkConstraintExist)
+		void PointToPointOptimization::setConstraintRange(bool posConstraintExist, bool velConstraintExist, bool torqueConstraintExist, bool accConstraintExist, bool jerkConstraintExist)
 		{
 			_posConstraintExist = posConstraintExist;
 			_velConstraintExist = velConstraintExist;
+			_torqueConstraintExist = torqueConstraintExist;
 			_accConstraintExist = accConstraintExist;
-			_jerkConstraintExist = jerkConstraintExist;
+			//_jerkConstraintExist = jerkConstraintExist;
 		}
 
 
@@ -166,7 +167,7 @@ namespace rovin
 			_noptJointValSpline = BSpline<-1, -1, -1>(knot, noptCP);
 			_noptJointVelSpline = _noptJointValSpline.derivative();
 			_noptJointAccSpline = _noptJointVelSpline.derivative();
-
+			
 
 			// set joint val, vel, acc for nopt joints
 			_stateTrj = vector< StatePtr >(nStep);
@@ -293,7 +294,6 @@ namespace rovin
 				_optJointValSpline = Math::BSpline<-1, -1, -1>(_knot, _optCP);
 				_optJointVelSpline = _optJointValSpline.derivative();
 				_optJointAccSpline = _optJointVelSpline.derivative();
-				_optJointJerkSpline = _optJointAccSpline.derivative();
 
 				for (unsigned int i = 0; i < _stateTrj.size(); i++)
 				{
@@ -338,44 +338,25 @@ namespace rovin
 			/////////////////////////////////////// INEQUALITY CONSTRAINT ///////////////////////////////////
 			_ineqFunc = Math::FunctionPtr(new inequalityConstraint());
 			std::shared_ptr<LinearFunction> linearIneqFunc = std::shared_ptr<LinearFunction>(new LinearFunction());
-			linearIneqFunc->A = Aineq_opt;
-			linearIneqFunc->b = bineq_opt;
+			linearIneqFunc->A = _Aineq_opt;
+			linearIneqFunc->b = _bineq_opt;
 			static_pointer_cast<inequalityConstraint>(_ineqFunc)->_linearIneqConstraint = linearIneqFunc;
 
 			std::shared_ptr<nonLinearInequalityConstraint> nonLinearIneqFunc = std::shared_ptr<nonLinearInequalityConstraint>(new nonLinearInequalityConstraint());
 
-			nonLinearIneqFunc->_tauMax.resize(_defaultState->getDOF(State::TARGET_JOINT::ASSEMJOINT));
-			nonLinearIneqFunc->_tauMin.resize(_defaultState->getDOF(State::TARGET_JOINT::ASSEMJOINT));
-			int dof = 0;
-			for (unsigned int i = 0; i < _socAssem->getMateList().size(); i++)
-			{
-				nonLinearIneqFunc->_tauMax.block(dof, 0, _socAssem->getJointPtrByMateIndex(i)->getDOF(), 1) = _socAssem->getJointPtrByMateIndex(i)->getLimitInputUpper();
-				nonLinearIneqFunc->_tauMin.block(dof, 0, _socAssem->getJointPtrByMateIndex(i)->getDOF(), 1) = _socAssem->getJointPtrByMateIndex(i)->getLimitInputLower();
-				dof += _socAssem->getJointPtrByMateIndex(i)->getDOF();
-			}
-
-			nonLinearIneqFunc->_qdotMax.resize(_optActiveJointDOF);
-			nonLinearIneqFunc->_qdotMin.resize(_optActiveJointDOF);
-			unsigned int jointID;
-			for (unsigned int i = 0, dof = 0; i < _optActiveJointIdx.size(); i++)
-			{
-				jointID = _defaultState->getJointID(State::TARGET_JOINT::ACTIVEJOINT, _optActiveJointIdx(i));
-				for (int j = 0; j < _socAssem->getJointPtrByMateIndex(jointID)->getDOF(); j++, dof++)
-				{
-					nonLinearIneqFunc->_qdotMax(dof) = _socAssem->getJointPtrByMateIndex(jointID)->getLimitVelUpper()(j);
-					nonLinearIneqFunc->_qdotMin(dof) = _socAssem->getJointPtrByMateIndex(jointID)->getLimitVelLower()(j);
-				}
-			}
+			nonLinearIneqFunc->loadConstraint(_socAssem, _optActiveJointIdx, _optActiveJointDOF, _velConstraintExist, _torqueConstraintExist, _accConstraintExist);
 			static_pointer_cast<inequalityConstraint>(_ineqFunc)->_nonLinearIneqConstraint = nonLinearIneqFunc;
 			/////////////////////////////////////////////////////////////////////////////////////////////////
 
+
+			/////////////////////////////////////// NOPT CP & SET SHARED DID ///////////////////////////////////
 			generateNoptControlPoint();
 			setdqdp();
 			shared_ptr<SharedDID> sharedDID = shared_ptr<SharedDID>(new SharedDID(_socAssem, _nStep, _dt, _knot,
 				BoundaryCP, _nInitCP, _nFinalCP, _nMiddleCP,
 				_optActiveJointIdx, _noptActiveJointIdx, _optActiveJointDOF, _noptActiveJointDOF, _noptControlPoint, _dqdp, _dqdotdp, _dqddotdp));
 			nonLinearIneqFunc->_sharedDID = sharedDID;
-
+			/////////////////////////////////////////////////////////////////////////////////////////////////
 
 			if (objectiveType == ObjectiveFunctionType::Effort)
 			{
@@ -388,33 +369,12 @@ namespace rovin
 				std::static_pointer_cast<energyLossFunction>(_objectiveFunc)->_sharedDID = sharedDID;
 			}
 
-			////////////////////////////////////////////////////// TEST ///////////////////////////////////////////////////////////////////
-			shared_ptr<inequalityTestConstraint> _testIneqConstFun = shared_ptr<inequalityTestConstraint>(new inequalityTestConstraint());
-			_testIneqConstFun->_sharedDID = sharedDID;
+			/////////////////////////////////////////// TEST FUNCTIONS ////////////////////////////////////////////////////////
+			shared_ptr<EmptyFunction> _testIneqConstFun = shared_ptr<EmptyFunction>(new EmptyFunction());
+			
 			shared_ptr<nonLinearInequalityTestConstraint> _testNonLinearIneqConstFun = shared_ptr<nonLinearInequalityTestConstraint>(new nonLinearInequalityTestConstraint());
 			_testNonLinearIneqConstFun->_sharedDID = sharedDID;
-			_testNonLinearIneqConstFun->_tauMax.resize(_defaultState->getDOF(State::TARGET_JOINT::ASSEMJOINT));
-			_testNonLinearIneqConstFun->_tauMin.resize(_defaultState->getDOF(State::TARGET_JOINT::ASSEMJOINT));
-			dof = 0;
-			for (unsigned int i = 0; i < _socAssem->getMateList().size(); i++)
-			{
-				_testNonLinearIneqConstFun->_tauMax.block(dof, 0, _socAssem->getJointPtrByMateIndex(i)->getDOF(), 1) = _socAssem->getJointPtrByMateIndex(i)->getLimitInputUpper();
-				_testNonLinearIneqConstFun->_tauMin.block(dof, 0, _socAssem->getJointPtrByMateIndex(i)->getDOF(), 1) = _socAssem->getJointPtrByMateIndex(i)->getLimitInputLower();
-				dof += _socAssem->getJointPtrByMateIndex(i)->getDOF();
-			}
-
-			_testNonLinearIneqConstFun->_qdotMax.resize(_optActiveJointDOF);
-			_testNonLinearIneqConstFun->_qdotMin.resize(_optActiveJointDOF);
-
-			for (unsigned int i = 0, dof = 0; i < _optActiveJointIdx.size(); i++)
-			{
-				jointID = _defaultState->getJointID(State::TARGET_JOINT::ACTIVEJOINT, _optActiveJointIdx(i));
-				for (int j = 0; j < _socAssem->getJointPtrByMateIndex(jointID)->getDOF(); j++, dof++)
-				{
-					_testNonLinearIneqConstFun->_qdotMax(dof) = _socAssem->getJointPtrByMateIndex(jointID)->getLimitVelUpper()(j);
-					_testNonLinearIneqConstFun->_qdotMin(dof) = _socAssem->getJointPtrByMateIndex(jointID)->getLimitVelLower()(j);
-				}
-			}
+			_testNonLinearIneqConstFun->loadConstraint(_socAssem, _optActiveJointIdx, _optActiveJointDOF, _velConstraintExist, _torqueConstraintExist, _accConstraintExist);
 			////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 			NonlinearOptimization nonlinearSolver;
@@ -424,22 +384,31 @@ namespace rovin
 
 			double c = clock();
 			VectorX x(_optActiveJointDOF*_nMiddleCP);
-			//x.setRandom();
+			x.setRandom();
 
-			for (int i = 0; i < _optActiveJointDOF; i++)
-			{
-				for (int j = 0; j < _nMiddleCP; j++)
-				{
-					x(i*_nMiddleCP + j) = BoundaryCP[0](_optActiveJointIdx(i)) + (Real)(j + 1) * (BoundaryCP[5](_optActiveJointIdx(i)) - BoundaryCP[0](_optActiveJointIdx(i))) / (Real)(_nMiddleCP + 1);
-				}
-			}
+			//for (int i = 0; i < _optActiveJointDOF; i++)
+			//{
+			//	for (int j = 0; j < _nMiddleCP; j++)
+			//	{
+			//		x(i*_nMiddleCP + j) = BoundaryCP[0](_optActiveJointIdx(i)) + (Real)(j + 1) * (BoundaryCP[5](_optActiveJointIdx(i)) - BoundaryCP[0](_optActiveJointIdx(i))) / (Real)(_nMiddleCP + 1);
+			//	}
+			//}
 
 
 
 			////////////////////////////////////// TEST /////////////////////////////////////////////////////////////////////////////////////////////////
 
-			shared_ptr<effortTestFunction> _testObjFunc = shared_ptr<effortTestFunction>(new effortTestFunction());
-			_testObjFunc->_sharedDID = sharedDID;
+			//shared_ptr<effortTestFunction> _testObjFunc = shared_ptr<effortTestFunction>(new effortTestFunction());
+			//_testObjFunc->_sharedDID = sharedDID;
+
+
+			//shared_ptr<trajectoryCheck> _trajectoryCheck = shared_ptr<trajectoryCheck>(new trajectoryCheck());
+			//_trajectoryCheck->_sharedDID = sharedDID;
+			//VectorU _activeJointIdx(6);
+			//_activeJointIdx << 0, 1, 2, 3, 4, 5;
+			//_trajectoryCheck->_activeJointIdx = _optActiveJointIdx;
+			//int timeStep = 6;
+			//_trajectoryCheck->_timeStep = timeStep;
 
 			//cout << "constraint func" << endl;
 			//cout << (*nonLinearIneqFunc).func(x) << endl;
@@ -449,25 +418,29 @@ namespace rovin
 			//cout << nonLinearIneqFunc->_sharedDID->getJointVel(_optActiveJointIdx) << endl;
 			//cout << "joint acc" << endl;
 			//cout << nonLinearIneqFunc->_sharedDID->getJointAcc(_optActiveJointIdx) << endl;
-
+			//pair<MatrixX, VectorX> AB = generateLinearInequalityConstraint2(_optActiveJointIdx, _optActiveJointDOF);
 
 			//cout << "analytic jacobian" << endl;
-			//cout << (*nonLinearIneqFunc).Jacobian(x) << endl;
-
-
+			////MatrixX Ja = (*nonLinearIneqFunc).Jacobian(x);
+			//int nStartVel = 2 * _nMiddleCP*_optActiveJointDOF;
+			//int nStartAcc = nStartVel + 2 * _optActiveJointDOF*_nStep;
+			//MatrixX Ja = AB.first.block(nStartVel + timeStep*_optActiveJointDOF, 0, _optActiveJointDOF, _optActiveJointDOF*_nMiddleCP);
+			//cout << Ja << endl;
 
 			//cout << "numerical jacobian" << endl;
-			//cout << (*_testNonLinearIneqConstFun).Jacobian(x) << endl;
+			//MatrixX Jnum = (*_trajectoryCheck).Jacobian(x);
+			//cout << Jnum << endl;
+
+			//cout << "difference" << endl;
+			//cout << (Ja - Jnum).squaredNorm() << endl;
 
 			//cout << "analytic hessian" << endl;
 			//vector<MatrixX> H = (*nonLinearIneqFunc).Hessian(x);
-			//cout << H[6] << endl;
-
-
+			//cout << H[0] << endl;
 
 			//cout << "numerical hessian" << endl;
 			//vector<MatrixX> Hnum = (*_testNonLinearIneqConstFun).Hessian(x);
-			//cout << Hnum[6] << endl;
+			//cout << Hnum[0] << endl;
 
 			///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -682,14 +655,14 @@ namespace rovin
 
 		void BSplinePointToPointOptimization::generateLinearEqualityConstraint()
 		{
-			Aeq_opt.resize(_optActiveJointDOF*_waypoint.size(), _nMiddleCP*_optActiveJointDOF);
-			beq_opt.resize(_optActiveJointDOF*_waypoint.size());
-			Aeq_opt.setZero();
-			beq_opt.setZero();
-			Aeq_nopt.resize(_noptActiveJointDOF*_waypoint.size(), _nMiddleCP*_noptActiveJointDOF);
-			beq_nopt.resize(_noptActiveJointDOF*_waypoint.size());
-			Aeq_nopt.setZero();
-			beq_nopt.setZero();
+			_Aeq_opt.resize(_optActiveJointDOF*_waypoint.size(), _nMiddleCP*_optActiveJointDOF);
+			_beq_opt.resize(_optActiveJointDOF*_waypoint.size());
+			_Aeq_opt.setZero();
+			_beq_opt.setZero();
+			_Aeq_nopt.resize(_noptActiveJointDOF*_waypoint.size(), _nMiddleCP*_noptActiveJointDOF);
+			_beq_nopt.resize(_noptActiveJointDOF*_waypoint.size());
+			_Aeq_nopt.setZero();
+			_beq_nopt.setZero();
 			MatrixX Ni(1, _nMiddleCP + _nInitCP + _nFinalCP);
 			MatrixX tempControlPoint(1, _nMiddleCP + _nInitCP + _nFinalCP);
 			tempControlPoint.setZero();
@@ -705,21 +678,21 @@ namespace rovin
 
 				for (int j = 0; j < _optActiveJointDOF; j++)
 				{
-					Aeq_opt.block(i*_optActiveJointDOF + j, j*_nMiddleCP, 1, _nMiddleCP) = Ni.block(0, _nInitCP, 1, _nMiddleCP);
-					beq_opt(i*_optActiveJointDOF + j) = -_waypoint[i].first(_optActiveJointIdx[j]);
+					_Aeq_opt.block(i*_optActiveJointDOF + j, j*_nMiddleCP, 1, _nMiddleCP) = Ni.block(0, _nInitCP, 1, _nMiddleCP);
+					_beq_opt(i*_optActiveJointDOF + j) = -_waypoint[i].first(_optActiveJointIdx[j]);
 					for (int k = 0; k < _nInitCP; k++)
-						beq_opt(i*_optActiveJointDOF + j) += Ni(0, k)*BoundaryCP[k](_optActiveJointIdx[j]);
+						_beq_opt(i*_optActiveJointDOF + j) += Ni(0, k)*BoundaryCP[k](_optActiveJointIdx[j]);
 					for (int k = 0; k < _nFinalCP; k++)
-						beq_opt(i*_optActiveJointDOF + j) += Ni(0, _nInitCP + _nMiddleCP + _nFinalCP - 1 - k)*BoundaryCP[5 - k](_optActiveJointIdx[j]);
+						_beq_opt(i*_optActiveJointDOF + j) += Ni(0, _nInitCP + _nMiddleCP + _nFinalCP - 1 - k)*BoundaryCP[5 - k](_optActiveJointIdx[j]);
 				}
 				for (int j = 0; j < _noptActiveJointDOF; j++)
 				{
-					Aeq_nopt.block(i*_noptActiveJointDOF + j, j*_nMiddleCP, 1, _nMiddleCP) = Ni.block(0, _nInitCP, 1, _nMiddleCP);
-					beq_nopt(i*_noptActiveJointDOF + j) = -_waypoint[i].first(_noptActiveJointIdx[j]);
+					_Aeq_nopt.block(i*_noptActiveJointDOF + j, j*_nMiddleCP, 1, _nMiddleCP) = Ni.block(0, _nInitCP, 1, _nMiddleCP);
+					_beq_nopt(i*_noptActiveJointDOF + j) = -_waypoint[i].first(_noptActiveJointIdx[j]);
 					for (int k = 0; k < _nInitCP; k++)
-						beq_nopt(i*_noptActiveJointDOF + j) += Ni(0, k)*BoundaryCP[k](_noptActiveJointIdx[j]);
+						_beq_nopt(i*_noptActiveJointDOF + j) += Ni(0, k)*BoundaryCP[k](_noptActiveJointIdx[j]);
 					for (int k = 0; k < _nFinalCP; k++)
-						beq_nopt(i*_noptActiveJointDOF + j) += Ni(0, _nInitCP + _nMiddleCP + _nFinalCP - 1 - k)*BoundaryCP[5 - k](_noptActiveJointIdx[j]);
+						_beq_nopt(i*_noptActiveJointDOF + j) += Ni(0, _nInitCP + _nMiddleCP + _nFinalCP - 1 - k)*BoundaryCP[5 - k](_noptActiveJointIdx[j]);
 				}
 			}
 		}
@@ -774,11 +747,265 @@ namespace rovin
 		void BSplinePointToPointOptimization::generateLinearInequalityConstraint()
 		{
 			pair<MatrixX, VectorX> Ineq = generateLinearInequalityConstraint(_optActiveJointIdx, _optActiveJointDOF);
-			Aineq_opt = Ineq.first;
-			bineq_opt = Ineq.second;
+			_Aineq_opt = Ineq.first;
+			_bineq_opt = Ineq.second;
 			Ineq = generateLinearInequalityConstraint(_noptActiveJointIdx, _noptActiveJointDOF);
-			Aineq_nopt = Ineq.first;
-			bineq_nopt = Ineq.second;
+			_Aineq_nopt = Ineq.first;
+			_bineq_nopt = Ineq.second;
+		}
+
+		pair<MatrixX, VectorX> BSplinePointToPointOptimization::generateLinearInequalityConstraint2(const VectorU& activeJointIdx, const int activeJointDOF)
+		{
+			// Inequality constraint form: A*x + b <= 0
+			int nPosConstraint = 0;
+			int nStartVel = 0;
+			int nStartAcc = 0;
+			int nStartJerk = 0;
+
+			if (_posConstraintExist)
+			{
+				nPosConstraint = 2;
+				nStartVel += nPosConstraint * _nMiddleCP * activeJointDOF;
+				nStartAcc += nPosConstraint * _nMiddleCP * activeJointDOF;
+				nStartJerk += nPosConstraint * _nMiddleCP * activeJointDOF;
+			}
+
+			int nConstraint = 0;
+			if (_velConstraintExist)
+			{
+				nConstraint += 2;
+				nStartAcc += 2 * _nStep * activeJointDOF;
+				nStartJerk += 2 * _nStep * activeJointDOF;
+			}
+
+			if (_accConstraintExist)
+			{
+				nConstraint += 2;
+				nStartJerk += 2 * _nStep * activeJointDOF;
+			}
+
+			//if (_jerkConstraintExist)
+			//	nConstraint += 2;
+			MatrixX Aineq;
+			VectorX bineq;
+			pair<MatrixX, VectorX> Ineq;
+			Aineq.resize((nConstraint * _nStep + nPosConstraint * _nMiddleCP)*activeJointDOF, _nMiddleCP*activeJointDOF);
+			bineq.resize((nConstraint * _nStep + nPosConstraint * _nMiddleCP)*activeJointDOF);
+			Aineq.setZero();
+			bineq.setZero();
+			Real ti;
+			Real temp;
+			int joint_l;
+			int jointID;
+			JointPtr tempJointPtr;
+			VectorX tempUpperLimit;
+			VectorX tempLowerLimit;
+			MatrixX dNi(1, _nMiddleCP + _nInitCP + _nFinalCP);
+			MatrixX ddNi(1, _nMiddleCP + _nInitCP + _nFinalCP);
+			MatrixX dddNi(1, _nMiddleCP + _nInitCP + _nFinalCP);
+			MatrixX tempControlPoint(1, _nMiddleCP + _nInitCP + _nFinalCP);
+			tempControlPoint.setZero();
+
+			// add position constraint
+			if (_posConstraintExist)
+			{
+				for (int i = 0; i < activeJointDOF; i++)
+				{
+					for (int j = 0; j < _nMiddleCP; j++)
+					{
+						Aineq(i*_nMiddleCP + j, i*_nMiddleCP + j) = 1.0;		// less than maximum
+						Aineq(_nMiddleCP*activeJointDOF + i*_nMiddleCP + j, i*_nMiddleCP + j) = -1.0;   // bigger than minimum
+					}
+				}
+				joint_l = 0;
+				for (unsigned int l = 0; l < activeJointIdx.size(); l++)
+				{
+					tempJointPtr = _socAssem->getJointPtrByMateIndex(_defaultState->getJointID(State::TARGET_JOINT::ACTIVEJOINT, activeJointIdx[l]));
+					tempUpperLimit = tempJointPtr->getLimitPosUpper();
+					tempLowerLimit = tempJointPtr->getLimitPosLower();
+					for (unsigned int j = 0; j < tempJointPtr->getDOF(); j++)
+					{
+						for (int k = 0; k < _nMiddleCP; k++)
+						{
+							bineq(joint_l + k) = -tempUpperLimit(j);
+							bineq(_nMiddleCP*activeJointDOF + joint_l + k) = tempLowerLimit(j);
+						}
+						joint_l += _nMiddleCP;
+					}
+				}
+			}
+
+			if (nConstraint > 0)
+			{
+				for (int i = 0; i < _nStep; i++)
+				{
+					ti = (Real)i * _dt;
+					for (int j = 0; j < _nMiddleCP + _nInitCP + _nFinalCP; j++)
+					{
+						tempControlPoint(j) = 1.0;
+						BSpline<-1, -1, -1> tempSpline(_knot, tempControlPoint);
+						tempControlPoint(j) = 0.0;
+						BSpline<-1, -1, -1> dtempSpline = tempSpline.derivative();
+						dNi(j) = dtempSpline(ti)(0);
+						BSpline<-1, -1, -1> ddtempSpline = dtempSpline.derivative();
+						ddNi(j) = ddtempSpline(ti)(0);
+						//if (_jerkConstraintExist)
+						//{
+						//	BSpline<-1, -1, -1> dddtempSpline = ddtempSpline.derivative();
+						//	dddNi(j) = dddtempSpline(ti)(0);
+						//}
+					}
+
+					// add velocity constraint
+					if (_velConstraintExist)
+					{
+						for (int j = 0, actDofIdx = 0; j < activeJointIdx.size(); j++)
+						{
+							jointID = _defaultState->getJointID(State::TARGET_JOINT::ACTIVEJOINT, activeJointIdx(j));
+							for (int l = 0; l < _socAssem->getJointPtrByMateIndex(jointID)->getDOF(); l++, actDofIdx++)
+							{
+								Aineq.block(nStartVel + activeJointDOF*i + actDofIdx, _nMiddleCP*actDofIdx, 1, _nMiddleCP) = dNi.block(0, _nInitCP, 1, _nMiddleCP);		// less than maximum
+								Aineq.block(nStartVel + activeJointDOF * _nStep + activeJointDOF*i + actDofIdx, _nMiddleCP*actDofIdx, 1, _nMiddleCP) = -dNi.block(0, _nInitCP, 1, _nMiddleCP);   // bigger than minimum
+								for (int k = 0; k < _nInitCP; k++)
+								{
+									temp = dNi(k)*BoundaryCP[k](activeJointIdx[j] + l);
+									bineq(nStartVel + activeJointDOF*i + actDofIdx) += temp;
+									bineq(nStartVel + activeJointDOF * _nStep + activeJointDOF*i + actDofIdx) -= temp;
+								}
+								for (int k = 0; k < _nFinalCP; k++)
+								{
+									temp = dNi(_nInitCP + _nMiddleCP + _nFinalCP - 1 - k)*BoundaryCP[k](activeJointIdx[j] + l);
+									bineq(nStartVel + activeJointDOF*i + actDofIdx) += temp;
+									bineq(nStartVel + activeJointDOF * _nStep + activeJointDOF*i + actDofIdx) -= temp;
+								}
+							}
+						}
+					}
+					// add acceleration constraint
+					if (_accConstraintExist)
+					{
+						for (int j = 0, activeDofIdx = 0; j < activeJointDOF; j++)
+						{
+							jointID = _defaultState->getJointID(State::TARGET_JOINT::ACTIVEJOINT, activeJointIdx(j));
+							for (int l = 0; l < _socAssem->getJointPtrByMateIndex(jointID)->getDOF(); l++, activeDofIdx++)
+							{
+								Aineq.block(nStartAcc + activeJointDOF*i + activeDofIdx, _nMiddleCP*activeDofIdx, 1, _nMiddleCP) = ddNi.block(0, _nInitCP, 1, _nMiddleCP);		// less than maximum
+								Aineq.block(nStartAcc + activeJointDOF * _nStep + activeJointDOF*i + activeDofIdx, _nMiddleCP*activeDofIdx, 1, _nMiddleCP) = -ddNi.block(0, _nInitCP, 1, _nMiddleCP);   // bigger than minimum
+																																												  //bineq(nStartVel + activeJointDOF*i + j) = getVelocityLimit;
+								for (int k = 0; k < _nInitCP; k++)
+								{
+									temp = ddNi(k)*BoundaryCP[k](activeJointIdx[j]);
+									bineq(nStartAcc + activeJointDOF*i + activeDofIdx) += temp;
+									bineq(nStartAcc + activeJointDOF * _nStep + activeJointDOF*i + activeDofIdx) -= temp;
+								}
+								for (int k = 0; k < _nFinalCP; k++)
+								{
+									temp = ddNi(_nInitCP + _nMiddleCP + _nFinalCP - 1 - k)*BoundaryCP[k](activeJointIdx[j]);
+									bineq(nStartAcc + activeJointDOF*i + activeDofIdx) += temp;
+									bineq(nStartAcc + activeJointDOF * _nStep + activeJointDOF*i + activeDofIdx) -= temp;
+								}
+							}
+						}
+					}
+					//// add jerk constraint
+					//if (_jerkConstraintExist)
+					//{
+					//	for (int j = 0; j < activeJointDOF; j++)
+					//	{
+					//		Aineq.block(nStartJerk + activeJointDOF*i + j, _nMiddleCP*j, 1, _nMiddleCP) = dddNi.block(0, _nInitCP, 1, _nMiddleCP);		// less than maximum
+					//		Aineq.block(nStartJerk + activeJointDOF * _nStep + activeJointDOF*i + j, _nMiddleCP*j, 1, _nMiddleCP) = -dddNi.block(0, _nInitCP, 1, _nMiddleCP);   // bigger than minimum
+					//																																							//bineq(nStartVel + activeJointDOF*i + j) = getVelocityLimit;
+					//		for (int k = 0; k < _nInitCP; k++)
+					//		{
+					//			temp = dddNi(k)*BoundaryCP[k](activeJointIdx[j]);
+					//			bineq(nStartJerk + activeJointDOF*i + j) += temp;
+					//			bineq(nStartJerk + activeJointDOF * _nStep + activeJointDOF*i + j) -= temp;
+					//		}
+					//		for (int k = 0; k < _nFinalCP; k++)
+					//		{
+					//			temp = dddNi(_nInitCP + _nMiddleCP + _nFinalCP - 1 - k)*BoundaryCP[k](activeJointIdx[j]);
+					//			bineq(nStartJerk + activeJointDOF*i + j) += temp;
+					//			bineq(nStartJerk + activeJointDOF * _nStep + activeJointDOF*i + j) -= temp;
+					//		}
+					//	}
+					//}
+				}
+
+				if (_velConstraintExist)
+				{
+					joint_l = 0;
+					for (unsigned int l = 0; l < activeJointIdx.size(); l++)
+					{
+						tempJointPtr = _socAssem->getJointPtrByMateIndex(_defaultState->getJointID(State::TARGET_JOINT::ACTIVEJOINT, activeJointIdx(l)));
+						tempUpperLimit = tempJointPtr->getLimitVelUpper();
+						tempLowerLimit = tempJointPtr->getLimitVelLower();
+						for (unsigned int j = 0; j < tempJointPtr->getDOF(); j++)
+						{
+							for (int i = 0; i < _nStep; i++)
+							{
+								bineq(nStartVel + activeJointDOF*i + joint_l + j) -= tempUpperLimit(j);
+								bineq(nStartVel + activeJointDOF * _nStep + activeJointDOF*i + joint_l + j) += tempLowerLimit(j);
+							}
+						}
+						joint_l += tempJointPtr->getDOF();
+					}
+				}
+
+				if (_accConstraintExist)
+				{
+					joint_l = 0;
+					for (unsigned int l = 0; l < activeJointIdx.size(); l++)
+					{
+						tempJointPtr = _socAssem->getJointPtrByMateIndex(_defaultState->getJointID(State::TARGET_JOINT::ACTIVEJOINT, activeJointIdx(l)));
+						tempUpperLimit = tempJointPtr->getLimitAccUpper();
+						tempLowerLimit = tempJointPtr->getLimitAccLower();
+						for (unsigned int j = 0; j < tempJointPtr->getDOF(); j++)
+						{
+							for (int i = 0; i < _nStep; i++)
+							{
+								bineq(nStartAcc + activeJointDOF*i + joint_l + j) -= tempUpperLimit(j);
+								bineq(nStartAcc + activeJointDOF * _nStep + activeJointDOF*i + joint_l + j) += tempLowerLimit(j);
+							}
+						}
+						joint_l += tempJointPtr->getDOF();
+					}
+				}
+
+				//if (_jerkConstraintExist)
+				//{
+				//	joint_l = 0;
+				//	for (unsigned int l = 0; l < activeJointIdx.size(); l++)
+				//	{
+				//		tempJointPtr = _socAssem->getJointPtrByMateIndex(_defaultState->getJointID(State::TARGET_JOINT::ACTIVEJOINT, activeJointIdx(l)));
+				//		tempUpperLimit = tempJointPtr->getLimitJerkUpper();
+				//		tempLowerLimit = tempJointPtr->getLimitJerkLower();
+				//		for (unsigned int j = 0; j < tempJointPtr->getDOF(); j++)
+				//		{
+				//			for (int i = 0; i < _nStep; i++)
+				//			{
+				//				bineq(nStartJerk + activeJointDOF*i + joint_l + j) -= tempUpperLimit(j);
+				//				bineq(nStartJerk + activeJointDOF * _nStep + activeJointDOF*i + joint_l + j) += tempLowerLimit(j);
+				//			}
+				//		}
+				//		joint_l += tempJointPtr->getDOF();
+				//	}
+				//}
+
+			}
+			Ineq.first = Aineq;
+			Ineq.second = bineq;
+			return Ineq;
+		}
+
+
+		void BSplinePointToPointOptimization::generateLinearInequalityConstraint2()
+		{
+			pair<MatrixX, VectorX> Ineq = generateLinearInequalityConstraint2(_optActiveJointIdx, _optActiveJointDOF);
+			_Aineq_opt = Ineq.first;
+			_bineq_opt = Ineq.second;
+			Ineq = generateLinearInequalityConstraint2(_noptActiveJointIdx, _noptActiveJointDOF);
+			_Aineq_nopt = Ineq.first;
+			_bineq_nopt = Ineq.second;
 		}
 
 		void BSplinePointToPointOptimization::generateNoptControlPoint()
@@ -786,11 +1013,11 @@ namespace rovin
 			ProjectToFeasibleSpace proj;
 			FunctionPtr linearEq = FunctionPtr(new LinearFunction());
 			FunctionPtr linearInEq = FunctionPtr(new LinearFunction());
-			static_pointer_cast<LinearFunction> (linearEq)->A = Aeq_nopt;
-			static_pointer_cast<LinearFunction> (linearEq)->b = beq_nopt;
+			static_pointer_cast<LinearFunction> (linearEq)->A = _Aeq_nopt;
+			static_pointer_cast<LinearFunction> (linearEq)->b = _beq_nopt;
 
-			static_pointer_cast<LinearFunction> (linearInEq)->A = Aineq_nopt;
-			static_pointer_cast<LinearFunction> (linearInEq)->b = bineq_nopt;
+			static_pointer_cast<LinearFunction> (linearInEq)->A = _Aineq_nopt;
+			static_pointer_cast<LinearFunction> (linearInEq)->b = _bineq_nopt;
 
 			if (_noptActiveJointDOF > 0)
 			{
@@ -838,7 +1065,7 @@ namespace rovin
 				accumulatedDOF(jointID) = accumulatedDOF(jointID - 1) + _socAssem->getJointPtrByMateIndex(jointID)->getDOF();
 			}
 
-			cout << accumulatedDOF << endl;
+			//cout << accumulatedDOF << endl;
 
 			unsigned int jointID;
 			for (int j = 0; j < _nMiddleCP; j++)
@@ -1021,22 +1248,6 @@ namespace rovin
 			return val;
 		}
 
-
-		Math::VectorX BSplinePointToPointOptimization::inequalityTestConstraint::func(const Math::VectorX & x) const
-		{
-			
-			const MatrixX& tauTrj = _sharedDID->getTau(x);
-
-			VectorX val(1);
-
-			/*for (int i = 0; i < sharedDID->_dqdp[0].rows(); i++)
-			{
-				val(i) = -10;
-			}*/
-			val(0) = -10;
-			return val;
-		}
-
 		Math::VectorX BSplinePointToPointOptimization::inequalityConstraint::func(const Math::VectorX & x) const
 		{
 			VectorX linearIneq = (*_linearIneqConstraint)(x);
@@ -1070,108 +1281,387 @@ namespace rovin
 			return val;
 		}
 
-		VectorX BSplinePointToPointOptimization::nonLinearInequalityTestConstraint::func(const Math::VectorX & x) const
+		void BSplinePointToPointOptimization::nonLinearInequalityConstraint::loadConstraint(const socAssemblyPtr& socAssem, VectorU& optActiveJointIdx, unsigned int optActiveJointDOF, bool velConstraintExist, bool torqueConstraintExist, bool accConstraintExist)
 		{
-			const MatrixX& tauTrj = _sharedDID->getTau(x);
-
-			const MatrixX& jointVelTrj = _sharedDID->getJointVel(_sharedDID->_optActiveJointIdx);
-			VectorX val(2 * _sharedDID->_optActiveJointDOF + 2 * tauTrj.rows());
-
-			for (int i = 0; i < _sharedDID->_optActiveJointDOF; i++)
+			_defaultState = socAssem->makeState();
+			
+			if (torqueConstraintExist)
 			{
-				val(i) = jointVelTrj.row(i).maxCoeff() - _qdotMax(i);
-				val(i + _sharedDID->_optActiveJointDOF) = _qdotMin(i) - jointVelTrj.row(i).minCoeff();
+				_tauMax.resize(_defaultState->getDOF(State::TARGET_JOINT::ASSEMJOINT));
+				_tauMin.resize(_defaultState->getDOF(State::TARGET_JOINT::ASSEMJOINT));
+				int dof = 0;
+				for (unsigned int i = 0; i < socAssem->getMateList().size(); i++)
+				{
+					_tauMax.block(dof, 0, socAssem->getJointPtrByMateIndex(i)->getDOF(), 1) = socAssem->getJointPtrByMateIndex(i)->getLimitInputUpper();
+					_tauMin.block(dof, 0, socAssem->getJointPtrByMateIndex(i)->getDOF(), 1) = socAssem->getJointPtrByMateIndex(i)->getLimitInputLower();
+					dof += socAssem->getJointPtrByMateIndex(i)->getDOF();
+				}
 			}
 
-			for (int i = 0; i < tauTrj.rows(); i++)
+			_nConstraint = 0;
+			if (velConstraintExist)
+				_nConstraint += 2 * optActiveJointDOF;
+			if (torqueConstraintExist)
+				_nConstraint += 2 * _tauMax.size();
+			if (accConstraintExist)
+				_nConstraint += 2 * optActiveJointDOF;
+
+			_velConstraintExist = velConstraintExist;
+			_torqueConstraintExist = torqueConstraintExist;
+			_accConstraintExist = accConstraintExist;
+
+			_qdotMax.resize(optActiveJointDOF);
+			_qdotMin.resize(optActiveJointDOF);
+			_qddotMax.resize(optActiveJointDOF);
+			_qddotMin.resize(optActiveJointDOF);
+			unsigned int jointID;
+			for (unsigned int i = 0, dof = 0; i < optActiveJointIdx.size(); i++)
 			{
-				val(2 * _sharedDID->_optActiveJointDOF + i) = tauTrj.row(i).maxCoeff() - _tauMax(i);
-				val(2 * _sharedDID->_optActiveJointDOF + i + tauTrj.rows()) = _tauMin(i) - tauTrj.row(i).minCoeff();
+				jointID = _defaultState->getJointID(State::TARGET_JOINT::ACTIVEJOINT, optActiveJointIdx(i));
+				for (int j = 0; j < socAssem->getJointPtrByMateIndex(jointID)->getDOF(); j++, dof++)
+				{
+					if (velConstraintExist)
+					{
+						_qdotMax(dof) = socAssem->getJointPtrByMateIndex(jointID)->getLimitVelUpper()(j);
+						_qdotMin(dof) = socAssem->getJointPtrByMateIndex(jointID)->getLimitVelLower()(j);
+					}
+					if (accConstraintExist)
+					{
+						_qddotMax(dof) = socAssem->getJointPtrByMateIndex(jointID)->getLimitAccUpper()(j);
+						_qddotMin(dof) = socAssem->getJointPtrByMateIndex(jointID)->getLimitAccLower()(j);
+					}
+				}
 			}
-
-			return val;
-		}
-
-		BSplinePointToPointOptimization::nonLinearInequalityConstraint::nonLinearInequalityConstraint()
-		{
-
 		}
 
 		VectorX BSplinePointToPointOptimization::nonLinearInequalityConstraint::func(const Math::VectorX & x) const
 		{
-			const MatrixX& tauTrj = _sharedDID->getTau(x);
+			int nConstraint = 0;
+			bool isTrajUpdated = false;
+			VectorX val(_nConstraint);
 			
-			const MatrixX jointVelTrj = _sharedDID->getJointVel(_sharedDID->_optActiveJointIdx);
-			VectorX val(2 * _sharedDID->_optActiveJointDOF + 2 * tauTrj.rows());
-			
-			for (int i = 0; i < _sharedDID->_optActiveJointDOF; i++)
+			if (_torqueConstraintExist)
 			{
-				val(i) = jointVelTrj.row(i).maxCoeff() - _qdotMax(i);
-				val(i + _sharedDID->_optActiveJointDOF) = _qdotMin(i) - jointVelTrj.row(i).minCoeff();
+				const MatrixX& tauTrj = _sharedDID->getTau(x);
+				isTrajUpdated = true;
+				for (int i = 0; i < tauTrj.rows(); i++)
+				{
+					val(nConstraint + i) = tauTrj.row(i).maxCoeff() - _tauMax(i);
+					val(nConstraint + i + tauTrj.rows()) = _tauMin(i) - tauTrj.row(i).minCoeff();
+				}
+				nConstraint += 2 * tauTrj.rows();
 			}
-
-			for (int i = 0; i < tauTrj.rows(); i++)
+			
+			if (_velConstraintExist)
 			{
-				val(2 * _sharedDID->_optActiveJointDOF + i) = tauTrj.row(i).maxCoeff() - _tauMax(i);
-				val(2 * _sharedDID->_optActiveJointDOF + i + tauTrj.rows()) = _tauMin(i) - tauTrj.row(i).minCoeff();
+				if (!isTrajUpdated)
+				{
+					_sharedDID->compareControlPoint(x);
+					isTrajUpdated = true;
+				}
+					
+				const MatrixX& jointVelTrj = _sharedDID->getJointVel(_sharedDID->_optActiveJointIdx);
+				for (int i = 0; i < _sharedDID->_optActiveJointDOF; i++)
+				{
+					val(nConstraint + i) = jointVelTrj.row(i).maxCoeff() - _qdotMax(i);
+					val(nConstraint + _sharedDID->_optActiveJointDOF + i) = _qdotMin(i) - jointVelTrj.row(i).minCoeff();
+				}
+				nConstraint += 2 * _sharedDID->_optActiveJointDOF;
+			}
+			
+			if (_accConstraintExist)
+			{
+				if (!isTrajUpdated) 
+				{
+					_sharedDID->compareControlPoint(x);
+					isTrajUpdated = true;
+				}
+				const MatrixX& jointAccTrj = _sharedDID->getJointAcc(_sharedDID->_optActiveJointIdx);
+				for (int i = 0; i < _sharedDID->_optActiveJointDOF; i++)
+				{
+					val(nConstraint + i) = jointAccTrj.row(i).maxCoeff() - _qddotMax(i);
+					val(nConstraint + _sharedDID->_optActiveJointDOF + i) = _qddotMin(i) - jointAccTrj.row(i).minCoeff();
+				}
+				nConstraint += 2 * _sharedDID->_optActiveJointDOF;
 			}
 
 			return val;
 		}
 
-		Math::MatrixX BSplinePointToPointOptimization::nonLinearInequalityConstraint::Jacobian(const Math::VectorX & x) const
+		MatrixX BSplinePointToPointOptimization::nonLinearInequalityConstraint::Jacobian(const Math::VectorX & x) const
+		{
+			MatrixX val(_nConstraint, x.size());
+			int index;
+			int dofIdx;
+			int mateID;
+			bool isTrajUpdated = false;
+			int nConstraint = 0;
+			if (_torqueConstraintExist)
+			{
+				const MatrixX& tauTrj = _sharedDID->getTau(x);
+				isTrajUpdated = true;
+				const vector<MatrixX>& dtaudpTrj = _sharedDID->getdtaudp(x);
+				for (int i = 0; i < tauTrj.rows(); i++)
+				{
+					tauTrj.row(i).maxCoeff(&index);
+					val.row(nConstraint + i) = dtaudpTrj[index].row(i);
+					tauTrj.row(i).minCoeff(&index);
+					val.row(nConstraint + i + tauTrj.rows()) = -dtaudpTrj[index].row(i);
+				}
+				nConstraint += 2 * tauTrj.rows();
+			}
+			
+			if (_velConstraintExist)
+			{
+				if (!isTrajUpdated)
+				{
+					_sharedDID->compareControlPoint(x);
+					isTrajUpdated = true;
+				}
+				const MatrixX& jointVelTrj = _sharedDID->getJointVel(_sharedDID->_optActiveJointIdx);
+				for (int i = 0, dofIdx = 0; i < _sharedDID->_optActiveJointIdx.size(); i++)
+				{
+					mateID = _sharedDID->_stateTrj[0]->getJointID(State::TARGET_JOINT::ACTIVEJOINT, _sharedDID->_optActiveJointIdx(i));
+					for (int j = 0; j < _sharedDID->_socAssem->getJointPtrByMateIndex(mateID)->getDOF(); j++, dofIdx++)
+					{
+						jointVelTrj.row(dofIdx).maxCoeff(&index);
+						val.row(dofIdx) = _sharedDID->_dqdotdp[index].row(_sharedDID->_stateTrj[0]->getAssemIndex(mateID) + j);
+						jointVelTrj.row(nConstraint + dofIdx).minCoeff(&index);
+						val.row(nConstraint + _sharedDID->_optActiveJointDOF + dofIdx) = -_sharedDID->_dqdotdp[index].row(_sharedDID->_stateTrj[0]->getAssemIndex(mateID) + j);
+					}
+				}
+				nConstraint += 2 * _sharedDID->_optActiveJointDOF;
+			}
+			if (_accConstraintExist)
+			{
+				if (!isTrajUpdated)
+				{
+					_sharedDID->compareControlPoint(x);
+					isTrajUpdated = true;
+				}
+				const MatrixX& jointAccTrj = _sharedDID->getJointAcc(_sharedDID->_optActiveJointIdx);
+				for (int i = 0, dofIdx = 0; i < _sharedDID->_optActiveJointIdx.size(); i++)
+				{
+					mateID = _sharedDID->_stateTrj[0]->getJointID(State::TARGET_JOINT::ACTIVEJOINT, _sharedDID->_optActiveJointIdx(i));
+					for (int j = 0; j < _sharedDID->_socAssem->getJointPtrByMateIndex(mateID)->getDOF(); j++, dofIdx++)
+					{
+						jointAccTrj.row(dofIdx).maxCoeff(&index);
+						val.row(dofIdx) = _sharedDID->_dqddotdp[index].row(_sharedDID->_stateTrj[0]->getAssemIndex(mateID) + j);
+						jointAccTrj.row(nConstraint + dofIdx).minCoeff(&index);
+						val.row(nConstraint + _sharedDID->_optActiveJointDOF + dofIdx) = -_sharedDID->_dqddotdp[index].row(_sharedDID->_stateTrj[0]->getAssemIndex(mateID) + j);
+					}
+				}
+				nConstraint += 2 * _sharedDID->_optActiveJointDOF;
+			}
+
+			return val;
+		}
+		vector<MatrixX> BSplinePointToPointOptimization::nonLinearInequalityConstraint::Hessian(const Math::VectorX & x) const
+		{
+			vector<MatrixX> val(_nConstraint, MatrixX::Zero(x.size(), x.size()));
+			
+			if (_torqueConstraintExist)
+			{
+				const MatrixX& tauTrj = _sharedDID->getTau(x);
+				const vector<vector<MatrixX>>& dtau2dp2Trj = _sharedDID->getd2taudp2(x);
+				int index;
+				for (int i = 0; i < tauTrj.rows(); i++)
+				{
+					tauTrj.row(i).maxCoeff(&index);
+					val[i] = dtau2dp2Trj[index][i];
+					tauTrj.row(i).minCoeff(&index);
+					val[i + tauTrj.rows()] = -dtau2dp2Trj[index][i];
+				}
+			}
+
+			return val;
+		}
+
+		void BSplinePointToPointOptimization::nonLinearInequalitySmallConstraint::loadConstraint(const socAssemblyPtr& socAssem)
+		{
+			StatePtr defaultState = socAssem->makeState();
+
+			_tauMax.resize(defaultState->getDOF(State::TARGET_JOINT::ASSEMJOINT));
+			_tauMin.resize(defaultState->getDOF(State::TARGET_JOINT::ASSEMJOINT));
+			int dof = 0;
+			for (unsigned int i = 0; i < socAssem->getMateList().size(); i++)
+			{
+				_tauMax.block(dof, 0, socAssem->getJointPtrByMateIndex(i)->getDOF(), 1) = socAssem->getJointPtrByMateIndex(i)->getLimitInputUpper();
+				_tauMin.block(dof, 0, socAssem->getJointPtrByMateIndex(i)->getDOF(), 1) = socAssem->getJointPtrByMateIndex(i)->getLimitInputLower();
+				dof += socAssem->getJointPtrByMateIndex(i)->getDOF();
+			}
+
+		}
+
+		VectorX BSplinePointToPointOptimization::nonLinearInequalitySmallConstraint::func(const Math::VectorX & x) const
+		{
+			const MatrixX& tauTrj = _sharedDID->getTau(x);
+			VectorX val(2 * tauTrj.rows());
+
+			for (int i = 0; i < tauTrj.rows(); i++)
+			{
+				val(i) = tauTrj.row(i).maxCoeff() - _tauMax(i);
+				val(i + tauTrj.rows()) = _tauMin(i) - tauTrj.row(i).minCoeff();
+			}
+
+			return val;
+		}
+
+		Math::MatrixX BSplinePointToPointOptimization::nonLinearInequalitySmallConstraint::Jacobian(const Math::VectorX & x) const
 		{
 			const MatrixX& tauTrj = _sharedDID->getTau(x);
 			const vector<MatrixX>& dtaudpTrj = _sharedDID->getdtaudp(x);
 
-			const MatrixX& jointVelTrj = _sharedDID->getJointVel(_sharedDID->_optActiveJointIdx);
-
-			Math::MatrixX val(2 * _sharedDID->_optActiveJointDOF + 2 * tauTrj.rows(), x.size());
+			Math::MatrixX val(2 * tauTrj.rows(), x.size());
 			int index;
-			int dofIdx;
-			int mateID;
-			for (int i = 0, dofIdx = 0; i < _sharedDID->_optActiveJointIdx.size(); i++)
-			{
-				mateID = _sharedDID->_stateTrj[0]->getJointID(State::TARGET_JOINT::ACTIVEJOINT, _sharedDID->_optActiveJointIdx(i));
-				for (int j = 0; j < _sharedDID->_socAssem->getJointPtrByMateIndex(mateID)->getDOF(); j++, dofIdx++)
-				{
-					jointVelTrj.row(dofIdx).maxCoeff(&index);
-					cout << "index = " << index << endl;
-					val.row(dofIdx) = _sharedDID->_dqdotdp[index].row(_sharedDID->_stateTrj[0]->getAssemIndex(mateID) + j);
-					jointVelTrj.row(dofIdx).minCoeff(&index);
-					cout << "index = " << index << endl;
-					val.row(_sharedDID->_optActiveJointDOF + dofIdx) = - _sharedDID->_dqdotdp[index].row(_sharedDID->_stateTrj[0]->getAssemIndex(mateID) + j);
-				}
-			}
-
 			for (int i = 0; i < tauTrj.rows(); i++)
 			{
 				tauTrj.row(i).maxCoeff(&index);
-				val.row(2 * _sharedDID->_optActiveJointDOF + i) = dtaudpTrj[index].row(i);
+				val.row(i) = dtaudpTrj[index].row(i);
 				tauTrj.row(i).minCoeff(&index);
-				val.row(2 * _sharedDID->_optActiveJointDOF + i + tauTrj.rows()) = - dtaudpTrj[index].row(i);
+				val.row(i + tauTrj.rows()) = -dtaudpTrj[index].row(i);
 			}
 
 			return val;
 		}
-		vector<Math::MatrixX> BSplinePointToPointOptimization::nonLinearInequalityConstraint::Hessian(const Math::VectorX & x) const
+		vector<MatrixX> BSplinePointToPointOptimization::nonLinearInequalitySmallConstraint::Hessian(const Math::VectorX & x) const
 		{
 			const MatrixX& tauTrj = _sharedDID->getTau(x);
 			const vector<vector<MatrixX>>& dtau2dp2Trj = _sharedDID->getd2taudp2(x);
 			const MatrixX& jointVelTrj = _sharedDID->getJointVel(_sharedDID->_optActiveJointIdx);
-			vector<Math::MatrixX> val(2 * _sharedDID->_optActiveJointDOF + 2 * tauTrj.rows(), MatrixX::Zero(x.size(), x.size()));
+			vector<MatrixX> val(2 * tauTrj.rows(), MatrixX::Zero(x.size(), x.size()));
 			int index;
 
 			for (int i = 0; i < tauTrj.rows(); i++)
 			{
 				tauTrj.row(i).maxCoeff(&index);
-				val[2 * _sharedDID->_optActiveJointDOF + i] = dtau2dp2Trj[index][i];
+				val[i] = dtau2dp2Trj[index][i];
 				tauTrj.row(i).minCoeff(&index);
-				val[2 * _sharedDID->_optActiveJointDOF + i + tauTrj.rows()] = - dtau2dp2Trj[index][i];
+				val[i + tauTrj.rows()] = -dtau2dp2Trj[index][i];
 			}
 
 			return val;
 		}
+
+		///////////////////////////////////////// test function ////////////////////////////////////
+
+		Math::VectorX BSplinePointToPointOptimization::trajectoryCheck::func(const Math::VectorX & x) const
+		{
+			_sharedDID->compareControlPoint(x);
+			return _sharedDID->getJointVel(_activeJointIdx).col(_timeStep);
+		}
+
+
+		void BSplinePointToPointOptimization::nonLinearInequalityTestConstraint::loadConstraint(const socAssemblyPtr& socAssem, VectorU& optActiveJointIdx, unsigned int optActiveJointDOF, bool velConstraintExist, bool torqueConstraintExist, bool accConstraintExist)
+		{
+			_defaultState = socAssem->makeState();
+
+			if (torqueConstraintExist)
+			{
+				_tauMax.resize(_defaultState->getDOF(State::TARGET_JOINT::ASSEMJOINT));
+				_tauMin.resize(_defaultState->getDOF(State::TARGET_JOINT::ASSEMJOINT));
+				int dof = 0;
+				for (unsigned int i = 0; i < socAssem->getMateList().size(); i++)
+				{
+					_tauMax.block(dof, 0, socAssem->getJointPtrByMateIndex(i)->getDOF(), 1) = socAssem->getJointPtrByMateIndex(i)->getLimitInputUpper();
+					_tauMin.block(dof, 0, socAssem->getJointPtrByMateIndex(i)->getDOF(), 1) = socAssem->getJointPtrByMateIndex(i)->getLimitInputLower();
+					dof += socAssem->getJointPtrByMateIndex(i)->getDOF();
+				}
+			}
+
+			_nConstraint = 0;
+			if (velConstraintExist)
+				_nConstraint += 2 * optActiveJointDOF;
+			if (torqueConstraintExist)
+				_nConstraint += 2 * _tauMax.size();
+			if (accConstraintExist)
+				_nConstraint += 2 * optActiveJointDOF;
+
+			_velConstraintExist = velConstraintExist;
+			_torqueConstraintExist = torqueConstraintExist;
+			_accConstraintExist = accConstraintExist;
+
+			_qdotMax.resize(optActiveJointDOF);
+			_qdotMin.resize(optActiveJointDOF);
+			_qddotMax.resize(optActiveJointDOF);
+			_qddotMin.resize(optActiveJointDOF);
+			unsigned int jointID;
+			for (unsigned int i = 0, dof = 0; i < optActiveJointIdx.size(); i++)
+			{
+				jointID = _defaultState->getJointID(State::TARGET_JOINT::ACTIVEJOINT, optActiveJointIdx(i));
+				for (int j = 0; j < socAssem->getJointPtrByMateIndex(jointID)->getDOF(); j++, dof++)
+				{
+					if (velConstraintExist)
+					{
+						_qdotMax(dof) = socAssem->getJointPtrByMateIndex(jointID)->getLimitVelUpper()(j);
+						_qdotMin(dof) = socAssem->getJointPtrByMateIndex(jointID)->getLimitVelLower()(j);
+					}
+					if (accConstraintExist)
+					{
+						_qddotMax(dof) = socAssem->getJointPtrByMateIndex(jointID)->getLimitAccUpper()(j);
+						_qddotMin(dof) = socAssem->getJointPtrByMateIndex(jointID)->getLimitAccLower()(j);
+					}
+				}
+			}
+		}
+
+		VectorX BSplinePointToPointOptimization::nonLinearInequalityTestConstraint::func(const Math::VectorX & x) const
+		{
+			int nConstraint = 0;
+			bool isTrajUpdated = false;
+			VectorX val(_nConstraint);
+
+			if (_torqueConstraintExist)
+			{
+				const MatrixX& tauTrj = _sharedDID->getTau(x);
+				isTrajUpdated = true;
+				for (int i = 0; i < tauTrj.rows(); i++)
+				{
+					val(nConstraint + i) = tauTrj.row(i).maxCoeff() - _tauMax(i);
+					val(nConstraint + i + tauTrj.rows()) = _tauMin(i) - tauTrj.row(i).minCoeff();
+				}
+				nConstraint += 2 * tauTrj.rows();
+			}
+
+			if (_velConstraintExist)
+			{
+				if (!isTrajUpdated)
+				{
+					_sharedDID->compareControlPoint(x);
+					isTrajUpdated = true;
+				}
+
+				const MatrixX& jointVelTrj = _sharedDID->getJointVel(_sharedDID->_optActiveJointIdx);
+				for (int i = 0; i < _sharedDID->_optActiveJointDOF; i++)
+				{
+					val(nConstraint + i) = jointVelTrj.row(i).maxCoeff() - _qdotMax(i);
+					val(nConstraint + _sharedDID->_optActiveJointDOF + i) = _qdotMin(i) - jointVelTrj.row(i).minCoeff();
+				}
+				nConstraint += 2 * _sharedDID->_optActiveJointDOF;
+			}
+
+			if (_accConstraintExist)
+			{
+				if (!isTrajUpdated)
+				{
+					_sharedDID->compareControlPoint(x);
+					isTrajUpdated = true;
+				}
+				const MatrixX& jointAccTrj = _sharedDID->getJointAcc(_sharedDID->_optActiveJointIdx);
+				for (int i = 0; i < _sharedDID->_optActiveJointDOF; i++)
+				{
+					val(nConstraint + i) = jointAccTrj.row(i).maxCoeff() - _qddotMax(i);
+					val(nConstraint + _sharedDID->_optActiveJointDOF + i) = _qddotMin(i) - jointAccTrj.row(i).minCoeff();
+				}
+				nConstraint += 2 * _sharedDID->_optActiveJointDOF;
+			}
+
+			return val;
+		}
+
+
+
+
 	}
 }
 
