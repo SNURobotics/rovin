@@ -197,7 +197,7 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="effortRobot.h" />
+    <ClInclude Include="efortRobot.h" />
     <ClInclude Include="test_OpenChainAssem.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

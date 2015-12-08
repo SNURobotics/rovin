@@ -1,5 +1,5 @@
 /**
-*	\file	effortRobot.h
+*	\file	efortRobot.h
 *	\date	2015.12.08
 *	\author	Jisoo Hong (jshong@robotics.snu.ac.kr)
 *	\brief	Assembly class for modeling effort robot.
@@ -21,10 +21,10 @@ using namespace rovin;
 using namespace rovin::Math;
 using namespace rovin::Model;
 
-class effortRobot : public socAssembly
+class efortRobot : public socAssembly
 {
 public:
-	effortRobot()
+	efortRobot()
 		:socAssembly("Effort Robot")
 	{
 		_links.resize(7);
@@ -60,61 +60,61 @@ public:
 
 	void addMeshFiles()
 	{
-		StatePtr effortState = this->makeState();
-		Kinematics::solveForwardKinematics(static_cast<socAssembly&>(*this), *effortState, State::LINKS_POS);
+		StatePtr efortState = this->makeState();
+		Kinematics::solveForwardKinematics(static_cast<socAssembly&>(*this), *efortState, State::LINKS_POS);
 		SE3 offset(Vector3(-240.95 / 1000, 346.10 / 1000, -110.30 / 1000));
 		for (unsigned int i = 0; i < 4; i++)
 		{
-			auto linkStatePtr = effortState->getLinkState("L0");
-			shared_ptr<Mesh> STL_file(new Mesh(string("../Data/CAD/effort_robot/LINK0_0") + std::to_string(i + 1) + string(".STL")));
+			auto linkStatePtr = efortState->getLinkState("L0");
+			shared_ptr<Mesh> STL_file(new Mesh(string("../Data/CAD/efort_robot/LINK0_0") + std::to_string(i + 1) + string(".STL")));
 			STL_file->setFrame(linkStatePtr._T.inverse()*offset* SE3(SO3::RotX(PI_HALF)));
 			STL_file->setDimension(0.001);
 			this->getLinkPtr("L0")->addDrawingShapes(STL_file);
 		}
 		for (unsigned int i = 0; i < 6; i++)
 		{
-			auto linkStatePtr = effortState->getLinkState("L1");
-			shared_ptr<Mesh> STL_file(new Mesh(string("../Data/CAD/effort_robot/LINK1_0") + std::to_string(i + 1) + string(".STL")));
+			auto linkStatePtr = efortState->getLinkState("L1");
+			shared_ptr<Mesh> STL_file(new Mesh(string("../Data/CAD/efort_robot/LINK1_0") + std::to_string(i + 1) + string(".STL")));
 			STL_file->setFrame(linkStatePtr._T.inverse()*offset* SE3(SO3::RotX(PI_HALF)));
 			STL_file->setDimension(0.001);
 			this->getLinkPtr("L1")->addDrawingShapes(STL_file);
 		}
 		for (unsigned int i = 0; i < 1; i++)
 		{
-			auto linkStatePtr = effortState->getLinkState("L2");
-			shared_ptr<Mesh> STL_file(new Mesh(string("../Data/CAD/effort_robot/LINK2_0") + std::to_string(i + 1) + string(".STL")));
+			auto linkStatePtr = efortState->getLinkState("L2");
+			shared_ptr<Mesh> STL_file(new Mesh(string("../Data/CAD/efort_robot/LINK2_0") + std::to_string(i + 1) + string(".STL")));
 			STL_file->setFrame(linkStatePtr._T.inverse()*offset* SE3(SO3::RotX(PI_HALF)));
 			STL_file->setDimension(0.001);
 			this->getLinkPtr("L2")->addDrawingShapes(STL_file);
 		}
 		for (unsigned int i = 0; i < 7; i++)
 		{
-			auto linkStatePtr = effortState->getLinkState("L3");
-			shared_ptr<Mesh> STL_file(new Mesh(string("../Data/CAD/effort_robot/LINK3_0") + std::to_string(i + 1) + string(".STL")));
+			auto linkStatePtr = efortState->getLinkState("L3");
+			shared_ptr<Mesh> STL_file(new Mesh(string("../Data/CAD/efort_robot/LINK3_0") + std::to_string(i + 1) + string(".STL")));
 			STL_file->setFrame(linkStatePtr._T.inverse()*offset* SE3(SO3::RotX(PI_HALF)));
 			STL_file->setDimension(0.001);
 			this->getLinkPtr("L3")->addDrawingShapes(STL_file);
 		}
 		for (unsigned int i = 0; i < 8; i++)
 		{
-			auto linkStatePtr = effortState->getLinkState("L4");
-			shared_ptr<Mesh> STL_file(new Mesh(string("../Data/CAD/effort_robot/LINK4_0") + std::to_string(i + 1) + string(".STL")));
+			auto linkStatePtr = efortState->getLinkState("L4");
+			shared_ptr<Mesh> STL_file(new Mesh(string("../Data/CAD/efort_robot/LINK4_0") + std::to_string(i + 1) + string(".STL")));
 			STL_file->setFrame(linkStatePtr._T.inverse()*offset* SE3(SO3::RotX(PI_HALF)));
 			STL_file->setDimension(0.001);
 			this->getLinkPtr("L4")->addDrawingShapes(STL_file);
 		}
 		for (unsigned int i = 0; i < 3; i++)
 		{
-			auto linkStatePtr = effortState->getLinkState("L5");
-			shared_ptr<Mesh> STL_file(new Mesh(string("../Data/CAD/effort_robot/LINK5_0") + std::to_string(i + 1) + string(".STL")));
+			auto linkStatePtr = efortState->getLinkState("L5");
+			shared_ptr<Mesh> STL_file(new Mesh(string("../Data/CAD/efort_robot/LINK5_0") + std::to_string(i + 1) + string(".STL")));
 			STL_file->setFrame(linkStatePtr._T.inverse()*offset* SE3(SO3::RotX(PI_HALF)));
 			STL_file->setDimension(0.001);
 			this->getLinkPtr("L5")->addDrawingShapes(STL_file);
 		}
 		for (unsigned int i = 0; i < 1; i++)
 		{
-			auto linkStatePtr = effortState->getLinkState("L6");
-			shared_ptr<Mesh> STL_file(new Mesh(string("../Data/CAD/effort_robot/LINK6_0") + std::to_string(i + 1) + string(".STL")));
+			auto linkStatePtr = efortState->getLinkState("L6");
+			shared_ptr<Mesh> STL_file(new Mesh(string("../Data/CAD/efort_robot/LINK6_0") + std::to_string(i + 1) + string(".STL")));
 			STL_file->setFrame(linkStatePtr._T.inverse()*offset* SE3(SO3::RotX(PI_HALF)));
 			STL_file->setDimension(0.001);
 			this->getLinkPtr("L6")->addDrawingShapes(STL_file);

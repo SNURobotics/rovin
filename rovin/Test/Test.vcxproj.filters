@@ -56,7 +56,7 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="effortRobot.h">
+    <ClInclude Include="efortRobot.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
   </ItemGroup>

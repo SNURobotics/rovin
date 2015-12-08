@@ -1,6 +1,6 @@
 #include <rovin/Renderer/SimpleOSG.h>
 
-#include "effortRobot.h"
+#include "efortRobot.h"
 
 
 using namespace std;
@@ -8,7 +8,7 @@ using namespace rovin::Math;
 using namespace rovin::Model;
 using namespace rovin::Renderer;
 
-effortRobot gAssem;
+efortRobot gAssem;
 
 int main()
 {
