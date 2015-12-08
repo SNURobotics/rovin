@@ -20,6 +20,7 @@ namespace rovin
 		osg::ref_ptr< osg::Node > convertGeo2Node(const Model::GeometryInfoPtr geoPtr)
 		{
 			osg::ref_ptr< osg::MatrixTransform > transformNode;
+			osg::ref_ptr< osg::MatrixTransform > scaleSTL;
 
 			switch (geoPtr->getType())
 			{
@@ -60,8 +61,15 @@ namespace rovin
 
 			case Model::GeometryInfo::GEOMETRY_TYPE::_MESH:
 			{
+				auto meshPtr = std::static_pointer_cast<Model::Mesh>(geoPtr);
+				osg::ref_ptr<osg::Node> node = osgDB::readNodeFile(meshPtr->getUrl());
 				transformNode = new osg::MatrixTransform;
-				// TODO
+				transformNode->setMatrix(convertMatrix(geoPtr->getTransform()));
+				scaleSTL = new osg::MatrixTransform;
+				scaleSTL->setMatrix(osg::Matrixd::scale(meshPtr->getDimension(), meshPtr->getDimension(), meshPtr->getDimension()));
+				scaleSTL->getOrCreateStateSet()->setMode(GL_RESCALE_NORMAL, osg::StateAttribute::ON);
+				transformNode->addChild(scaleSTL);
+				scaleSTL->addChild(node);
 				return transformNode;
 			}
 
@@ -119,14 +127,17 @@ namespace rovin
 			optimzer.optimize(_rootNode);
 
 			std::vector< Model::LinkPtr > linkPtr = assem.getLinkList();
+			std::vector<Model::GeometryInfoPtr>& shapes = std::vector<Model::GeometryInfoPtr>();
 			for (unsigned int i = 0; i < linkPtr.size(); i++)
 			{
 				const Model::State::LinkState &linkState = state.getLinkState(linkPtr[i]->getName());
 
 				osg::ref_ptr< osg::MatrixTransform > transformNode = new osg::MatrixTransform;
 				transformNode->setMatrix(convertMatrix(linkState._T));
-				transformNode->addChild(convertGeo2Node(linkPtr[i]->getVisualGeometry()));
-				_Link.push_back(NodeStatePair(transformNode, &linkState));
+				shapes = linkPtr[i]->getDrawingShapes();
+				for (unsigned int j = 0; j< shapes.size(); j++)
+					transformNode->addChild(convertGeo2Node(shapes[j]));
+				_NodeStateList.push_back(NodeStatePair(transformNode, &linkState));
 
 				_rootNode->addChild(transformNode);
 			}
@@ -205,6 +216,14 @@ namespace rovin
 			geode->addDrawable(geom);
 
 			return geode;
+		}
+		void SimpleOSG::updateFrame()
+		{
+			for (unsigned int i = 0; i < _NodeStateList.size(); i++)
+			{
+				_NodeStateList[i].first->setMatrix(convertMatrix(_NodeStateList[i].second->_T));
+			}
+			_viewer.requestRedraw();
 		}
 	}
 }

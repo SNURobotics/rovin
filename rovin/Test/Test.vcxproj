@@ -83,7 +83,7 @@
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>C:\SNURobotics\lib\</AdditionalLibraryDirectories>
-      <AdditionalDependencies>osgViewerd.lib;osgd.lib;zlibd.lib;OpenThreadsd.lib;osgGAd.lib;osgUtild.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>osgViewerd.lib;osgd.lib;zlibd.lib;OpenThreadsd.lib;osgGAd.lib;osgUtild.lib;osgDBd.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SubSystem>Console</SubSystem>
     </Link>
   </ItemDefinitionGroup>

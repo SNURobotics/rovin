@@ -11,6 +11,7 @@
 #include <osgUtil/Optimizer>
 #include <osgGA/TerrainManipulator>
 #include <osgViewer/ViewerEventHandlers>
+#include <osgDB/ReadFile>
 
 namespace rovin
 {
@@ -39,11 +40,14 @@ namespace rovin
 			static osg::ref_ptr< osg::Node > createGround(const float& size = (10.f));
 			
 		public:
+
+			void updateFrame();
+
 			osgViewer::Viewer _viewer;
 			osg::ref_ptr< osg::Group > _rootNode;
 			osg::ref_ptr< osgGA::TerrainManipulator > _cameraManipulator;
 
-			std::vector< NodeStatePair > _Link;
+			std::vector< NodeStatePair > _NodeStateList;
 		};
 	}
 }

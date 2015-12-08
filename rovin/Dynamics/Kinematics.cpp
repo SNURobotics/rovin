@@ -312,9 +312,6 @@ namespace rovin
 			}
 			state.setInfoUpToDate(State::ALL_INFO, false);
 			state.setInfoUpToDate(State::JOINTS_T_FROM_BASE, true);
-			//state._accumulatedT = true;
-			//state._accumulatedJ = state._accumulatedJDot = false;
-			//state.needUpdate(true, true, true);
 		}
 
 		if ((options & State::LINKS_POS) && !state.getInfoUpToDate(State::LINKS_POS))

@@ -323,6 +323,9 @@ namespace rovin
 				return _url;
 			}
 
+			void		setDimension(Math::Real scale) { _scale = scale; }
+			Math::Real	getDimension() const { return _scale; }
+
 			/**
 			*	\return 존재하면 True, 존재하지 않으면 False
 			*	\brief 현재 설정 되어있는 주소에 파일이 존재하는지 판단
@@ -334,6 +337,7 @@ namespace rovin
 
 		private:
 			std::string _url;
+			Math::Real	_scale = 1;
 		};
 
 		/**
