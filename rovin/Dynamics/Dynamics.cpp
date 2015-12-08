@@ -51,20 +51,20 @@ namespace rovin
 				SE3::adTranspose(state.getLinkState(linkIdx)._V)*(Adjoint.transpose()*((Matrix6)assem._socLink[linkIdx]._G*(Adjoint * state.getLinkState(linkIdx)._V)));
 
 			state.getJointStateByMateIndex(mateIdx)._constraintF = netF;
-			state.getJointStateByMateIndex(mateIdx)._tau = netF.transpose()*state.getJointStateByMateIndex(mateIdx)._accumulatedJ 
-				+ assem.getJointPtrByMateIndex(mateIdx)->getConstDamper().cwiseProduct(state.getJointStateByMateIndex(mateIdx).getqdot());
+			state.getJointStateByMateIndex(mateIdx)._tau = netF.transpose()*state.getJointStateByMateIndex(mateIdx)._accumulatedJ;
+			/*	+ assem.getJointPtrByMateIndex(mateIdx)->getConstDamper().cwiseProduct(state.getJointStateByMateIndex(mateIdx).getqdot());
 			for (unsigned int j = 0; j < assem.getJointPtrByMateIndex(mateIdx)->getDOF(); j++)
 			{
 				if ( RealBigger(state.getJointStateByMateIndex(mateIdx).getqdot()(j), 0) )
 					state.getJointStateByMateIndex(mateIdx)._tau(j) += assem.getJointPtrByMateIndex(mateIdx)->getConstFriction()(j);
 				else if (RealLess(state.getJointStateByMateIndex(mateIdx).getqdot()(j), 0))
 					state.getJointStateByMateIndex(mateIdx)._tau(j) -= assem.getJointPtrByMateIndex(mateIdx)->getConstFriction()(j);
-			}
+			}*/
 				
 		}
 	}
 
-	pair<vector<Eigen::Matrix<Real, 1, -1>>, vector<MatrixX>> Dynamics::differentiateInverseDynamics(const Model::SerialOpenChainAssembly & assem, Model::State & state,
+	pair<MatrixX, vector<MatrixX>> Dynamics::differentiateInverseDynamics(const Model::SerialOpenChainAssembly & assem, Model::State & state,
 		const Math::MatrixX& dqdp, const Math::MatrixX& dqdotdp, const Math::MatrixX& dqddotdp,
 		const std::vector<Math::MatrixX>& d2qdp2, ///< pN matrices of d/dk(dq/dp) (k = 1, ..., pN)
 		const std::vector<Math::MatrixX>& d2qdotdp2, ///< pN matrices of d/dk(dqdot/dp) (k = 1, ..., pN) 
@@ -112,7 +112,8 @@ namespace rovin
 		se3 Si1;
 		Matrix6 adTransSi1;
 
-		vector<Eigen::Matrix<Real, 1, -1>> dtaudp(DOF, Eigen::Matrix<Real, 1, -1>::Zero(pN));
+		MatrixX dtaudp(DOF, pN);
+		dtaudp.setZero();
 		vector<MatrixX> d2taudp2(DOF, MatrixX::Zero(pN, pN));
 
 		vector<MatrixX> dFbdp(linkN);
@@ -360,7 +361,7 @@ namespace rovin
 					}
 				}
 
-				dtaudp[dofIdx] = Si1.transpose()*currdFbdp + assem.getJointPtrByMateIndex(mateID)->getConstDamper()(j)*dqdotdp.row(dofIdx);
+				dtaudp.row(dofIdx) = Si1.transpose()*currdFbdp + assem.getJointPtrByMateIndex(mateID)->getConstDamper()(j)*dqdotdp.row(dofIdx);
 				for (int k = 0; k < pN; k++)
 				{
 					d2taudp2[dofIdx].row(k) = Si1.transpose()*currd2Fbdp2[k];
@@ -389,7 +390,7 @@ namespace rovin
 
 
 
-		return pair<vector<Eigen::Matrix<Real, 1, -1>>, vector<MatrixX>>(dtaudp, d2taudp2);
+		return pair<MatrixX, vector<MatrixX>>(dtaudp, d2taudp2);
 	}
 
 	void Dynamics::solveForwardDynamics(const Model::SerialOpenChainAssembly & assem, Model::State & state, const std::vector<std::pair<unsigned int, Math::dse3>>& extForce)

@@ -107,7 +107,7 @@ int main()
 	
 
 	cout << "=== differentiate inverse dynamics ===" << endl;
-	pair<vector<Eigen::Matrix<Real, 1, -1>>, vector<MatrixX>> tauDeriv;
+	pair<MatrixX, vector<MatrixX>> tauDeriv;
 	
 	// set dqdp, dqdotdp, dqddotdp
 	MatrixX zeroMatrix(dof, dof);
@@ -133,11 +133,8 @@ int main()
 		, 1);
 	
 	cout << "analytic jacobian" << endl;
-	for (int k = 0; k < dof; k++)
-	{
-		cout << tauDeriv.first[k] << endl;
-	}
-
+	cout << tauDeriv.first << endl;
+	cout << "analytic hessian" << endl;
 	cout << tauDeriv.second[4] << endl;
 
 	

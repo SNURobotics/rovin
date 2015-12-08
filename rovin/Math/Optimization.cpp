@@ -16,7 +16,7 @@ namespace rovin
 				_algorithm = LineSearch::Algorithm::Backtracking;
 				_alpha0 = 1.0;
 				_tau = 0.90;
-				_c = 0.01;
+				_c = 0.1;
 			}
 		}
 
@@ -34,7 +34,7 @@ namespace rovin
 			_alpha = _alpha0;
 			Real t = -_c*((*_objectiveFunc).Jacobian(x)*P)(0);
 			Real fval = (*_objectiveFunc)(x)(0);
-			while (RealLess(fval - (*_objectiveFunc)(x + _alpha*P)(0), _alpha*t))
+			while (RealLess(fval - (*_objectiveFunc)(x + _alpha*P)(0), _alpha*t) && _alpha >= RealEps)
 			{
 				_alpha *= _tau;
 			}
@@ -49,9 +49,9 @@ namespace rovin
 			if (algo == QPOptimization::Algorithm::InteriorPoint)
 			{
 				_algorithm = QPOptimization::Algorithm::InteriorPoint;
-				_maxIteration = 150;
+				_maxIteration = 300;
 				_stepSize = 0.95;
-				_tolCon = 1e-8;
+				_tolCon = 1e-6;
 			}
 		}
 
@@ -281,10 +281,10 @@ namespace rovin
 			VectorX d(xN);
 
 			// InitialGuess
-			ProjectToFeasibleSpace projectToFeasibleSpace;
-			projectToFeasibleSpace._eqConstraintFunc = _eqFunc;
-			projectToFeasibleSpace._inEqConstraintFunc = _ineqFunc;
-			_xf = projectToFeasibleSpace.project(_xf);
+			//ProjectToFeasibleSpace projectToFeasibleSpace;
+			//projectToFeasibleSpace._eqConstraintFunc = _eqFunc;
+			//projectToFeasibleSpace._inEqConstraintFunc = _ineqFunc;
+			//_xf = projectToFeasibleSpace.project(_xf);
 
 			// QPOptimization
 			QPOptimization qpSolver;
@@ -308,7 +308,7 @@ namespace rovin
 			// LineSearch
 			LineSearch linesearchSolver;
 			linesearchSolver._objectiveFunc = meritFunction;
-			linesearchSolver._alpha0 = 1.0;
+			//linesearchSolver._alpha0 = 1.0;
 
 			Real alpha, theta, fval, fval_last;
 			MatrixX H(xN, xN);
@@ -331,25 +331,29 @@ namespace rovin
 				{
 					d = qpSolver._G.ldlt().solve(-qpSolver._g).normalized();
 				}
-
-				theta = RealMin;
-				for (int i = 0; i < eqN; i++)
+				else
 				{
-					theta = max(std::abs(qpSolver._y(i)), theta);
+					theta = RealMin;
+					for (int i = 0; i < eqN; i++)
+					{
+						theta = max(std::abs(qpSolver._y(i)), theta);
+					}
+					for (int i = 0; i < ineqN; i++)
+					{
+						theta = max(qpSolver._z(i), theta);
+					}
+					if (RealBiggerEqual(static_pointer_cast<MeritFunction>(meritFunction)->_theta, theta));
+					else static_pointer_cast<MeritFunction>(meritFunction)->_theta = max(static_pointer_cast<MeritFunction>(meritFunction)->_theta * 2, theta);
 				}
-				for (int i = 0; i < ineqN; i++)
-				{
-					theta = max(qpSolver._z(i), theta);
-				}
-				if (RealBiggerEqual(static_pointer_cast<MeritFunction>(meritFunction)->_theta, theta));
-				else static_pointer_cast<MeritFunction>(meritFunction)->_theta = max(static_pointer_cast<MeritFunction>(meritFunction)->_theta * 2, theta);
-				alpha = max(linesearchSolver.solve(_xf, d), 0.15);
+				alpha = linesearchSolver.solve(_xf, d);
 				_xf += alpha*d;
 
 				// DISPLAY
 				fval_last = fval;
 				fval = (*_objectiveFunc)(_xf)(0);
-				//cout << fval << " " << alpha*d.norm() << endl;
+				cout << fval << " " << alpha << endl;
+				//cout << d << endl;
+				//cout << (*_objectiveFunc).Jacobian(_xf) << endl;
 
 				if (OptRealLessEqual(alpha*d.norm(), _tolCon) || OptRealEqual(fval_last, fval))
 				{
@@ -368,7 +372,7 @@ namespace rovin
 						H += qpSolver._y(i) * Hessian[i];
 					}
 					Hessian = (*_ineqFunc).Hessian(_xf);
-					for (int i = 0; i < eqN; i++)
+					for (int i = 0; i < ineqN; i++)
 					{
 						H += qpSolver._z(i) * Hessian[i];
 					}
@@ -405,61 +409,78 @@ namespace rovin
 		}
 		VectorX ProjectToFeasibleSpace::project(const VectorX & x0)
 		{
-			int xN = x0.size();
-			int inEqN = (*_inEqConstraintFunc)(x0).size();
-
-			FunctionPtr augmentedFunc = FunctionPtr(new AugmentedFunction(xN, inEqN));
-			static_pointer_cast<AugmentedFunction> (augmentedFunc)->_eqConstraintFunc = _eqConstraintFunc;
-			static_pointer_cast<AugmentedFunction> (augmentedFunc)->_inEqConstraintFunc = _inEqConstraintFunc;
-			VectorX xAug(xN + inEqN);
-			xAug.head(xN) = x0;
-			xAug.tail(inEqN) = VectorX::Ones(inEqN);
-			NewtonRapshon nr;
-			nr._func = augmentedFunc;
-			xAug = nr.solve(xAug);
-			VectorX updateDir(xN + inEqN);
-			MatrixX J;
-			VectorX f;
-			int iter = 0;
-			while (1)
+			if (_eqConstraintFunc == NULL && _inEqConstraintFunc == NULL)
+				return x0;
+			else
 			{
-				iter++;
-				updateDir.setZero();
-				for (int i = 0; i < inEqN; i++)
+				int xN = x0.size();
+				int inEqN = (*_inEqConstraintFunc)(x0).size();
+
+				FunctionPtr augmentedFunc = FunctionPtr(new AugmentedFunction(xN, inEqN));
+				static_pointer_cast<AugmentedFunction> (augmentedFunc)->_eqConstraintFunc = _eqConstraintFunc;
+				static_pointer_cast<AugmentedFunction> (augmentedFunc)->_inEqConstraintFunc = _inEqConstraintFunc;
+				
+				NewtonRapshon nr;
+				nr._func = _eqConstraintFunc;
+				VectorX x(xN);
+				x = nr.solve(x0);
+				
+				VectorX xAug(xN + inEqN);
+				xAug.head(xN) = x;
+				xAug.tail(inEqN) = -(*_inEqConstraintFunc)(x);
+				
+				VectorX updateDir(xN + inEqN);
+				MatrixX J;
+				VectorX f;
+				int iter = 0;
+				while (1)
 				{
-					if (xAug(xN + i) < _tolCon)
-						updateDir(xN + i) = - xAug(xN + i) + 1;
+					iter++;
+					updateDir.setZero();
+					for (int i = 0; i < inEqN; i++)
+					{
+						if (xAug(xN + i) < _tolCon)
+							updateDir(xN + i) = -xAug(xN + i) + 1;
+					}
+					f = (*augmentedFunc)(xAug);
+					//cout << "x = " << endl << xAug << endl;
+					//cout << "update = " << updateDir.squaredNorm() << endl << endl;
+					//cout << "f = " << f.squaredNorm() << endl << endl;
+					if (updateDir.squaredNorm() > 0.0 || f.squaredNorm() > _tolCon)
+					{
+						J = (*augmentedFunc).Jacobian(xAug);
+						updateDir = updateDir - J.transpose()
+							*(J*J.transpose()).ldlt().solve(J*updateDir);
+						xAug += -J.transpose() * (J*J.transpose()).ldlt().solve(f) + updateDir;
+					}
+					else
+						break;
+					if (iter > _maxIter)
+					{
+						cout << "Projection Failed !!!" << endl;
+						break;
+					}
 				}
-				f = (*augmentedFunc)(xAug);
-				if (updateDir.squaredNorm() > 0.0 || f.squaredNorm() > _tolCon)
-				{
-					J = (*augmentedFunc).Jacobian(xAug);
-					updateDir = updateDir - J.transpose()
-						*(J*J.transpose()).ldlt().solve(J*updateDir);
-					xAug += -J.transpose() * (J*J.transpose()).ldlt().solve(f) + updateDir;
-				}
-				else
-					break;
-				if (iter > _maxIter)
-				{
-					cout << "Projection Failed !!!" << endl;
-					break;
-				}
+				return xAug.head(xN);
 			}
-			return xAug.head(xN);
 		}
 		ProjectToFeasibleSpace::AugmentedFunction::AugmentedFunction(const int xN, const int inEqN)
 		{
 			_xN = xN;
 			_inEqN = inEqN;
+			_eqConstraintFunc = NULL;
+			_inEqConstraintFunc = NULL;
 		}
 		VectorX ProjectToFeasibleSpace::AugmentedFunction::func(const VectorX & x) const
 		{
 			VectorX xF = x.head(_xN);
 			VectorX s = x.tail(_inEqN);
-
-			VectorX valEq = (*_eqConstraintFunc)(xF);
-			VectorX valInEq = (*_inEqConstraintFunc)(xF) + s;
+			VectorX valEq(0);
+			VectorX valInEq(0);
+			if (_eqConstraintFunc != NULL)
+				valEq = (*_eqConstraintFunc)(xF);
+			if (_inEqConstraintFunc != NULL)
+				valInEq = (*_inEqConstraintFunc)(xF) + s;
 			VectorX val(valEq.size() + valInEq.size());
 			val.head(valEq.size()) = valEq;
 			val.tail(valInEq.size()) = valInEq;
@@ -468,9 +489,12 @@ namespace rovin
 		MatrixX ProjectToFeasibleSpace::AugmentedFunction::Jacobian(const VectorX & x) const
 		{
 			VectorX xF = x.head(_xN);
-
-			MatrixX valEq = (*_eqConstraintFunc).Jacobian(xF);
-			MatrixX valInEq = (*_inEqConstraintFunc).Jacobian(xF);
+			MatrixX valEq(0, 0);
+			MatrixX valInEq(0, 0);
+			if (_eqConstraintFunc != NULL)
+				valEq = (*_eqConstraintFunc).Jacobian(xF);
+			if (_inEqConstraintFunc != NULL)
+				valInEq = (*_inEqConstraintFunc).Jacobian(xF);
 			MatrixX val(valEq.rows() + valInEq.rows(), x.size());
 			val.setZero();
 			val.block(0, 0, valEq.rows(), _xN) = valEq;

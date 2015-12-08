@@ -395,7 +395,7 @@ namespace rovin
 		{
 			se3 VDot;
 			VDot.setZero();
-
+			VDot(5) = 9.8;
 			state.getLinkState(assem._baseLink)._VDot = VDot;
 			for (unsigned int i = 0; i < assem._Tree.size(); i++)
 			{

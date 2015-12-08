@@ -293,15 +293,18 @@ namespace rovin
 			{
 			case ASSEMJOINT:
 				ID = idx;
-			default:
+				break;
 			case STATEJOINT:
 				if (idx < _activeJointList.size())
 					ID = _activeJointList[idx];
 				else ID = _passiveJointList[idx - _activeJointList.size()];
+				break;
 			case ACTIVEJOINT:
 				ID = _activeJointList[idx];
+				break;
 			case PASSIVEJOINT:
 				ID = _passiveJointList[idx];
+				break;
 			}
 
 			return ID;

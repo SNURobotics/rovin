@@ -179,7 +179,7 @@ namespace rovin
 			int _maxIter;
 		};
 
-		static const Real	OptEps = std::sqrt(RealEps);
+		static const Real	OptEps = 1e-7;
 
 		static MatrixX PDCorrection(const MatrixX& SquareMatrix)
 		{

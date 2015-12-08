@@ -20,7 +20,7 @@ namespace rovin
 		
 
 		// differentiateInverseDynamics should be called after calling forward kinematics & inverse dynamics (dFextdp, d2Fextdp2 should be calculated from current position)
-		static std::pair<std::vector<Eigen::Matrix<Math::Real, 1, -1>>, std::vector<Math::MatrixX>> differentiateInverseDynamics(const Model::SerialOpenChainAssembly& assem, Model::State& state,
+		static std::pair<Math::MatrixX, std::vector<Math::MatrixX>> differentiateInverseDynamics(const Model::SerialOpenChainAssembly& assem, Model::State& state,
 			const Math::MatrixX& dqdp, const Math::MatrixX& dqdotdp, const Math::MatrixX& dqddotdp, 
 			const std::vector<Math::MatrixX>& d2qdp2 = (std::vector<Math::MatrixX>()),
 			const std::vector<Math::MatrixX>& d2qdotdp2 = (std::vector<Math::MatrixX>()),

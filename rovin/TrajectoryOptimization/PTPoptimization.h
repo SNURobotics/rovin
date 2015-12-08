@@ -36,7 +36,7 @@ namespace rovin
 				const Math::VectorX& qddot0 = (Math::VectorX()), const Math::VectorX& qddotf = (Math::VectorX()));
 			void setWayPoint(const std::vector< std::pair<Math::VectorX, Math::Real>>& wayPoints);
 			void addWayPoint(std::pair<Math::VectorX, Math::Real>& wayPoint);
-			void setOptimizingJointIndex(const std::vector< unsigned int >& optActiveJointIdx);
+			void setOptimizingJointIndex(const Math::VectorU& optActiveJointIdx);
 
 			void setConstraintRange(bool posConstraintExist = (false), bool velConstraintExist = (false), bool accConstraintExist = (false), bool jerkConstraintExist = (false));
 
@@ -65,11 +65,11 @@ namespace rovin
 			std::vector< std::pair<Math::VectorX, Math::Real>> _waypoint;
 
 			// Joints to optimize
-			std::vector< unsigned int > _optActiveJointIdx;
+			Math::VectorU _optActiveJointIdx;
 			int _optActiveJointDOF;
 
 			// Joints not to optimize
-			std::vector< unsigned int > _noptActiveJointIdx;
+			Math::VectorU _noptActiveJointIdx;
 			int _noptActiveJointDOF;
 
 			// Constraints
@@ -93,19 +93,30 @@ namespace rovin
 
 			enum ObjectiveFunctionType
 			{
-				Effort
+				Effort,
+				EnergyLoss
 			};
 
 			class SharedDID
 			{
 			public:
 				// generate dqdp from knot vector
-				SharedDID(const Model::socAssemblyPtr socAssem, const int nStep, const Math::Real dt, const Math::VectorX& knot, const Math::VectorX& noptControlPoint);
+				SharedDID(const Model::socAssemblyPtr socAssem, const int nStep, const Math::Real dt, const Math::VectorX& knot, 
+					const std::vector<Math::VectorX> & BoundaryCP, const int nInitCP, const int nFinalCP, const int nMiddleCP,
+					const Math::VectorU& optActiveJointIdx, const Math::VectorU& noptActiveJointIdx, const int optActiveJointDOF, const int noptActiveJointDOF, const Math::VectorX& noptControlPoint,
+					const std::vector<Math::MatrixX> dqdp,	std::vector<Math::MatrixX> dqdotdp, std::vector<Math::MatrixX> dqddotdp);
 
+				
 				const Math::MatrixX& getTau(const Math::VectorX& controlPoint);
-				const std::vector<Math::MatrixX>& getdTaudp(const Math::VectorX& controlPoint);
-				const std::vector<std::vector<Math::MatrixX>>& getd2Taudp2(const Math::VectorX& controlPoint);
+				const std::vector<Math::MatrixX>& getdtaudp(const Math::VectorX& controlPoint);
+				const std::vector<std::vector<Math::MatrixX>>& getd2taudp2(const Math::VectorX& controlPoint);
 				void compareControlPoint(const Math::VectorX& controlPoint);
+
+				// should be called after getTau
+				const Math::MatrixX& getJointVal(const Math::VectorU& activeJointIdx);
+				const Math::MatrixX& getJointVel(const Math::VectorU& activeJointIdx);
+				const Math::MatrixX& getJointAcc(const Math::VectorU& activeJointIdx);
+
 
 			public:
 				Model::socAssemblyPtr _socAssem;
@@ -115,11 +126,16 @@ namespace rovin
 				Math::Real _dt;
 
 				std::vector<Model::StatePtr> _stateTrj;
-			
 				std::vector<Math::MatrixX> _dqdp;
 				std::vector<Math::MatrixX> _dqdotdp;
 				std::vector<Math::MatrixX> _dqddotdp;
-			private:
+				// Boundary control points to satisfy initial and final joint val, vel, acc
+				std::vector<Math::VectorX> _BoundaryCP;
+				int _nInitCP;
+				int _nFinalCP;
+				int _nMiddleCP;
+				Math::MatrixX _optCP;
+				
 				Math::BSpline<-1, -1, -1> _optJointValSpline;
 				Math::BSpline<-1, -1, -1> _optJointVelSpline;
 				Math::BSpline<-1, -1, -1> _optJointAccSpline;
@@ -134,13 +150,20 @@ namespace rovin
 				std::vector<Math::MatrixX> _dtaudp;
 				std::vector<std::vector<Math::MatrixX>> _d2taudp2;
 
+				Math::MatrixX _jointValTrj;
+				Math::MatrixX _jointVelTrj;
+				Math::MatrixX _jointAccTrj;
+
 				Math::VectorX _currentControlPoint;
 
 				bool _isInitiated;
 				bool _isIDUpdated;
 				bool _isDIDUpdated;
 
-				std::vector< unsigned int > _optActiveJointIdx;
+				Math::VectorU _optActiveJointIdx;
+				Math::VectorU _noptActiveJointIdx;
+				int _optActiveJointDOF;
+				int _noptActiveJointDOF;
 			};
 
 			class effortFunction : public Math::Function
@@ -151,6 +174,16 @@ namespace rovin
 				Math::VectorX func(const Math::VectorX& x) const;
 				Math::MatrixX Jacobian(const Math::VectorX& x) const;
 				std::vector<Math::MatrixX> Hessian(const Math::VectorX& x) const;
+
+				std::shared_ptr<SharedDID> _sharedDID;
+			};
+
+			class effortTestFunction : public Math::Function
+			{
+			public:
+				effortTestFunction() {}
+
+				Math::VectorX func(const Math::VectorX& x) const;
 
 				std::shared_ptr<SharedDID> _sharedDID;
 			};
@@ -180,21 +213,53 @@ namespace rovin
 				Math::FunctionPtr _nonLinearIneqConstraint;
 			};
 
+			class inequalityTestConstraint : public Math::Function
+			{
+			public:
+				inequalityTestConstraint() {}
+
+				Math::VectorX func(const Math::VectorX& x) const;
+
+				std::shared_ptr<SharedDID> _sharedDID;
+			};
+
 			class nonLinearInequalityConstraint : public Math::Function 
 			{
 			public:
 				nonLinearInequalityConstraint();
 
 				Math::VectorX func(const Math::VectorX& x) const;
-				Math::MatrixX Jacobian(const Math::VectorX& x) const;
-				std::vector<Math::MatrixX> Hessian(const Math::VectorX& x) const;
+				//Math::MatrixX Jacobian(const Math::VectorX& x) const;
+				//std::vector<Math::MatrixX> Hessian(const Math::VectorX& x) const;
 
 				std::shared_ptr<SharedDID> _sharedDID;
 				Math::VectorX _tauMin;
 				Math::VectorX _tauMax;
+				Math::VectorX _qMin;
+				Math::VectorX _qMax;
+				Math::VectorX _qdotMin;
+				Math::VectorX _qdotMax;
+				Math::VectorX _qddotMin;
+				Math::VectorX _qddotMax;
 			};
 
+			class nonLinearInequalityTestConstraint : public Math::Function
+			{
+			public:
+				nonLinearInequalityTestConstraint() {}
 
+				Math::VectorX func(const Math::VectorX& x) const;
+				
+				std::shared_ptr<SharedDID> _sharedDID;
+				Math::VectorX _tauMin;
+				Math::VectorX _tauMax;
+				Math::VectorX _qMin;
+				Math::VectorX _qMax;
+				Math::VectorX _qdotMin;
+				Math::VectorX _qdotMax;
+				Math::VectorX _qddotMin;
+				Math::VectorX _qddotMax;
+			};
 
 			////////////////////// run
 
@@ -204,14 +269,15 @@ namespace rovin
 
 			////////////////////////////
 			
-			void setSplineCondition(const int order, const int nMiddleCP);
+			void setSplineCondition(const unsigned int order, const unsigned int nMiddleCP);
 			void checkKnotVectorFeasibility();
-			std::pair<Math::MatrixX, Math::VectorX> generateLinearEqualityConstraint(const std::vector< unsigned int >& activeJointIdx, const int activeJointDOF);
+			std::pair<Math::MatrixX, Math::VectorX> generateLinearEqualityConstraint(const Math::VectorU& activeJointIdx, const int activeJointDOF);
 			void generateLinearEqualityConstraint();
-			std::pair<Math::MatrixX, Math::VectorX> generateLinearInequalityConstraint(const std::vector< unsigned int >& activeJointIdx, const int activeJointDOF);
+			std::pair<Math::MatrixX, Math::VectorX> generateLinearInequalityConstraint(const Math::VectorU& activeJointIdx, const int activeJointDOF);
 			void generateLinearInequalityConstraint();
 			void generateNoptControlPoint();
-			
+			void setdqdp();
+
 		public:
 			// Number of middle control points & order of B-spline
 			int _nMiddleCP;
@@ -228,6 +294,9 @@ namespace rovin
 
 			// Control points (concatenate boundary control points with optimizing control points)
 			Math::MatrixX controlPoints;
+			std::vector<Math::MatrixX> _dqdp;
+			std::vector<Math::MatrixX> _dqdotdp;
+			std::vector<Math::MatrixX> _dqddotdp;
 
 			// Equality constraint matrix (A*x + b = 0)
 			Math::MatrixX Aeq_opt;
