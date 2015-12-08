@@ -200,7 +200,7 @@ int main()
 
 void effortRobotModeling()
 {
-	openchain = socAssemblyPtr(new socAssembly("FourbarLinkage"));
+	openchain = socAssemblyPtr(new socAssembly("effortRobot"));
 
 	shared_ptr< Link > L1 = shared_ptr< Link >(new Link("L1"));
 	shared_ptr< Link > L2 = shared_ptr< Link >(new Link("L2"));
@@ -209,13 +209,13 @@ void effortRobotModeling()
 	shared_ptr< Link > L5 = shared_ptr< Link >(new Link("L5"));
 	shared_ptr< Link > L6 = shared_ptr< Link >(new Link("L6"));
 	shared_ptr< Link > L7 = shared_ptr< Link >(new Link("L7"));
-	L1->setVisualGeometry(shared_ptr< Box >(new Box(0.7, 1.5, 0.7)));
-	L2->setVisualGeometry(shared_ptr< Box >(new Box(0.7, 1.5, 0.7)));
-	L3->setVisualGeometry(shared_ptr< Box >(new Box(0.7, 1.5, 0.7)));
-	L4->setVisualGeometry(shared_ptr< Box >(new Box(0.7, 1.5, 0.7)));
-	L5->setVisualGeometry(shared_ptr< Box >(new Box(0.7, 1.5, 0.7)));
-	L6->setVisualGeometry(shared_ptr< Box >(new Box(0.7, 1.5, 0.7)));
-	L7->setVisualGeometry(shared_ptr< Box >(new Box(0.7, 1.5, 0.7)));
+	L1->addDrawingShapes(shared_ptr< Box >(new Box(0.7, 1.5, 0.7)));
+	L2->addDrawingShapes(shared_ptr< Box >(new Box(0.7, 1.5, 0.7)));
+	L3->addDrawingShapes(shared_ptr< Box >(new Box(0.7, 1.5, 0.7)));
+	L4->addDrawingShapes(shared_ptr< Box >(new Box(0.7, 1.5, 0.7)));
+	L5->addDrawingShapes(shared_ptr< Box >(new Box(0.7, 1.5, 0.7)));
+	L6->addDrawingShapes(shared_ptr< Box >(new Box(0.7, 1.5, 0.7)));
+	L7->addDrawingShapes(shared_ptr< Box >(new Box(0.7, 1.5, 0.7)));
 	openchain->addLink(L1);
 	openchain->addLink(L2);
 	openchain->addLink(L3);
