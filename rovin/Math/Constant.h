@@ -53,6 +53,19 @@ namespace rovin
 			return false;
 		}
 
+		static bool RealEqual(const VectorX& operand1, const VectorX& operand2)
+		{
+			if (operand1.size() != operand2.size()) return false;
+			for (int i = 0; i < operand1.size(); i++)
+			{
+				if (!RealEqual(operand1(i), operand2(i)))
+				{
+					return false;
+				}
+			}
+			return true;
+		}
+
 		static bool RealEqual(const VectorX& operand1, const Real& operand2)
 		{
 			unsigned int n = operand1.size();

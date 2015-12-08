@@ -123,6 +123,9 @@ namespace rovin
 
 			static std::pair< unsigned int, JointDirection > reverseDirection(const std::pair< unsigned int, JointDirection >& target);
 
+		public:
+			std::vector< std::pair< unsigned int, Model::JointDirection >> _Tree;
+
 		protected:
 			std::string _assemblyName;
 
@@ -136,7 +139,6 @@ namespace rovin
 			std::map< std::string, unsigned int > _mateIndexMap;
 
 			unsigned int _baseLink;
-			std::vector< std::pair< unsigned int, Model::JointDirection >> _Tree;
 			std::vector< std::pair< unsigned int, Model::JointDirection >> _Parent;
 			std::vector< unsigned int > _Depth;
 			std::vector< std::vector< std::pair< unsigned int, Model::JointDirection >>> _ClosedLoopConstraint;

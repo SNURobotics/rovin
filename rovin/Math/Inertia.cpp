@@ -58,7 +58,6 @@ namespace rovin
 			Matrix3 _m = I.block<3, 3>(3, 3);
 
 			assert(_I.isApprox(_I.transpose()));
-			assert(abs(_p(0, 0)) < RealEps && abs(_p(1, 1)) < RealEps && abs(_p(2, 2)) < RealEps);
 			assert(_m.isApprox(Matrix3::Identity()*_m(0, 0)));
 
 			static_cast<Matrix6&>(*this) = I;

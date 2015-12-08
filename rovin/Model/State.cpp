@@ -285,6 +285,31 @@ namespace rovin
 			return jointNameList;
 		}
 
+		unsigned int State::getJointID(const TARGET_JOINT& target, const unsigned int idx) const
+		{
+			unsigned int ID;
+
+			switch (target)
+			{
+			case ASSEMJOINT:
+				ID = idx;
+				break;
+			case STATEJOINT:
+				if (idx < _activeJointList.size())
+					ID = _activeJointList[idx];
+				else ID = _passiveJointList[idx - _activeJointList.size()];
+				break;
+			case ACTIVEJOINT:
+				ID = _activeJointList[idx];
+				break;
+			case PASSIVEJOINT:
+				ID = _passiveJointList[idx];
+				break;
+			}
+
+			return ID;
+		}
+
 		unsigned int State::getJointIndex(const string& jointName) const
 		{
 			return _jointIndexMap.find(jointName)->second;

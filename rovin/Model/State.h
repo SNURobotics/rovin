@@ -68,6 +68,7 @@ namespace rovin
 			//	Get values from joints.
 			std::vector< std::string >getJointList(const TARGET_JOINT& target) const;
 			const int				getJointReferenceFrame() const { return _JointReferenceFrame; }
+			unsigned int			getJointID(const TARGET_JOINT& target, const unsigned int idx) const;
 			unsigned int			getJointIndex(const std::string& jointName) const;
 			unsigned int			getJointIndexByMateIndex(const unsigned int& mateIdx) const { return mateIdx; }
 			JointState&				getJointState(const unsigned int jointIndex);
@@ -142,6 +143,11 @@ namespace rovin
 				ALL_JOINTS = JOINTS_T_FROM_BASE | JOINTS_JACOBIAN | JOINTS_JACOBIAN_DOT,
 				ALL_INFO = LINKS_POS | LINKS_VEL | LINKS_ACC | JOINTS_T_FROM_BASE | JOINTS_JACOBIAN | JOINTS_JACOBIAN_DOT,
 			};
+
+			unsigned int getAssemIndex(const unsigned int jointID)
+			{
+				return _assemIndex[jointID];
+			}
 
 		private:
 			State(const std::vector< std::string >& linkNameList, const std::vector< std::pair< std::string, unsigned int >>& jointNameList);

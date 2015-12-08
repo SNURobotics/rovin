@@ -45,6 +45,7 @@ namespace rovin
 			bool	setLimitPos(const Math::VectorX& lower, const Math::VectorX& upper);
 			bool	setLimitVel(const Math::VectorX& lower, const Math::VectorX& upper);
 			bool	setLimitAcc(const Math::VectorX& lower, const Math::VectorX& upper);
+			bool    setLimitJerk(const Math::VectorX& lower, const Math::VectorX& upper);
 			bool	setLimitInput(const Math::VectorX& lower, const Math::VectorX& upper);
 			bool	setConstSpring(const Math::VectorX& values);
 			bool	setConstDamper(const Math::VectorX& values);
@@ -59,7 +60,11 @@ namespace rovin
 			const Math::VectorX&	getLimitVelLower() const	{ return _LimitVelLower; }
 			const Math::VectorX&	getLimitVelUpper() const	{ return _LimitVelUpper; }
 			const Math::VectorX&	getLimitAccLower() const	{ return _LimitAccLower; }
-			const Math::VectorX&	getLimitAccupper() const	{ return _LimitAccUpper; }
+			const Math::VectorX&	getLimitAccUpper() const	{ return _LimitAccUpper; }
+			const Math::VectorX&	getLimitJerkUpper() const	{ return _LimitJerkUpper; }
+			const Math::VectorX&	getLimitJerkLower() const	{ return _LimitJerkLower; }
+			const Math::VectorX&	getLimitInputUpper() const  { return _LimitInputUpper; }
+			const Math::VectorX&	getLimitInputLower() const  { return _LimitInputLower; }
 			const Math::VectorX&	getConstSpring() const		{ return _ConstantSpring; }
 			const Math::VectorX&	getConstDamper() const		{ return _ConstantDamper; }
 			const Math::VectorX&	getConstFriction() const	{ return _ConstantFriction; }
@@ -87,6 +92,8 @@ namespace rovin
 			Math::VectorX				_LimitVelUpper;
 			Math::VectorX				_LimitAccLower;
 			Math::VectorX				_LimitAccUpper;
+			Math::VectorX				_LimitJerkLower;
+			Math::VectorX				_LimitJerkUpper;
 			Math::VectorX				_LimitInputLower;
 			Math::VectorX				_LimitInputUpper;
 

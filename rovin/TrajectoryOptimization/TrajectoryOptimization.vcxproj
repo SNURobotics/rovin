@@ -19,8 +19,8 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{03A17A90-2DBA-4587-A039-1B37A0AFB1F1}</ProjectGuid>
-    <RootNamespace>Model</RootNamespace>
+    <ProjectGuid>{45C22683-7837-4C72-8212-47CE55A2F4AD}</ProjectGuid>
+    <RootNamespace>TrajectoryOptimization</RootNamespace>
     <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -68,35 +68,24 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <TargetName>$(ProjectName)_$(Configuration)</TargetName>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <TargetName>$(ProjectName)_$(Configuration)</TargetName>
-  </PropertyGroup>
+  <PropertyGroup />
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
       <AdditionalIncludeDirectories>..\..\;C:\SNURobotics\include\</AdditionalIncludeDirectories>
-      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
-      <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <MinimalRebuild>false</MinimalRebuild>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
-    <PostBuildEvent>
-      <Command>
-      </Command>
-    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
+      <AdditionalIncludeDirectories>..\..\</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -110,8 +99,6 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
       <AdditionalIncludeDirectories>..\..\;C:\SNURobotics\include\</AdditionalIncludeDirectories>
-      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
-      <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <PreprocessorDefinitions>_MBCS;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
@@ -119,10 +106,6 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
-    <PostBuildEvent>
-      <Command>
-      </Command>
-    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -131,6 +114,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
+      <AdditionalIncludeDirectories>..\..\</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -139,25 +123,21 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="GeometryInfo.cpp" />
-    <ClCompile Include="Joint.cpp" />
-    <ClCompile Include="Link.cpp" />
-    <ClCompile Include="Assembly.cpp" />
-    <ClCompile Include="ScrewJoint.cpp" />
-    <ClCompile Include="SerialOpenChainAssembly.cpp" />
-    <ClCompile Include="State.cpp" />
+    <ClInclude Include="PTPoptimization.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="GeometryInfo.h" />
-    <ClInclude Include="Joint.h" />
-    <ClInclude Include="Link.h" />
-    <ClInclude Include="Assembly.h" />
-    <ClInclude Include="MotorJoint.h" />
-    <ClInclude Include="PrismaticJoint.h" />
-    <ClInclude Include="RevoluteJoint.h" />
-    <ClInclude Include="ScrewJoint.h" />
-    <ClInclude Include="SerialOpenChainAssembly.h" />
-    <ClInclude Include="State.h" />
+    <ClCompile Include="PTPoptimization.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Dynamics\Dynamics.vcxproj">
+      <Project>{47043c7f-cba7-43e7-880c-ba951f83b645}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\Math\Math.vcxproj">
+      <Project>{d282e6bb-331b-4a77-9088-34cf8bd0b785}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\Model\Model.vcxproj">
+      <Project>{03a17a90-2dba-4587-a039-1b37a0afb1f1}</Project>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

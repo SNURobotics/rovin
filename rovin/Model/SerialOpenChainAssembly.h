@@ -51,7 +51,7 @@ namespace rovin
 
 			void completeAssembling(const std::string& baseLinkName);
 
-		private:
+		public:
 			unsigned int _endeffectorLink;
 
 			std::vector< SerialOpenChainLink, Eigen::aligned_allocator< SerialOpenChainLink >> _socLink;

@@ -54,7 +54,9 @@ namespace rovin
 				T *= _Mate[_Tree[i].first]._Tja;
 				_socLink[linkIdx]._M = T;
 				_socLink[linkIdx]._G = _linkPtr[linkIdx]->getInertia();
+				std::cout << _socLink[linkIdx]._G << std::endl;
 				_socLink[linkIdx]._G.changeFrame(T);
+				std::cout << _socLink[linkIdx]._G << std::endl;
 			}
 		}
 

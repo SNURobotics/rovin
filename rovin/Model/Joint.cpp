@@ -20,6 +20,9 @@ namespace rovin {
 				_LimitAccLower = Math::VectorX::Ones(dof) * std::numeric_limits<Math::Real>::min();
 				_LimitAccUpper = Math::VectorX::Ones(dof) * std::numeric_limits<Math::Real>::max();
 
+				_LimitJerkLower = Math::VectorX::Ones(dof) * std::numeric_limits<Math::Real>::min();
+				_LimitJerkUpper = Math::VectorX::Ones(dof) * std::numeric_limits<Math::Real>::max();
+
 				_LimitInputLower = Math::VectorX::Ones(dof) * std::numeric_limits<Math::Real>::min();
 				_LimitInputUpper = Math::VectorX::Ones(dof) * std::numeric_limits<Math::Real>::max();
 
@@ -45,7 +48,7 @@ namespace rovin {
 				_LimitVelLower = otherJoint.getLimitVelLower();
 				_LimitVelUpper = otherJoint.getLimitVelUpper();
 				_LimitAccLower = otherJoint.getLimitAccLower();
-				_LimitAccUpper = otherJoint.getLimitAccupper();
+				_LimitAccUpper = otherJoint.getLimitAccUpper();
 
 				_ConstantSpring = otherJoint.getConstSpring();
 				_ConstantDamper = otherJoint.getConstDamper();
@@ -84,6 +87,16 @@ namespace rovin {
 			return true;
 		}
 
+		bool Joint::setLimitJerk(const Math::VectorX & lower, const Math::VectorX & upper)
+		{
+			assert((lower.size() == _dof&&upper.size() == _dof) && "Size of limit must equal to DOF of joint");
+			for (unsigned i = 0; i < _dof; i++)
+				assert(lower[i] <= upper[i] && "Lower limit should be smaller than upper one.");
+			_LimitJerkLower = lower;
+			_LimitJerkUpper = upper;
+			return true;
+		}
+
 		bool Joint::setLimitInput(const Math::VectorX & lower, const Math::VectorX & upper)
 		{
 			assert((lower.size() == _dof&&upper.size() == _dof) && "Size of limit must equal to DOF of joint");
@@ -91,7 +104,7 @@ namespace rovin {
 				assert(lower[i] <= upper[i] && "Lower limit should be smaller than upper one.");
 			_LimitInputLower = lower;
 			_LimitInputUpper = upper;
-			return false;
+			return true;
 		}
 
 		bool Joint::setConstSpring(const Math::VectorX & values)
