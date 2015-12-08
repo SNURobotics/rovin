@@ -6,6 +6,7 @@
 #include <vector>
 #include <memory>
 #include <Eigen/Eigenvalues>
+#include <nlopt.hpp>
 
 namespace rovin
 {
@@ -113,10 +114,26 @@ namespace rovin
 
 			enum Algorithm
 			{
-				SQP
+				SQP,
+				NLopt
 			};
 
-			NonlinearOptimization(const Algorithm& algo = (Algorithm::SQP));
+			/////////////////////////////////////// NLOPT ////////////////////////////////////////////////////
+			nlopt::opt opt;
+			//Math::Real objective(const std::vector<double> &x, std::vector<double> &grad, void *data);
+			//Math::Real eqconstraint(const std::vector<double> &x, std::vector<double> &grad, void *data);
+			//Math::Real ineqconstraint(const std::vector<double> &x, std::vector<double> &grad, void *data);
+			VectorX NLoptMethod(const VectorX& x);
+			std::vector<double> obj_currentx;
+			std::vector<double> eq_currentx;
+			std::vector<double> ineq_currentx;
+			Math::VectorX obj_fval;			Math::MatrixX obj_jacobian;
+			Math::VectorX eq_fval;			Math::MatrixX eq_jacobian;
+			Math::VectorX ineq_fval;		Math::MatrixX ineq_jacobian;
+			bool obj, eq, ineq;
+			//////////////////////////////////////////////////////////////////////////////////////////////////
+
+			NonlinearOptimization(const Algorithm& algo = (Algorithm::NLopt));
 
 			VectorX solve(const VectorX& x);
 			VectorX SQPMethod(const VectorX& x);

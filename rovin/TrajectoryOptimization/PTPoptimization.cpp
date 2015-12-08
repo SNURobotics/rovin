@@ -434,38 +434,40 @@ namespace rovin
 				}
 			}
 
+
+
 			////////////////////////////////////// TEST /////////////////////////////////////////////////////////////////////////////////////////////////
 
 			shared_ptr<effortTestFunction> _testObjFunc = shared_ptr<effortTestFunction>(new effortTestFunction());
 			_testObjFunc->_sharedDID = sharedDID;
 
-			cout << "constraint func" << endl;
-			cout << (*nonLinearIneqFunc).func(x) << endl;
-			cout << "joint val" << endl;
-			cout << nonLinearIneqFunc->_sharedDID->getJointVal(_optActiveJointIdx) << endl;
-			cout << "joint vel" << endl;
-			cout << nonLinearIneqFunc->_sharedDID->getJointVel(_optActiveJointIdx) << endl;
-			cout << "joint acc" << endl;
-			cout << nonLinearIneqFunc->_sharedDID->getJointAcc(_optActiveJointIdx) << endl;
+			//cout << "constraint func" << endl;
+			//cout << (*nonLinearIneqFunc).func(x) << endl;
+			//cout << "joint val" << endl;
+			//cout << nonLinearIneqFunc->_sharedDID->getJointVal(_optActiveJointIdx) << endl;
+			//cout << "joint vel" << endl;
+			//cout << nonLinearIneqFunc->_sharedDID->getJointVel(_optActiveJointIdx) << endl;
+			//cout << "joint acc" << endl;
+			//cout << nonLinearIneqFunc->_sharedDID->getJointAcc(_optActiveJointIdx) << endl;
 
 
-			cout << "analytic jacobian" << endl;
-			cout << (*nonLinearIneqFunc).Jacobian(x) << endl;
-
-
-
-			cout << "numerical jacobian" << endl;
-			cout << (*_testNonLinearIneqConstFun).Jacobian(x) << endl;
-
-			cout << "analytic hessian" << endl;
-			vector<MatrixX> H = (*nonLinearIneqFunc).Hessian(x);
-			cout << H[6] << endl;
+			//cout << "analytic jacobian" << endl;
+			//cout << (*nonLinearIneqFunc).Jacobian(x) << endl;
 
 
 
-			cout << "numerical hessian" << endl;
-			vector<MatrixX> Hnum = (*_testNonLinearIneqConstFun).Hessian(x);
-			cout << Hnum[6] << endl;
+			//cout << "numerical jacobian" << endl;
+			//cout << (*_testNonLinearIneqConstFun).Jacobian(x) << endl;
+
+			//cout << "analytic hessian" << endl;
+			//vector<MatrixX> H = (*nonLinearIneqFunc).Hessian(x);
+			//cout << H[6] << endl;
+
+
+
+			//cout << "numerical hessian" << endl;
+			//vector<MatrixX> Hnum = (*_testNonLinearIneqConstFun).Hessian(x);
+			//cout << Hnum[6] << endl;
 
 			///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -797,7 +799,14 @@ namespace rovin
 			}
 			
 			_noptControlPoint.resize(_nMiddleCP*_noptActiveJointDOF);
-			_noptControlPoint = proj.project(_noptControlPoint);
+			for (int i = 0; i < _noptActiveJointDOF; i++)
+			{
+				for (int j = 0; j < _nMiddleCP; j++)
+				{
+					_noptControlPoint(i*_nMiddleCP + j) = BoundaryCP[0](_noptActiveJointIdx(i)) + (Real)(j + 1) * (BoundaryCP[5](_noptActiveJointIdx(i)) - BoundaryCP[0](_noptActiveJointIdx(i))) / (Real)(_nMiddleCP + 1);
+				}
+			}
+			//_noptControlPoint = proj.project(_noptControlPoint);
 		}
 
 		void BSplinePointToPointOptimization::setdqdp()
@@ -1110,59 +1119,59 @@ namespace rovin
 			return val;
 		}
 
-		//Math::MatrixX BSplinePointToPointOptimization::nonLinearInequalityConstraint::Jacobian(const Math::VectorX & x) const
-		//{
-		//	const MatrixX& tauTrj = _sharedDID->getTau(x);
-		//	const vector<MatrixX>& dtaudpTrj = _sharedDID->getdtaudp(x);
+		Math::MatrixX BSplinePointToPointOptimization::nonLinearInequalityConstraint::Jacobian(const Math::VectorX & x) const
+		{
+			const MatrixX& tauTrj = _sharedDID->getTau(x);
+			const vector<MatrixX>& dtaudpTrj = _sharedDID->getdtaudp(x);
 
-		//	const MatrixX& jointVelTrj = _sharedDID->getJointVel(_sharedDID->_optActiveJointIdx);
+			const MatrixX& jointVelTrj = _sharedDID->getJointVel(_sharedDID->_optActiveJointIdx);
 
-		//	Math::MatrixX val(2 * _sharedDID->_optActiveJointDOF + 2 * tauTrj.rows(), x.size());
-		//	int index;
-		//	int dofIdx;
-		//	int mateID;
-		//	for (int i = 0, dofIdx = 0; i < _sharedDID->_optActiveJointIdx.size(); i++)
-		//	{
-		//		mateID = _sharedDID->_stateTrj[0]->getJointID(State::TARGET_JOINT::ACTIVEJOINT, _sharedDID->_optActiveJointIdx(i));
-		//		for (int j = 0; j < _sharedDID->_socAssem->getJointPtrByMateIndex(mateID)->getDOF(); j++, dofIdx++)
-		//		{
-		//			jointVelTrj.row(dofIdx).maxCoeff(&index);
-		//			cout << "index = " << index << endl;
-		//			val.row(dofIdx) = _sharedDID->_dqdotdp[index].row(_sharedDID->_stateTrj[0]->getAssemIndex(mateID) + j);
-		//			jointVelTrj.row(dofIdx).minCoeff(&index);
-		//			cout << "index = " << index << endl;
-		//			val.row(_sharedDID->_optActiveJointDOF + dofIdx) = - _sharedDID->_dqdotdp[index].row(_sharedDID->_stateTrj[0]->getAssemIndex(mateID) + j);
-		//		}
-		//	}
+			Math::MatrixX val(2 * _sharedDID->_optActiveJointDOF + 2 * tauTrj.rows(), x.size());
+			int index;
+			int dofIdx;
+			int mateID;
+			for (int i = 0, dofIdx = 0; i < _sharedDID->_optActiveJointIdx.size(); i++)
+			{
+				mateID = _sharedDID->_stateTrj[0]->getJointID(State::TARGET_JOINT::ACTIVEJOINT, _sharedDID->_optActiveJointIdx(i));
+				for (int j = 0; j < _sharedDID->_socAssem->getJointPtrByMateIndex(mateID)->getDOF(); j++, dofIdx++)
+				{
+					jointVelTrj.row(dofIdx).maxCoeff(&index);
+					cout << "index = " << index << endl;
+					val.row(dofIdx) = _sharedDID->_dqdotdp[index].row(_sharedDID->_stateTrj[0]->getAssemIndex(mateID) + j);
+					jointVelTrj.row(dofIdx).minCoeff(&index);
+					cout << "index = " << index << endl;
+					val.row(_sharedDID->_optActiveJointDOF + dofIdx) = - _sharedDID->_dqdotdp[index].row(_sharedDID->_stateTrj[0]->getAssemIndex(mateID) + j);
+				}
+			}
 
-		//	for (int i = 0; i < tauTrj.rows(); i++)
-		//	{
-		//		tauTrj.row(i).maxCoeff(&index);
-		//		val.row(2 * _sharedDID->_optActiveJointDOF + i) = dtaudpTrj[index].row(i);
-		//		tauTrj.row(i).minCoeff(&index);
-		//		val.row(2 * _sharedDID->_optActiveJointDOF + i + tauTrj.rows()) = - dtaudpTrj[index].row(i);
-		//	}
+			for (int i = 0; i < tauTrj.rows(); i++)
+			{
+				tauTrj.row(i).maxCoeff(&index);
+				val.row(2 * _sharedDID->_optActiveJointDOF + i) = dtaudpTrj[index].row(i);
+				tauTrj.row(i).minCoeff(&index);
+				val.row(2 * _sharedDID->_optActiveJointDOF + i + tauTrj.rows()) = - dtaudpTrj[index].row(i);
+			}
 
-		//	return val;
-		//}
-		//vector<Math::MatrixX> BSplinePointToPointOptimization::nonLinearInequalityConstraint::Hessian(const Math::VectorX & x) const
-		//{
-		//	const MatrixX& tauTrj = _sharedDID->getTau(x);
-		//	const vector<vector<MatrixX>>& dtau2dp2Trj = _sharedDID->getd2taudp2(x);
-		//	const MatrixX& jointVelTrj = _sharedDID->getJointVel(_sharedDID->_optActiveJointIdx);
-		//	vector<Math::MatrixX> val(2 * _sharedDID->_optActiveJointDOF + 2 * tauTrj.rows(), MatrixX::Zero(x.size(), x.size()));
-		//	int index;
+			return val;
+		}
+		vector<Math::MatrixX> BSplinePointToPointOptimization::nonLinearInequalityConstraint::Hessian(const Math::VectorX & x) const
+		{
+			const MatrixX& tauTrj = _sharedDID->getTau(x);
+			const vector<vector<MatrixX>>& dtau2dp2Trj = _sharedDID->getd2taudp2(x);
+			const MatrixX& jointVelTrj = _sharedDID->getJointVel(_sharedDID->_optActiveJointIdx);
+			vector<Math::MatrixX> val(2 * _sharedDID->_optActiveJointDOF + 2 * tauTrj.rows(), MatrixX::Zero(x.size(), x.size()));
+			int index;
 
-		//	for (int i = 0; i < tauTrj.rows(); i++)
-		//	{
-		//		tauTrj.row(i).maxCoeff(&index);
-		//		val[2 * _sharedDID->_optActiveJointDOF + i] = dtau2dp2Trj[index][i];
-		//		tauTrj.row(i).minCoeff(&index);
-		//		val[2 * _sharedDID->_optActiveJointDOF + i + tauTrj.rows()] = - dtau2dp2Trj[index][i];
-		//	}
+			for (int i = 0; i < tauTrj.rows(); i++)
+			{
+				tauTrj.row(i).maxCoeff(&index);
+				val[2 * _sharedDID->_optActiveJointDOF + i] = dtau2dp2Trj[index][i];
+				tauTrj.row(i).minCoeff(&index);
+				val[2 * _sharedDID->_optActiveJointDOF + i + tauTrj.rows()] = - dtau2dp2Trj[index][i];
+			}
 
-		//	return val;
-		//}
+			return val;
+		}
 	}
 }
 

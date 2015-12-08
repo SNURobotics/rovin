@@ -229,8 +229,8 @@ namespace rovin
 				nonLinearInequalityConstraint();
 
 				Math::VectorX func(const Math::VectorX& x) const;
-				//Math::MatrixX Jacobian(const Math::VectorX& x) const;
-				//std::vector<Math::MatrixX> Hessian(const Math::VectorX& x) const;
+				Math::MatrixX Jacobian(const Math::VectorX& x) const;
+				std::vector<Math::MatrixX> Hessian(const Math::VectorX& x) const;
 
 				std::shared_ptr<SharedDID> _sharedDID;
 				Math::VectorX _tauMin;

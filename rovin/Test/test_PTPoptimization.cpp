@@ -50,27 +50,27 @@ int main()
 		cout << openchain->_Tree[i].first << endl;
 	}
 	StatePtr effortState = openchain->makeState();
-	VectorX q0(dof), dq0(dof), ddq0(dof);
-	q0.setOnes();
-	q0 *= 2;
-	dq0.setOnes();
-	dq0 *= 2;
-	ddq0.setOnes();
-	ddq0 *= 2;
-	effortState->setJointq(State::TARGET_JOINT::ACTIVEJOINT, q0);
-	effortState->setJointqdot(State::TARGET_JOINT::ACTIVEJOINT, dq0);
-	effortState->setJointqddot(State::TARGET_JOINT::ACTIVEJOINT, ddq0);
-	
-	
-	rovin::Dynamics::solveInverseDynamics(*openchain, *effortState);
-	cout << effortState->getJointTorque(State::TARGET_JOINT::ACTIVEJOINT) << endl;
-	cout << rovin::Kinematics::calculateEndeffectorFrame(*openchain, *effortState) << endl;
+	//VectorX q0(dof), dq0(dof), ddq0(dof);
+	//q0.setOnes();
+	//q0 *= 2;
+	//dq0.setOnes();
+	//dq0 *= 2;
+	//ddq0.setOnes();
+	//ddq0 *= 2;
+	//effortState->setJointq(State::TARGET_JOINT::ACTIVEJOINT, q0);
+	//effortState->setJointqdot(State::TARGET_JOINT::ACTIVEJOINT, dq0);
+	//effortState->setJointqddot(State::TARGET_JOINT::ACTIVEJOINT, ddq0);
+	//
+	//
+	//rovin::Dynamics::solveInverseDynamics(*openchain, *effortState);
+	//cout << effortState->getJointTorque(State::TARGET_JOINT::ACTIVEJOINT) << endl;
+	//cout << rovin::Kinematics::calculateEndeffectorFrame(*openchain, *effortState) << endl;
 
-	rovin::Dynamics::solveForwardDynamics(*openchain, *effortState);
-	cout << "qddot = " << endl << effortState->getJointqddot(State::TARGET_JOINT::ACTIVEJOINT) << endl;
+	//rovin::Dynamics::solveForwardDynamics(*openchain, *effortState);
+	//cout << "qddot = " << endl << effortState->getJointqddot(State::TARGET_JOINT::ACTIVEJOINT) << endl;
 	BSplinePointToPointOptimization BsplinePTP;
 	BsplinePTP.setSOCRobotModel(openchain);
-	BsplinePTP.setFinalTimeAndTimeStep(1.0, 101);
+	BsplinePTP.setFinalTimeAndTimeStep(3.0, 101);
 	
 	
 
@@ -87,7 +87,6 @@ int main()
 	VectorU optActiveJointIdx(optdof);
 	for (int i = 0; i < optdof; i++)
 		optActiveJointIdx(i) = i;
-	
 
 	
 	BsplinePTP.setBoundaryCondition(q0, qf, dq0, dqf, ddq0, ddqf);

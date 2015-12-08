@@ -255,6 +255,11 @@ namespace rovin
 				_tolCon = 1e-5;
 				_maxIteration = 5000;
 			}
+			else if (algo == NonlinearOptimization::Algorithm::NLopt)
+			{
+				_algorithm = NonlinearOptimization::Algorithm::NLopt;
+				obj = eq = ineq = false;
+			}
 		}
 
 		VectorX NonlinearOptimization::solve(const VectorX& x)
@@ -263,7 +268,101 @@ namespace rovin
 			{
 				return SQPMethod(x);
 			}
+			else if (_algorithm == NonlinearOptimization::Algorithm::NLopt)
+			{
+				return NLoptMethod(x);
+			}
 			return x;
+		}
+
+		double objective(unsigned n, const double* x, double* grad, void *f_data)
+		{
+			NonlinearOptimization* ptr = reinterpret_cast<NonlinearOptimization*>(f_data);
+			VectorX xv(n);
+			for (int i = 0; i < n; i++) xv(i) = x[i];
+			if (grad)
+			{
+				MatrixX jacobian = (*ptr->_objectiveFunc).Jacobian(xv);
+				for (int j = 0; j < n; j++)
+				{
+					grad[j] = jacobian(0, j);
+				}
+			}
+			return (*ptr->_objectiveFunc)(xv)(0);
+		}
+
+		void mineqconstraint(unsigned m, double* result, unsigned n, const double* x, double* grad, void* f_data)
+		{
+			NonlinearOptimization* ptr = reinterpret_cast<NonlinearOptimization*>(f_data);
+			VectorX xv(n);
+			for (int i = 0; i < n; i++) xv(i) = x[i];
+			if (grad)
+			{
+				MatrixX jacobian = (*ptr->_ineqFunc).Jacobian(xv);
+				for (int i = 0; i < m; i++)
+				{
+					for (int j = 0; j < n; j++)
+					{
+						grad[i*n + j] = jacobian(i, j);
+					}
+				}
+			}
+			VectorX fval = (*ptr->_ineqFunc)(xv);
+			for (int i = 0; i < m; i++)
+			{
+				result[i] = fval(i);
+			}
+		}
+
+		void meqconstraint(unsigned m, double* result, unsigned n, const double* x, double* grad, void* f_data)
+		{
+			NonlinearOptimization* ptr = reinterpret_cast<NonlinearOptimization*>(f_data);
+			VectorX xv(n);
+			for (int i = 0; i < n; i++) xv(i) = x[i];
+			if (grad)
+			{
+				MatrixX jacobian = (*ptr->_eqFunc).Jacobian(xv);
+				for (int i = 0; i < m; i++)
+				{
+					for (int j = 0; j < n; j++)
+					{
+						grad[i*n + j] = jacobian(i, j);
+					}
+				}
+			}
+			VectorX fval = (*ptr->_eqFunc)(xv);
+			for (int i = 0; i < m; i++)
+			{
+				result[i] = fval(i);
+			}
+		}
+
+		VectorX NonlinearOptimization::NLoptMethod(const VectorX& x)
+		{
+			_xf = x;
+
+			int xN = _xf.size();
+			int eqN = (*_eqFunc)(_xf).size();
+			int ineqN = (*_ineqFunc)(_xf).size();
+
+			opt = nlopt::opt(nlopt::LD_MMA, xN);
+			opt.set_min_objective(objective, this);
+			opt.add_inequality_mconstraint(mineqconstraint, this, vector<Real>(ineqN, 1e-8));
+			//opt.add_equality_mconstraint(meqconstraint, this, vector<Real>(ineqN, 1e-8));
+			opt.set_xtol_rel(1e-4);
+
+			std::vector<Real> xi(xN);
+			for (int i = 0; i < xN; i++)
+			{
+				xi[i] = _xf(i);
+			}
+			double minf;
+			nlopt::result result = opt.optimize(xi, minf);
+			for (int i = 0; i < xN; i++)
+			{
+				_xf(i) = xi[i];
+			}
+			return _xf;
 		}
 
 		VectorX NonlinearOptimization::SQPMethod(const VectorX& x)
