@@ -123,9 +123,11 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="GivenPathOptimization.h" />
     <ClInclude Include="PTPoptimization.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="GivenPathOptimization.cpp" />
     <ClCompile Include="PTPoptimization.cpp" />
   </ItemGroup>
   <ItemGroup>
