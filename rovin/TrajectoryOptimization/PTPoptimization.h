@@ -50,9 +50,9 @@ namespace rovin
 			Math::Real _tf;
 			// number of time step
 			int _nStep;
-			// time step (determined from tf and nStep)
-			Math::Real _dt;
-
+			// time span points from Gaussian Quadrature (to reduce step number efficiently)
+			Math::VectorX _timeSpan;
+			Math::VectorX _timeSpanWeight;
 			
 
 			// Boundary values
@@ -100,11 +100,17 @@ namespace rovin
 				EnergyLoss
 			};
 
+			enum KnotType
+			{
+				Uniform,
+				Sided
+			};
+
 			class SharedDID
 			{
 			public:
 				// generate dqdp from knot vector
-				SharedDID(const Model::socAssemblyPtr socAssem, const int nStep, const Math::Real dt, const Math::VectorX& knot, 
+				SharedDID(const Model::socAssemblyPtr socAssem, const int nStep, const Math::VectorX& timeSpan, const Math::VectorX& timeStepWeight, const Math::VectorX& knot, 
 					const std::vector<Math::VectorX> & BoundaryCP, const int nInitCP, const int nFinalCP, const int nMiddleCP,
 					const Math::VectorU& optActiveJointIdx, const Math::VectorU& noptActiveJointIdx, const int optActiveJointDOF, const int noptActiveJointDOF, const Math::VectorX& noptControlPoint,
 					const std::vector<Math::MatrixX> dqdp,	std::vector<Math::MatrixX> dqdotdp, std::vector<Math::MatrixX> dqddotdp);
@@ -125,7 +131,8 @@ namespace rovin
 
 				int _nStep;
 				Math::VectorX _knot;
-				Math::Real _dt;
+				Math::VectorX _timeSpan;
+				Math::VectorX _timeSpanWeight;
 
 				std::vector<Model::StatePtr> _stateTrj;
 				std::vector<Math::MatrixX> _dqdp;
@@ -307,12 +314,12 @@ namespace rovin
 			////////////////////// run
 
 
-			void run(const ObjectiveFunctionType& objectiveType);
+			Math::Real run(const ObjectiveFunctionType& objectiveType);
 
 
 			////////////////////////////
 			
-			void setSplineCondition(const unsigned int order, const unsigned int nMiddleCP);
+			void setSplineCondition(const unsigned int order, const unsigned int nMiddleCP, KnotType knotType);
 			void checkKnotVectorFeasibility();
 			std::pair<Math::MatrixX, Math::VectorX> generateLinearEqualityConstraint(const Math::VectorU& activeJointIdx, const int activeJointDOF);
 			void generateLinearEqualityConstraint();
@@ -320,8 +327,8 @@ namespace rovin
 			std::pair<Math::MatrixX, Math::VectorX> generateLinearInequalityConstraint(const Math::VectorU& activeJointIdx, const int activeJointDOF);		// consider joint value only
 			void generateLinearInequalityConstraint();		// consider joint value only
 			
-			std::pair<Math::MatrixX, Math::VectorX> generateLinearInequalityConstraint2(const Math::VectorU& activeJointIdx, const int activeJointDOF);		// consider joint value, velocity, jerk, torque also
-			void generateLinearInequalityConstraint2();		// consider joint value, velocity, jerk, torque also
+			std::pair<Math::MatrixX, Math::VectorX> generateLinearInequalityConstraint_large(const Math::VectorU& activeJointIdx, const int activeJointDOF);		// consider joint value, velocity, jerk, torque also
+			void generateLinearInequalityConstraint_large();		// consider joint value, velocity, jerk, torque also
 			
 			void generateNoptControlPoint();
 			void setdqdp();

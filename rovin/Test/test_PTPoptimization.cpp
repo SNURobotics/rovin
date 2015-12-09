@@ -43,12 +43,12 @@ class effort : public Function
 int main()
 {
 	effortRobotModeling();
-	cout << static_pointer_cast<SerialOpenChainAssembly>(openchain)->_socLink[6]._M << endl;
-	cout << static_pointer_cast<SerialOpenChainAssembly>(openchain)->_socLink[6]._G << endl;
-	for (int i = 0; i < 6; i++)
-	{
-		cout << openchain->_Tree[i].first << endl;
-	}
+	//cout << static_pointer_cast<SerialOpenChainAssembly>(openchain)->_socLink[6]._M << endl;
+	//cout << static_pointer_cast<SerialOpenChainAssembly>(openchain)->_socLink[6]._G << endl;
+	//for (int i = 0; i < 6; i++)
+	//{
+	//	cout << openchain->_Tree[i].first << endl;
+	//}
 	StatePtr effortState = openchain->makeState();
 	//VectorX q0(dof), dq0(dof), ddq0(dof);
 	//q0.setOnes();
@@ -70,10 +70,7 @@ int main()
 	//cout << "qddot = " << endl << effortState->getJointqddot(State::TARGET_JOINT::ACTIVEJOINT) << endl;
 	BSplinePointToPointOptimization BsplinePTP;
 	BsplinePTP.setSOCRobotModel(openchain);
-	BsplinePTP.setFinalTimeAndTimeStep(3.0, 50);
 	
-	
-
 	bool checkq0 = true;
 	bool checkqf = true;
 	bool checkdq0 = true;
@@ -83,14 +80,14 @@ int main()
 
 	setBoundaryValues(checkq0, checkqf, checkdq0, checkdqf, checkddq0, checkddqf);
 
-	int optdof = 3;
+	int optdof = 6;
 	VectorU optActiveJointIdx(optdof);
 	for (int i = 0; i < optdof; i++)
 		optActiveJointIdx(i) = i;
 
 	
 	BsplinePTP.setBoundaryCondition(q0, qf, dq0, dqf, ddq0, ddqf);
-	BsplinePTP.setConstraintRange(true, true, false, false);
+	BsplinePTP.setConstraintRange(true, true, true, true);
 	bool useWaypoint = true;
 	vector<pair<VectorX, Real>> wayPoints(2);
 	if (useWaypoint)
@@ -107,17 +104,35 @@ int main()
 	BsplinePTP.setOptimizingJointIndex(optActiveJointIdx);
 
 	int order = 4;
-	int nMiddleCP = 6;
+	int nMiddleCP = 4;
 	Real ti = 0.3;
-	BsplinePTP.setSplineCondition(order, nMiddleCP);
-	
+
+	///////////////////////////////////////////////////////// varying tf
+	BsplinePTP.setFinalTimeAndTimeStep(3.0, 101);
+	BsplinePTP.setSplineCondition(order, nMiddleCP, BSplinePointToPointOptimization::KnotType::Sided);
 	cout << "knot = " << BsplinePTP._knot.transpose() << endl;
+	BsplinePTP.run(BSplinePointToPointOptimization::Effort);
+	
+	///////////////////////////////////////////////////////// varying tf
+	//VectorX tfSet(10);
+	//for (int i = 0; i < tfSet.size(); i++)
+	//	tfSet(i) = (Real)(i + 1)*0.5;
 
+	//VectorX result(tfSet.size());
 
-	BsplinePTP.generateLinearEqualityConstraint();
-	BsplinePTP.generateLinearInequalityConstraint();
+	//for (int i = 0; i < tfSet.size(); i++)
+	//{
+	//	BsplinePTP.setFinalTimeAndTimeStep(tfSet(i), 101);
+	//	BsplinePTP.setSplineCondition(order, nMiddleCP, BSplinePointToPointOptimization::KnotType::Uniform);
+	//	cout << "knot = " << BsplinePTP._knot.transpose() << endl;
+	//	result(i) = BsplinePTP.run(BSplinePointToPointOptimization::Effort);
+	//}
+	//cout << "result = " << endl;
+	//for (int i = 0; i < tfSet.size(); i++)
+	//{
+	//	cout << result(i) << endl;
+	//}
 
-	BsplinePTP.run(BSplinePointToPointOptimization::EnergyLoss);
 
 	MatrixX Aeq_opt = BsplinePTP._Aeq_opt;
 	MatrixX Aeq_nopt = BsplinePTP._Aeq_nopt;
@@ -253,7 +268,7 @@ void effortRobotModeling()
 	Matrix3 I;
 	vector<Inertia, Eigen::aligned_allocator<Inertia>> G(dof);
 	Vector3 p;
-	for (int i = 0; i < dof; i++)
+	for (unsigned int i = 0; i < dof; i++)
 	{
 		I(0, 0) = inr_info(i, 0);
 		I(1, 1) = inr_info(i, 1);
@@ -263,9 +278,9 @@ void effortRobotModeling()
 		I(1, 2) = I(2, 1) = inr_info(i, 5);
 		p = -mx.col(i);
 		G[i] = Inertia(I, p, m(i));
-		cout << i << endl << G[i] << endl;
+		//cout << i << endl << G[i] << endl;
 	}
-	for (int i = 0; i < openchain->getMateList().size(); i++)
+	for (unsigned int i = 0; i < openchain->getMateList().size(); i++)
 		openchain->getLinkPtr("L" + to_string(i + 2))->setInertia(G[i]);
 
 	// set motor parameters
@@ -284,7 +299,7 @@ void effortRobotModeling()
 	J << 1.06, 1.06, 0.13, 0.044, 0.044, 0.027;
 	J *= 1e-3;
 	gearRatio << 147, 153, 153, 76.95, 80, 51;
-	for (int i = 0; i < dof; i++)
+	for (unsigned int i = 0; i < dof; i++)
 	{
 		static_pointer_cast<MotorJoint> (openchain->getJointPtrByMateIndex(i))->setInductance(L(i));
 		static_pointer_cast<MotorJoint> (openchain->getJointPtrByMateIndex(i))->setResistance(R(i));

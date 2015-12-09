@@ -279,15 +279,16 @@ namespace rovin
 		{
 			NonlinearOptimization* ptr = reinterpret_cast<NonlinearOptimization*>(f_data);
 			VectorX xv(n);
-			for (int i = 0; i < n; i++) xv(i) = x[i];
+			for (unsigned int i = 0; i < n; i++) xv(i) = x[i];
 			if (grad)
 			{
 				MatrixX jacobian = (*ptr->_objectiveFunc).Jacobian(xv);
-				for (int j = 0; j < n; j++)
+				for (unsigned int j = 0; j < n; j++)
 				{
 					grad[j] = jacobian(0, j);
 				}
 			}
+			//cout << (*ptr->_objectiveFunc)(xv)(0) << endl;
 			return (*ptr->_objectiveFunc)(xv)(0);
 		}
 
@@ -295,20 +296,20 @@ namespace rovin
 		{
 			NonlinearOptimization* ptr = reinterpret_cast<NonlinearOptimization*>(f_data);
 			VectorX xv(n);
-			for (int i = 0; i < n; i++) xv(i) = x[i];
+			for (unsigned int i = 0; i < n; i++) xv(i) = x[i];
 			if (grad)
 			{
 				MatrixX jacobian = (*ptr->_ineqFunc).Jacobian(xv);
-				for (int i = 0; i < m; i++)
+				for (unsigned int i = 0; i < m; i++)
 				{
-					for (int j = 0; j < n; j++)
+					for (unsigned int j = 0; j < n; j++)
 					{
 						grad[i*n + j] = jacobian(i, j);
 					}
 				}
 			}
 			VectorX fval = (*ptr->_ineqFunc)(xv);
-			for (int i = 0; i < m; i++)
+			for (unsigned int i = 0; i < m; i++)
 			{
 				result[i] = fval(i);
 			}
@@ -318,20 +319,20 @@ namespace rovin
 		{
 			NonlinearOptimization* ptr = reinterpret_cast<NonlinearOptimization*>(f_data);
 			VectorX xv(n);
-			for (int i = 0; i < n; i++) xv(i) = x[i];
+			for (unsigned int i = 0; i < n; i++) xv(i) = x[i];
 			if (grad)
 			{
 				MatrixX jacobian = (*ptr->_eqFunc).Jacobian(xv);
-				for (int i = 0; i < m; i++)
+				for (unsigned int i = 0; i < m; i++)
 				{
-					for (int j = 0; j < n; j++)
+					for (unsigned int j = 0; j < n; j++)
 					{
 						grad[i*n + j] = jacobian(i, j);
 					}
 				}
 			}
 			VectorX fval = (*ptr->_eqFunc)(xv);
-			for (int i = 0; i < m; i++)
+			for (unsigned int i = 0; i < m; i++)
 			{
 				result[i] = fval(i);
 			}
