@@ -65,6 +65,17 @@ namespace rovin
 				return fval(x);
 			}
 
+			Eigen::Matrix<Real, Dimension, -1> operator()(const VectorX& x)
+			{
+				int nTime = x.size();
+				Math::MatrixX fval(_M, nTime);
+				for (int i = 0; i < nTime; i++)
+				{
+					fval.col(i) = this->fval(x(i));
+				}
+				return fval;
+			}
+
 			Eigen::Matrix<Real, Dimension, 1> fval(const Real& x)
 			{
 				if (RealLess(x, _knots(0)) || RealBiggerEqual(x, _knots(_N + _D)))
