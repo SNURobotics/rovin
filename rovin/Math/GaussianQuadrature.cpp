@@ -17,6 +17,7 @@ void	GaussianQuadrature::setTimeInterval(Real initialTime, Real finalTime)
 	_tf = finalTime;
 
 	_t = (_tf - _t0) / 2 * _x + (_tf + _t0) / 2*VectorX::Ones(_N);
+	_w *= (_tf - _t0) / 2;
 }
 
 const Real GaussianQuadrature::evalIntegration(const VectorX & functionVal) const
