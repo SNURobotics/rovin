@@ -315,7 +315,7 @@ namespace rovin
 			////////////////////// run
 
 
-			Math::Real run(const ObjectiveFunctionType& objectiveType);
+			Math::VectorX run(const ObjectiveFunctionType& objectiveType);
 
 
 			////////////////////////////
@@ -371,7 +371,11 @@ namespace rovin
 
 			// Solution
 			Math::VectorX _solX;
-			int _result;
+			Math::Real _fval;
+			Math::VectorX _eqConstraintVal;
+			Math::VectorX _ineqConstraintVal;
+			double _computationTime;
+			bool _resultFlag;
 		};
 
 

@@ -54,7 +54,7 @@ namespace rovin
 			_nStep = nStep;
 			GaussianQuadrature gaussianQuadrature(nStep, 0.0, tf);
 			_timeSpan = gaussianQuadrature.getQueryPoints();
-			_timeSpanWeight = gaussianQuadrature.getWeights() * tf / 2.0;
+			_timeSpanWeight = gaussianQuadrature.getWeights();
 		}
 
 		void PointToPointOptimization::setBoundaryCondition(const Math::VectorX & q0, const Math::VectorX & qf, const Math::VectorX & qdot0, const Math::VectorX & qdotf, const Math::VectorX & qddot0, const Math::VectorX & qddotf)
@@ -147,7 +147,7 @@ namespace rovin
 			_isInitiated = false;
 			StatePtr defaultState = socAssem->makeState();
 			MatrixX noptCP(noptActiveJointDOF, nMiddleCP + nInitCP + nFinalCP);
-			for (unsigned int i = 0, dofIdx = 0; i < noptActiveJointIdx.size(); i++)
+			for (int i = 0, dofIdx = 0; i < noptActiveJointIdx.size(); i++)
 			{
 				for (unsigned int j = 0; j < defaultState->getJointState(State::TARGET_JOINT::ACTIVEJOINT, noptActiveJointIdx(i)).getDOF(); j++, dofIdx++)
 				{
@@ -329,13 +329,14 @@ namespace rovin
 
 		BSplinePointToPointOptimization::BSplinePointToPointOptimization()
 		{
+			_resultFlag = false;
 		}
 
 		BSplinePointToPointOptimization::~BSplinePointToPointOptimization()
 		{
 		}
 
-		Real BSplinePointToPointOptimization::run(const ObjectiveFunctionType & objectiveType)
+		Math::VectorX BSplinePointToPointOptimization::run(const ObjectiveFunctionType & objectiveType)
 		{
 			///////////////////////////////////////// EQUALITY CONSTRAINT ///////////////////////////////////
 			generateLinearEqualityConstraint();
@@ -415,32 +416,32 @@ namespace rovin
 
 			//cout << _Aineq_opt*x + _bineq_opt << endl;
 
-			cout << "----------------" << endl;
+			//cout << "----------------" << endl;
 
-			cout << (*_ineqFunc)(x) << endl;
+			//cout << (*_ineqFunc)(x) << endl;
 
-			cout << "----------------" << endl;
+			//cout << "----------------" << endl;
 
 			//ProjectToFeasibleSpace proj;
 			//proj._eqConstraintFunc = _eqFunc;
 			//proj._inEqConstraintFunc = _ineqFunc;
 			//x = proj.project(x);
-			cout << "---------------" << endl;
-			cout << x << endl;
-			cout << "----------------" << endl;
+			//cout << "---------------" << endl;
+			//cout << x << endl;
+			//cout << "----------------" << endl;
 			////////////////////////////////////// TEST /////////////////////////////////////////////////////////////////////////////////////////////////
 
-			shared_ptr<effortTestFunction> _testObjFunc = shared_ptr<effortTestFunction>(new effortTestFunction());
-			_testObjFunc->_sharedDID = sharedDID;
+			//shared_ptr<effortTestFunction> _testObjFunc = shared_ptr<effortTestFunction>(new effortTestFunction());
+			//_testObjFunc->_sharedDID = sharedDID;
 
 
-			shared_ptr<trajectoryCheck> _trajectoryCheck = shared_ptr<trajectoryCheck>(new trajectoryCheck());
-			_trajectoryCheck->_sharedDID = sharedDID;
-			VectorU _activeJointIdx(6);
-			_activeJointIdx << 0, 1, 2, 3, 4, 5;
-			_trajectoryCheck->_activeJointIdx = _activeJointIdx;
-			int timeStep = 16;
-			_trajectoryCheck->_timeStep = timeStep;
+			//shared_ptr<trajectoryCheck> _trajectoryCheck = shared_ptr<trajectoryCheck>(new trajectoryCheck());
+			//_trajectoryCheck->_sharedDID = sharedDID;
+			//VectorU _activeJointIdx(6);
+			//_activeJointIdx << 0, 1, 2, 3, 4, 5;
+			//_trajectoryCheck->_activeJointIdx = _activeJointIdx;
+			//int timeStep = 16;
+			//_trajectoryCheck->_timeStep = timeStep;
 
 			//cout << "constraint func" << endl;
 			//cout << (*nonLinearIneqFunc).func(x) << endl;
@@ -476,37 +477,40 @@ namespace rovin
 			//cout << Hnum[0] << endl;
 
 			///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
+			cout << "initial objective function : " << (*_objectiveFunc)(x)(0) << endl;
+			_resultFlag = false;
 			_solX = nonlinearSolver.solve(x);
-			_result = 1;
-			x = _solX;
-			cout << nonlinearSolver._Iter << endl;
-			cout << "x : " << endl << _solX << endl;
-			cout << "obj : " << endl << (*_objectiveFunc)(x) << endl;
-			cout << "eq : " << endl << (*_eqFunc)(x) << endl;
+			_resultFlag = true;
+			_fval = (*_objectiveFunc)(_solX)(0);
+			if(_eqFunc != NULL) _eqConstraintVal = (*_eqFunc)(_solX);
+			if (_ineqFunc != NULL) _ineqConstraintVal = (*_ineqFunc)(_solX);
+			//cout << nonlinearSolver._Iter << endl;
+			//cout << "x : " << endl << _solX << endl;
+			//cout << "obj : " << endl << (*_objectiveFunc)(x) << endl;
+			//cout << "eq : " << endl << (*_eqFunc)(x) << endl;
 			//cout << "ineq : " << endl << (*_ineqFunc)(x) << endl;
-			cout << clock() - c  << "ms" << endl;
-			return (*_objectiveFunc)(x)(0);
+			_computationTime = clock() - c;
+			return _solX;
 		}
 
 		vector<MatrixX> BSplinePointToPointOptimization::getJointTrj(const VectorX& time) const
 		{
 			MatrixX newCp(_noptActiveJointDOF + _optActiveJointDOF, _nMiddleCP + _nInitCP + _nFinalCP);
-			if (_result != 1)
+			if (_resultFlag == false)
 			{
 				return vector<MatrixX>();
 			}
-			cout << _solX << endl;
+			//cout << _solX << endl;
 			for (int i = 0, optActiveDofIdx = 0; i < _optActiveJointIdx.size(); i++)
 			{
-				for (int j = 0; j < _defaultState->getJointState(State::TARGET_JOINT::ACTIVEJOINT, _optActiveJointIdx[i]).getDOF(); j++, optActiveDofIdx++)
+				for (unsigned int j = 0; j < _defaultState->getJointState(State::TARGET_JOINT::ACTIVEJOINT, _optActiveJointIdx[i]).getDOF(); j++, optActiveDofIdx++)
 				{
 					newCp.block(_defaultState->getActiveJointIndex(_optActiveJointIdx[i]) + j, _nInitCP, 1, _nMiddleCP) = _solX.segment(_nMiddleCP*optActiveDofIdx, _nMiddleCP).transpose();
 				}
 			}
 			for (int i = 0, noptActiveDofIdx = 0; i < _noptActiveJointIdx.size(); i++)
 			{
-				for (int j = 0; j < _defaultState->getJointState(State::TARGET_JOINT::ACTIVEJOINT, _noptActiveJointIdx[i]).getDOF(); j++, noptActiveDofIdx++)
+				for (unsigned int j = 0; j < _defaultState->getJointState(State::TARGET_JOINT::ACTIVEJOINT, _noptActiveJointIdx[i]).getDOF(); j++, noptActiveDofIdx++)
 				{
 					newCp.block(_defaultState->getActiveJointIndex(_noptActiveJointIdx[i]) + j, _nInitCP, 1, _nMiddleCP) = _noptControlPoint.segment(_nMiddleCP*noptActiveDofIdx, _nMiddleCP).transpose();
 				}
@@ -521,7 +525,7 @@ namespace rovin
 				newCp.col(newCp.cols() - 1 - i) = BoundaryCP[5 - i];
 			}
 
-			cout << newCp << endl;
+			//cout << newCp << endl;
 
 			BSpline<-1, -1, -1> val(_knot, newCp);
 			BSpline<-1, -1, -1> vel = val.derivative();
@@ -681,10 +685,10 @@ namespace rovin
 				BoundaryCP[3] = _qddotf;
 
 
-			for (int i = 0; i < 6; i++)
-			{
-				cout << "boundary [" << i << "] :" << BoundaryCP[i].transpose() << endl;
-			}
+			//for (int i = 0; i < 6; i++)
+			//{
+			//	cout << "boundary [" << i << "] :" << BoundaryCP[i].transpose() << endl;
+			//}
 			_knot = knot;
 		}
 
@@ -883,7 +887,7 @@ namespace rovin
 			bineq.resize((nConstraint * _nStep + nPosConstraint * _nMiddleCP)*activeJointDOF);
 			Aineq.setZero();
 			bineq.setZero();
-			Real ti;
+			
 			Real temp;
 			int joint_l;
 			int jointID;
@@ -1109,8 +1113,8 @@ namespace rovin
 				}
 			}
 			
-			cout << "noptCP" << endl;
-			cout << _noptControlPoint.transpose() << endl;
+			//cout << "noptCP" << endl;
+			//cout << _noptControlPoint.transpose() << endl;
 
 			ProjectToFeasibleSpace proj;
 			FunctionPtr linearEq = FunctionPtr(new LinearFunction());
@@ -1152,7 +1156,7 @@ namespace rovin
 			VectorX Ni(1);
 			VectorX dNi(1);
 			VectorX ddNi(1);
-			Real ti;
+			
 			unsigned int dofIdx;
 
 			//cout << accumulatedDOF << endl;
@@ -1411,7 +1415,7 @@ namespace rovin
 			for (int i = 0, dof = 0; i < optActiveJointIdx.size(); i++)
 			{
 				jointID = _defaultState->getJointID(State::TARGET_JOINT::ACTIVEJOINT, optActiveJointIdx(i));
-				for (int j = 0; j < socAssem->getJointPtrByMateIndex(jointID)->getDOF(); j++, dof++)
+				for (unsigned int j = 0; j < socAssem->getJointPtrByMateIndex(jointID)->getDOF(); j++, dof++)
 				{
 					if (velConstraintExist)
 					{

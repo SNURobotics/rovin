@@ -111,10 +111,10 @@ int main()
 	Real ti = 0.3;
 
 	///////////////////////////////////////////////////////// varying tf
-	//BsplinePTP.setFinalTimeAndTimeSpan(3.0, 100);
-	BsplinePTP.setFinalTimeAndTimeSpanUsingGaussianQuadrature(3.0, 25);
+	BsplinePTP.setFinalTimeAndTimeSpan(3.0, 100);
+	//BsplinePTP.setFinalTimeAndTimeSpanUsingGaussianQuadrature(3.0, 21);
 	BsplinePTP.setSplineCondition(order, nMiddleCP, BSplinePointToPointOptimization::KnotType::Uniform);
-	cout << "knot = " << BsplinePTP._knot.transpose() << endl;
+	//cout << "knot = " << BsplinePTP._knot.transpose() << endl;
 	BsplinePTP.run(BSplinePointToPointOptimization::Effort);
 
 	///////////////////////////////////////////////////////////PRINT
@@ -140,8 +140,9 @@ int main()
 		rovin::Dynamics::solveInverseDynamics(*openchain, *tempState);
 		sum += tempState->getJointTorque(State::TARGET_JOINT::ACTIVEJOINT).squaredNorm() * BsplinePTP._tf/(N - 1);
 	}
-	cout << "Objective : " << sum << endl;
-	
+	cout << "Objective (fine Euler integration) : " << sum << endl;
+	cout << "Objective : " << BsplinePTP._fval << endl;
+	cout << "Computation time : " << BsplinePTP._computationTime << "ms" << endl;
 	///////////////////////////////////////////////////////// varying tf
 	//VectorX tfSet(10);
 	//for (int i = 0; i < tfSet.size(); i++)
