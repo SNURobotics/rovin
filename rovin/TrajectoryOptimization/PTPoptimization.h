@@ -181,16 +181,7 @@ namespace rovin
 				std::shared_ptr<SharedDID> _sharedDID;
 			};
 
-			class effortTestFunction : public Math::Function
-			{
-			public:
-				effortTestFunction() {}
-
-				Math::VectorX func(const Math::VectorX& x) const;
-
-				std::shared_ptr<SharedDID> _sharedDID;
-			};
-
+			
 			class energyLossFunction : public Math::Function
 			{
 			public:
@@ -258,6 +249,26 @@ namespace rovin
 
 
 			////////////////////////////////////////// test function
+			class effortTestFunction : public Math::Function
+			{
+			public:
+				effortTestFunction() {}
+
+				Math::VectorX func(const Math::VectorX& x) const;
+
+				std::shared_ptr<SharedDID> _sharedDID;
+			};
+
+			class energyLossTestFunction : public Math::Function
+			{
+			public:
+				energyLossTestFunction() {}
+
+				Math::VectorX func(const Math::VectorX& x) const;
+
+				std::shared_ptr<SharedDID> _sharedDID;
+			};
+
 			class trajectoryCheck : public Math::Function
 			{
 			public: 

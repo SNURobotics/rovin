@@ -70,7 +70,7 @@ int main()
 	//cout << "qddot = " << endl << effortState->getJointqddot(State::TARGET_JOINT::ACTIVEJOINT) << endl;
 	BSplinePointToPointOptimization BsplinePTP;
 	BsplinePTP.setSOCRobotModel(openchain);
-	BsplinePTP.setFinalTimeAndTimeStep(3.0, 101);
+	BsplinePTP.setFinalTimeAndTimeStep(3.0, 50);
 	
 	
 
@@ -107,7 +107,7 @@ int main()
 	BsplinePTP.setOptimizingJointIndex(optActiveJointIdx);
 
 	int order = 4;
-	int nMiddleCP = 4;
+	int nMiddleCP = 6;
 	Real ti = 0.3;
 	BsplinePTP.setSplineCondition(order, nMiddleCP);
 	
@@ -117,7 +117,7 @@ int main()
 	BsplinePTP.generateLinearEqualityConstraint();
 	BsplinePTP.generateLinearInequalityConstraint();
 
-	BsplinePTP.run(BSplinePointToPointOptimization::Effort);
+	BsplinePTP.run(BSplinePointToPointOptimization::EnergyLoss);
 
 	MatrixX Aeq_opt = BsplinePTP._Aeq_opt;
 	MatrixX Aeq_nopt = BsplinePTP._Aeq_nopt;

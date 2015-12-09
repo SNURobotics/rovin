@@ -41,7 +41,7 @@ namespace rovin
 		public:
 			EmptyFunction() {}
 
-			VectorX func(const VectorX& x) const { return VectorX::Zero(1); }
+			VectorX func(const VectorX& x) const { return VectorX::Ones(1)*(-1); }
 			MatrixX Jacobian(const VectorX& x) const { return MatrixX::Zero(1, x.size()); }
 			std::vector< MatrixX > Hessian(const VectorX& x) const { std::vector< MatrixX > hs(1); hs[0] = MatrixX::Zero(x.size(), x.size()); return hs; }
 		};

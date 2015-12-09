@@ -106,59 +106,59 @@ int main()
 	cout << endl << "tau	: " << state->getJointqddot(State::TARGET_JOINT::STATEJOINT).transpose() << endl;
 	
 
-	cout << "=== differentiate inverse dynamics ===" << endl;
-	pair<MatrixX, vector<MatrixX>> tauDeriv;
-	
-	// set dqdp, dqdotdp, dqddotdp
-	MatrixX zeroMatrix(dof, dof);
-	zeroMatrix.setZero();
-	MatrixX identity(dof, dof);
-	identity.setIdentity();
+	//cout << "=== differentiate inverse dynamics ===" << endl;
+	//pair<MatrixX, vector<MatrixX>> tauDeriv;
+	//
+	//// set dqdp, dqdotdp, dqddotdp
+	//MatrixX zeroMatrix(dof, dof);
+	//zeroMatrix.setZero();
+	//MatrixX identity(dof, dof);
+	//identity.setIdentity();
 
-	int pN = dof;
-	MatrixX dqdp(dof, dof);
-	dqdp = (VectorX::Ones(dof) + p).asDiagonal();
-	MatrixX dqdotdp(dof, dof);
-	dqdotdp = (dp).asDiagonal();
-	MatrixX dqddotdp(dof, dof);
-	dqddotdp = (ddp).asDiagonal();
-	vector<MatrixX> d2qdp2(pN, MatrixX::Zero(dof, pN));
-	for (int i = 0; i < pN; i++)
-	{
-		d2qdp2[i](i, i) = 1.0;
-	}
-	PERFORM_TEST(
-		state->addJointq(State::TARGET_JOINT::ACTIVEJOINT, VectorX::Zero(dof));
-		tauDeriv = rovin::Dynamics::differentiateInverseDynamics(*openchain, *state, dqdp, dqdotdp, dqddotdp, d2qdp2);
-		, 1);
-	
-	cout << "analytic jacobian" << endl;
-	cout << tauDeriv.first << endl;
-	cout << "analytic hessian" << endl;
-	cout << tauDeriv.second[4] << endl;
+	//int pN = dof;
+	//MatrixX dqdp(dof, dof);
+	//dqdp = (VectorX::Ones(dof) + p).asDiagonal();
+	//MatrixX dqdotdp(dof, dof);
+	//dqdotdp = (dp).asDiagonal();
+	//MatrixX dqddotdp(dof, dof);
+	//dqddotdp = (ddp).asDiagonal();
+	//vector<MatrixX> d2qdp2(pN, MatrixX::Zero(dof, pN));
+	//for (int i = 0; i < pN; i++)
+	//{
+	//	d2qdp2[i](i, i) = 1.0;
+	//}
+	//PERFORM_TEST(
+	//	state->addJointq(State::TARGET_JOINT::ACTIVEJOINT, VectorX::Zero(dof));
+	//	tauDeriv = rovin::Dynamics::differentiateInverseDynamics(*openchain, *state, dqdp, dqdotdp, dqddotdp, false, d2qdp2);
+	//	, 1);
+	//
+	//cout << "analytic jacobian" << endl;
+	//cout << tauDeriv.first << endl;
+	//cout << "analytic hessian" << endl;
+	//cout << tauDeriv.second[4] << endl;
 
-	
-	// Numerical derivative
-	std::static_pointer_cast<IDFunction>(obj_f)->dof = dof;
-	std::static_pointer_cast<IDFunction>(obj_f)->socAssem = openchain;
-	std::static_pointer_cast<IDFunction>(obj_f)->state = stateNumeric;
-	std::static_pointer_cast<IDFunction>(obj_f)->q0 = q0;
-	std::static_pointer_cast<IDFunction>(obj_f)->dq0 = dq0;
-	std::static_pointer_cast<IDFunction>(obj_f)->ddq0 = ddq0;
-	std::static_pointer_cast<IDFunction>(obj_f)->dp = dp;
-	std::static_pointer_cast<IDFunction>(obj_f)->ddp = ddp;
-	MatrixX NumericJacobian;
-	vector< MatrixX >NumericJHessian;
-	PERFORM_TEST(
-		NumericJacobian = obj_f->Jacobian(p);
-		NumericJHessian = obj_f->Hessian(p);
-		, 1);
+	//
+	//// Numerical derivative
+	//std::static_pointer_cast<IDFunction>(obj_f)->dof = dof;
+	//std::static_pointer_cast<IDFunction>(obj_f)->socAssem = openchain;
+	//std::static_pointer_cast<IDFunction>(obj_f)->state = stateNumeric;
+	//std::static_pointer_cast<IDFunction>(obj_f)->q0 = q0;
+	//std::static_pointer_cast<IDFunction>(obj_f)->dq0 = dq0;
+	//std::static_pointer_cast<IDFunction>(obj_f)->ddq0 = ddq0;
+	//std::static_pointer_cast<IDFunction>(obj_f)->dp = dp;
+	//std::static_pointer_cast<IDFunction>(obj_f)->ddp = ddp;
+	//MatrixX NumericJacobian;
+	//vector< MatrixX >NumericJHessian;
+	//PERFORM_TEST(
+	//	NumericJacobian = obj_f->Jacobian(p);
+	//	NumericJHessian = obj_f->Hessian(p);
+	//	, 1);
 
-	cout << "=== numerical jacobian ===" << endl;
-	cout << NumericJacobian << endl;
+	//cout << "=== numerical jacobian ===" << endl;
+	//cout << NumericJacobian << endl;
 
-	cout << "=== numerical hessian ===" << endl;
-	cout << NumericJHessian[4] << endl;
+	//cout << "=== numerical hessian ===" << endl;
+	//cout << NumericJHessian[4] << endl;
 
 	//for (unsigned int i = 0; i < dof; i++)
 	//{

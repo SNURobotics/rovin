@@ -328,11 +328,11 @@ namespace rovin
 		{
 			///////////////////////////////////////// EQUALITY CONSTRAINT ///////////////////////////////////
 			_eqFunc = Math::FunctionPtr(new LinearFunction());
-			//static_pointer_cast<LinearFunction>(_eqFunc)->A = Aeq_opt;
-			//static_pointer_cast<LinearFunction>(_eqFunc)->b = beq_opt;
+			static_pointer_cast<LinearFunction>(_eqFunc)->A = _Aeq_opt;
+			static_pointer_cast<LinearFunction>(_eqFunc)->b = _beq_opt;
 
-			static_pointer_cast<LinearFunction>(_eqFunc)->A = MatrixX::Zero(1,_nMiddleCP * _optActiveJointDOF);
-			static_pointer_cast<LinearFunction>(_eqFunc)->b = MatrixX::Zero(1,1);
+			//static_pointer_cast<LinearFunction>(_eqFunc)->A = MatrixX::Zero(1,_nMiddleCP * _optActiveJointDOF);
+			//static_pointer_cast<LinearFunction>(_eqFunc)->b = MatrixX::Zero(1,1);
 			/////////////////////////////////////////////////////////////////////////////////////////////////
 
 			/////////////////////////////////////// INEQUALITY CONSTRAINT ///////////////////////////////////
@@ -380,7 +380,7 @@ namespace rovin
 			NonlinearOptimization nonlinearSolver;
 			nonlinearSolver._objectiveFunc = _objectiveFunc;
 			nonlinearSolver._eqFunc = _eqFunc;
-			nonlinearSolver._ineqFunc = _testIneqConstFun;
+			nonlinearSolver._ineqFunc = _ineqFunc;
 
 			double c = clock();
 			VectorX x(_optActiveJointDOF*_nMiddleCP);
@@ -394,12 +394,25 @@ namespace rovin
 			//	}
 			//}
 
+			//cout << _Aineq_opt*x + _bineq_opt << endl;
 
+			cout << "----------------" << endl;
 
+			cout << (*_ineqFunc)(x) << endl;
+
+			cout << "----------------" << endl;
+
+			//ProjectToFeasibleSpace proj;
+			//proj._eqConstraintFunc = _eqFunc;
+			//proj._inEqConstraintFunc = _ineqFunc;
+			//x = proj.project(x);
+			cout << "---------------" << endl;
+			cout << x << endl;
+			cout << "----------------" << endl;
 			////////////////////////////////////// TEST /////////////////////////////////////////////////////////////////////////////////////////////////
 
-			//shared_ptr<effortTestFunction> _testObjFunc = shared_ptr<effortTestFunction>(new effortTestFunction());
-			//_testObjFunc->_sharedDID = sharedDID;
+			shared_ptr<energyLossTestFunction> _testObjFunc = shared_ptr<energyLossTestFunction>(new energyLossTestFunction());
+			_testObjFunc->_sharedDID = sharedDID;
 
 
 			//shared_ptr<trajectoryCheck> _trajectoryCheck = shared_ptr<trajectoryCheck>(new trajectoryCheck());
@@ -420,16 +433,20 @@ namespace rovin
 			//cout << nonLinearIneqFunc->_sharedDID->getJointAcc(_optActiveJointIdx) << endl;
 			//pair<MatrixX, VectorX> AB = generateLinearInequalityConstraint2(_optActiveJointIdx, _optActiveJointDOF);
 
-			//cout << "analytic jacobian" << endl;
-			////MatrixX Ja = (*nonLinearIneqFunc).Jacobian(x);
+			cout << "func" << endl;
+			cout << (*_objectiveFunc).func(x) << endl;
+			cout << (*_testObjFunc).func(x) << endl;
+
+			cout << "analytic jacobian" << endl;
+			//MatrixX Ja = (*nonLinearIneqFunc).Jacobian(x);
 			//int nStartVel = 2 * _nMiddleCP*_optActiveJointDOF;
 			//int nStartAcc = nStartVel + 2 * _optActiveJointDOF*_nStep;
-			//MatrixX Ja = AB.first.block(nStartVel + timeStep*_optActiveJointDOF, 0, _optActiveJointDOF, _optActiveJointDOF*_nMiddleCP);
-			//cout << Ja << endl;
+			MatrixX Ja = (*_objectiveFunc).Jacobian(x);
+			cout << Ja << endl;
 
-			//cout << "numerical jacobian" << endl;
-			//MatrixX Jnum = (*_trajectoryCheck).Jacobian(x);
-			//cout << Jnum << endl;
+			cout << "numerical jacobian" << endl;
+			MatrixX Jnum = (*_testObjFunc).Jacobian(x);
+			cout << Jnum << endl;
 
 			//cout << "difference" << endl;
 			//cout << (Ja - Jnum).squaredNorm() << endl;
@@ -1544,6 +1561,32 @@ namespace rovin
 		}
 
 		///////////////////////////////////////// test function ////////////////////////////////////
+
+		Math::VectorX BSplinePointToPointOptimization::energyLossTestFunction::func(const Math::VectorX & x) const
+		{
+			const MatrixX& tauTrj = _sharedDID->getTau(x);
+			shared_ptr<MotorJoint> tempJointPtr;
+			Real voltage;
+			Real current;
+			VectorX val(1);
+			for (int i = 0; i < tauTrj.cols(); i++)
+			{
+				for (unsigned int j = 0, dofIdx = 0; j < _sharedDID->_socAssem->getMateList().size(); j++)
+				{
+					tempJointPtr = static_pointer_cast<MotorJoint>(_sharedDID->_socAssem->getJointPtrByMateIndex(j));
+					for (unsigned int k = 0; k < tempJointPtr->getDOF(); k++, dofIdx++)
+					{
+						current = 1.0 / (tempJointPtr->getMotorConstant() * tempJointPtr->getGearRatio()) * tauTrj(dofIdx, i)
+							+ 1.0 / tempJointPtr->getMotorConstant() * tempJointPtr->getRotorInertia()*_sharedDID->_stateTrj[i]->getJointStateByMateIndex(j).getqddot()(k);
+						voltage = current * tempJointPtr->getResistance() + tempJointPtr->getBackEMFConstant() * tempJointPtr->getGearRatio() * _sharedDID->_stateTrj[i]->getJointStateByMateIndex(j).getqdot()(k);
+						val(0) += max(current * voltage, 0.0);
+
+					}
+				}
+			}
+			return _sharedDID->_dt * val;
+		}
+
 
 		Math::VectorX BSplinePointToPointOptimization::trajectoryCheck::func(const Math::VectorX & x) const
 		{
