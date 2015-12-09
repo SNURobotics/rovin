@@ -79,9 +79,10 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>..\..\;C:\SNURobotics\include\</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\;C:\SNURobotics\include\;C:\SNURobotics\include\NLopt</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <MinimalRebuild>false</MinimalRebuild>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -108,7 +109,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>..\..\;C:\SNURobotics\include\</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\;C:\SNURobotics\include\;C:\SNURobotics\include\NLopt</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <PreprocessorDefinitions>_MBCS;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -139,6 +140,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Common.cpp" />
+    <ClCompile Include="GaussianQuadrature.cpp" />
     <ClCompile Include="Inertia.cpp" />
     <ClCompile Include="Optimization.cpp" />
     <ClCompile Include="SE3.cpp" />
@@ -147,6 +149,7 @@
   <ItemGroup>
     <ClInclude Include="Common.h" />
     <ClInclude Include="Constant.h" />
+    <ClInclude Include="GaussianQuadrature.h" />
     <ClInclude Include="Inertia.h" />
     <ClInclude Include="LieGroup.h" />
     <ClInclude Include="Numeric.h" />

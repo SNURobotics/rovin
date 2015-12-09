@@ -8,7 +8,7 @@
 #define PERFORM_TEST(loop,iteration)\
 	do{\
 	unsigned begin  = clock();\
-	for(int i = 0 ; i < iteration ; i++){loop;}\
+	for(int i = 0 ; i < iteration ; i++){loop}\
 	cout<<clock()-begin<<"	ms"<<endl;\
 	}\
 	while(false);\

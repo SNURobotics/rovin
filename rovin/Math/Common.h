@@ -41,9 +41,22 @@ namespace rovin
 		public:
 			EmptyFunction() {}
 
-			VectorX func(const VectorX& x) const { return VectorX::Zero(1); }
+			VectorX func(const VectorX& x) const { return VectorX::Ones(1)*(-1); }
 			MatrixX Jacobian(const VectorX& x) const { return MatrixX::Zero(1, x.size()); }
 			std::vector< MatrixX > Hessian(const VectorX& x) const { std::vector< MatrixX > hs(1); hs[0] = MatrixX::Zero(x.size(), x.size()); return hs; }
+		};
+
+		class LinearFunction : public Math::Function
+		{
+			
+		public:
+			LinearFunction() {}
+			Math::MatrixX A;
+			Math::VectorX b;
+
+			Math::VectorX func(const Math::VectorX& x) const;
+			Math::MatrixX Jacobian(const Math::VectorX& x) const;
+			std::vector< Math::MatrixX > Hessian(const Math::VectorX& x) const;
 		};
 
 		static Real min(Real x, Real y)

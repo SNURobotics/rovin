@@ -26,6 +26,9 @@ namespace rovin
 		typedef Eigen::Matrix<Real, 4, 1>		Vector4;
 		typedef Eigen::Matrix<Real, 6, 1>		Vector6;
 
+		typedef Eigen::Matrix<unsigned int, -1, 1>		VectorU;
+		typedef Eigen::Matrix<int, -1, 1>				VectorI;
+
 		static const Real	PI_DOUBLE				= 6.28318530717958647692;
 		static const Real	Inv_PI_DOUBLE			= 0.15915494309189533576901767873386;
 		static const Real	PI						= 3.14159265358979323846;
@@ -48,6 +51,19 @@ namespace rovin
 				return true;
 			}
 			return false;
+		}
+
+		static bool RealEqual(const VectorX& operand1, const VectorX& operand2)
+		{
+			if (operand1.size() != operand2.size()) return false;
+			for (int i = 0; i < operand1.size(); i++)
+			{
+				if (!RealEqual(operand1(i), operand2(i)))
+				{
+					return false;
+				}
+			}
+			return true;
 		}
 
 		static bool RealEqual(const VectorX& operand1, const Real& operand2)

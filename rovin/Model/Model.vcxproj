@@ -82,6 +82,7 @@
       <AdditionalIncludeDirectories>..\..\;C:\SNURobotics\include\</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <MinimalRebuild>false</MinimalRebuild>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -151,6 +152,7 @@
     <ClInclude Include="Joint.h" />
     <ClInclude Include="Link.h" />
     <ClInclude Include="Assembly.h" />
+    <ClInclude Include="MotorJoint.h" />
     <ClInclude Include="PrismaticJoint.h" />
     <ClInclude Include="RevoluteJoint.h" />
     <ClInclude Include="ScrewJoint.h" />

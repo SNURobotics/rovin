@@ -1,4 +1,5 @@
 #include "SimpleOSG.h"
+#include <osgUtil/IncrementalCompileOperation>
 
 #include <cmath>
 
@@ -20,6 +21,7 @@ namespace rovin
 		osg::ref_ptr< osg::Node > convertGeo2Node(const Model::GeometryInfoPtr geoPtr)
 		{
 			osg::ref_ptr< osg::MatrixTransform > transformNode;
+			osg::ref_ptr< osg::MatrixTransform > scaleSTL;
 
 			switch (geoPtr->getType())
 			{
@@ -60,8 +62,19 @@ namespace rovin
 
 			case Model::GeometryInfo::GEOMETRY_TYPE::_MESH:
 			{
+				osgUtil::Optimizer optimzer;
+				auto meshPtr = std::static_pointer_cast<Model::Mesh>(geoPtr);
+				osg::ref_ptr<osg::Node> node = osgDB::readNodeFile(meshPtr->getUrl());
 				transformNode = new osg::MatrixTransform;
-				// TODO
+				transformNode->setMatrix(convertMatrix(geoPtr->getTransform()));
+				scaleSTL = new osg::MatrixTransform;
+				scaleSTL->setMatrix(osg::Matrixd::scale(meshPtr->getDimension(), meshPtr->getDimension(), meshPtr->getDimension()));
+				scaleSTL->getOrCreateStateSet()->setMode(GL_RESCALE_NORMAL, osg::StateAttribute::ON);
+				node->setCullingActive(true);
+				node->setDataVariance(osg::Object::DataVariance::STATIC);
+				optimzer.optimize(node);
+				scaleSTL->addChild(node);
+				transformNode->addChild(scaleSTL);
 				return transformNode;
 			}
 
@@ -113,28 +126,39 @@ namespace rovin
 			_cameraManipulator = new osgGA::TerrainManipulator();
 			_rootNode = new osg::Group;
 
-			_rootNode->addChild(createGround());
-
-			osgUtil::Optimizer optimzer;
-			optimzer.optimize(_rootNode);
+			osg::ref_ptr< osg::MatrixTransform > rootGroup = new osg::MatrixTransform;
+			rootGroup->addChild(createGround());
 
 			std::vector< Model::LinkPtr > linkPtr = assem.getLinkList();
+			std::vector<Model::GeometryInfoPtr>& shapes = std::vector<Model::GeometryInfoPtr>();
 			for (unsigned int i = 0; i < linkPtr.size(); i++)
 			{
 				const Model::State::LinkState &linkState = state.getLinkState(linkPtr[i]->getName());
 
 				osg::ref_ptr< osg::MatrixTransform > transformNode = new osg::MatrixTransform;
 				transformNode->setMatrix(convertMatrix(linkState._T));
-				transformNode->addChild(convertGeo2Node(linkPtr[i]->getVisualGeometry()));
-				_Link.push_back(NodeStatePair(transformNode, &linkState));
+				shapes = linkPtr[i]->getDrawingShapes();
+				for (unsigned int j = 0; j< shapes.size(); j++)
+					transformNode->addChild(convertGeo2Node(shapes[j]));
+				_NodeStateList.push_back(NodeStatePair(transformNode, &linkState));
 
-				_rootNode->addChild(transformNode);
+				rootGroup->addChild(transformNode);
 			}
+			_optimzer.optimize(rootGroup);
+			_rootNode->addChild(rootGroup);
 
+			rootGroup->setMatrix(osg::Matrix(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, -0.7f, 1));
+			_cameraManipulator->setDistance(5.0f);
+			_cameraManipulator->setRotation(osg::Quat(1, osg::Vec3d(1, 0, 0)));
+
+			osg::ref_ptr<osgUtil::IncrementalCompileOperation> ico = new osgUtil::IncrementalCompileOperation;
+			ico->add(rootGroup);
+			ico->release();
+			_viewer.setIncrementalCompileOperation(ico);
 			_viewer.setUpViewInWindow(40, 40, width, height);
 			_viewer.setSceneData(_rootNode);
 			_viewer.getCamera()->setClearColor(osg::Vec4(1.0f, 1.0f, 1.0f, 1.0f));
-			_viewer.setCameraManipulator(_cameraManipulator.get(), true);
+			_viewer.setCameraManipulator(_cameraManipulator.get(), false);
 			_viewer.addEventHandler(new osgViewer::WindowSizeHandler);
 			_viewer.addEventHandler(new SimpleGUIHandler());
 		}
@@ -205,6 +229,14 @@ namespace rovin
 			geode->addDrawable(geom);
 
 			return geode;
+		}
+		void SimpleOSG::updateFrame()
+		{
+			for (unsigned int i = 0; i < _NodeStateList.size(); i++)
+			{
+				_NodeStateList[i].first->setMatrix(convertMatrix(_NodeStateList[i].second->_T));
+			}
+			_viewer.frame();
 		}
 	}
 }

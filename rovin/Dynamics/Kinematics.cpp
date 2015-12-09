@@ -67,7 +67,7 @@ namespace rovin
 		VectorX S;
 		while ((S = Kinematics::computeClosedLoopConstraintFunction(assem, state)).squaredNorm() >= RealEps)
 		{
-			state.addPassiveJointq(-pInv(Kinematics::computeClosedLoopConstraintJacobian(assem, state, State::PASSIVEJOINT))*S);
+			state.addJointq(State::PASSIVEJOINT, -pInv(Kinematics::computeClosedLoopConstraintJacobian(assem, state, State::PASSIVEJOINT))*S);
 		}
 	}
 
@@ -77,12 +77,11 @@ namespace rovin
 
 		if (state.getJointReferenceFrame() != JointReferenceFrame::JOINTFRAME)
 		{
-			state.needUpdate(true, true, true);
-			state._accumulatedT = state._accumulatedJ = state._accumulatedJDot = false;
+			state.setInfoUpToDate(State::ALL_INFO, false);
 			state.setJointReferenceFrame(JointReferenceFrame::JOINTFRAME);
 		}
 
-		if ((options & TRANSFORM) && !state.isUpdated(true, false, false))
+		if ((options & State::LINKS_POS) && !state.getInfoUpToDate(State::LINKS_POS))
 		{
 			for (unsigned int i = 0; i < assem._Tree.size(); i++)
 			{
@@ -93,7 +92,7 @@ namespace rovin
 					state.getLinkState(assem._Mate[mateIdx].getParentLinkIdx(assem._Tree[i].second))._T *
 					assem.getTransform(mateIdx, state.getJointStateByMateIndex(mateIdx), assem._Tree[i].second);
 			}
-			state.TUpdated();
+			state.setInfoUpToDate(State::LINKS_POS);
 		}
 	}
 
@@ -138,7 +137,7 @@ namespace rovin
 	{
 		solveClosedLoopConstraint(assem, state);
 
-		utils::Log(state.getActiveJointDof() == 0, "Active Joint는 하나 이상이어야 합니다.", true);
+		utils::Log(state.getDOF(State::ACTIVEJOINT) == 0, "Active Joint는 하나 이상이어야 합니다.", true);
 		MatrixX J(6, state.getDOF(State::STATEJOINT));
 		MatrixX ReturnJ;
 
@@ -210,19 +209,19 @@ namespace rovin
 			T *= assem.getTransform(mateIdx, state.getJointStateByMateIndex(mateIdx), iter->second);
 		}
 
-		if (state.getTotalJointDof() != state.getActiveJointDof())
+		if (state.getDOF(State::PASSIVEJOINT) != 0)
 		{
 			if (assem._ClosedLoopConstraint.size() == 0)
-				ReturnJ = J.block(0, 0, 6, state.getActiveJointDof()).eval();
+				ReturnJ = J.block(0, 0, 6, state.getDOF(State::ACTIVEJOINT)).eval();
 			else
 			{
 				MatrixX Jc = computeClosedLoopConstraintJacobian(assem, state, State::STATEJOINT);
 
-				const MatrixX &Jca = Jc.block(0, 0, Jc.rows(), state.getActiveJointDof());
-				const MatrixX &Jcp = Jc.block(0, state.getActiveJointDof(), Jc.rows(), state.getTotalJointDof() - state.getActiveJointDof());
+				const MatrixX &Jca = Jc.block(0, 0, Jc.rows(), state.getDOF(State::ACTIVEJOINT));
+				const MatrixX &Jcp = Jc.block(0, state.getDOF(State::ACTIVEJOINT), Jc.rows(), state.getDOF(State::PASSIVEJOINT));
 
-				ReturnJ = J.block(0, 0, 6, state.getActiveJointDof()) -
-					J.block(0, state.getActiveJointDof(), 6, state.getTotalJointDof() - state.getActiveJointDof()) * pInv(Jcp) * Jca;
+				ReturnJ = J.block(0, 0, 6, state.getDOF(State::ACTIVEJOINT)) -
+					J.block(0, state.getDOF(State::ACTIVEJOINT), 6, state.getDOF(State::PASSIVEJOINT)) * pInv(Jcp) * Jca;
 			}
 		}
 		else
@@ -278,7 +277,7 @@ namespace rovin
 
 	void Kinematics::solveInverseKinematics(const Assembly& assem, State& state, const SE3& goalT, const unsigned int targetLinkIndex, int referenceLinkIndex)
 	{
-		utils::Log(state.getActiveJointDof() == 0, "Active Joint는 하나 이상이어야 합니다.", true);
+		utils::Log(state.getDOF(State::ACTIVEJOINT) == 0, "Active Joint는 하나 이상이어야 합니다.", true);
 
 		if (referenceLinkIndex == -1) referenceLinkIndex = assem._baseLink;
 		VectorX S;
@@ -288,7 +287,7 @@ namespace rovin
 			TnJ = computeTransformNJacobian(assem, state, targetLinkIndex, referenceLinkIndex);
 			if ((S = SE3::Log(goalT * TnJ.first.inverse())).norm() < InverseKinematicsExitCondition)
 				break;
-			state.addActiveJointq(pInv(TnJ.second) * S);
+			state.addJointq(State::ACTIVEJOINT, pInv(TnJ.second) * S);
 		}
 	}
 
@@ -296,12 +295,11 @@ namespace rovin
 	{
 		if (state.getJointReferenceFrame() != JointReferenceFrame::SPATIAL)
 		{
-			state.needUpdate(true, true, true);
-			state._accumulatedT = state._accumulatedJ = state._accumulatedJDot = false;
+			state.setInfoUpToDate(State::ALL_INFO, false);
 			state.setJointReferenceFrame(JointReferenceFrame::SPATIAL);
 		}
 
-		if ((options & (ACCUMULATED_T | ACCUMULATED_J | ACCUMULATED_JDOT | TRANSFORM | VELOCITY | ACCELERATION)) && !state._accumulatedT)
+		if ((options & State::JOINTS_T_FROM_BASE | State::JOINTS_JACOBIAN | State::JOINTS_JACOBIAN_DOT | State::LINKS_POS | State::LINKS_VEL | State::LINKS_ACC) && !state.getInfoUpToDate(State::JOINTS_T_FROM_BASE))
 		{
 			SE3 T;
 			state.getLinkState(assem._baseLink)._T = assem._socLink[assem._baseLink]._M;
@@ -312,12 +310,42 @@ namespace rovin
 				T *= assem.getTransform(mateIdx, state.getJointStateByMateIndex(mateIdx));
 				state.getJointStateByMateIndex(mateIdx)._accumulatedT = T;
 			}
-			state._accumulatedT = true;
-			state._accumulatedJ = state._accumulatedJDot = false;
-			state.needUpdate(true, true, true);
+			state.setInfoUpToDate(State::ALL_INFO, false);
+			state.setInfoUpToDate(State::JOINTS_T_FROM_BASE, true);
 		}
 
-		if ((options & TRANSFORM) && !state.isUpdated(true, false, false))
+		if ((options & (State::LINKS_VEL | State::LINKS_ACC)) == (State::LINKS_VEL | State::LINKS_ACC) && (!state.getInfoUpToDate(State::LINKS_VEL) || !state.getInfoUpToDate(State::LINKS_ACC)))
+		{
+			se3 V;
+			se3 VDot;
+			se3 temp;
+			V.setZero();
+			VDot.setZero();
+			VDot(5) = 9.8;
+
+			state.getLinkState(assem._baseLink)._V = V;
+			state.getLinkState(assem._baseLink)._VDot = VDot;
+			for (unsigned int i = 0; i < assem._Tree.size(); i++)
+			{
+				unsigned int mateIdx = assem._Tree[i].first;
+				state.getJointStateByMateIndex(mateIdx)._accumulatedJ.resize(6, state.getJointState(mateIdx).getDOF());
+				for (unsigned int j = 0; j < state.getJointState(mateIdx).getDOF(); j++)
+				{
+					if (i == 0) temp = assem.getJacobian(mateIdx, state.getJointStateByMateIndex(mateIdx)).col(j);
+					else temp = SE3::Ad(state.getJointStateByMateIndex(assem._Tree[i - 1].first)._accumulatedT, assem.getJacobian(mateIdx, state.getJointStateByMateIndex(mateIdx)).col(j));
+					state.getJointStateByMateIndex(mateIdx)._accumulatedJ.col(j) = temp;
+					VDot += temp*state.getJointStateByMateIndex(mateIdx).getqddot()(j) + SE3::ad(V, temp)*state.getJointStateByMateIndex(mateIdx).getqdot()(j);
+					V += temp*state.getJointStateByMateIndex(mateIdx).getqdot()(j);
+				}
+				state.getLinkState(assem._Mate[mateIdx].getChildLinkIdx(assem._Tree[i].second))._V = V;
+				state.getLinkState(assem._Mate[mateIdx].getChildLinkIdx(assem._Tree[i].second))._VDot = VDot;
+			}
+			state.setInfoUpToDate(State::JOINTS_JACOBIAN);
+			state.setInfoUpToDate(State::LINKS_VEL);
+			state.setInfoUpToDate(State::LINKS_ACC);
+		}
+
+		if ((options & State::LINKS_POS) && !state.getInfoUpToDate(State::LINKS_POS))
 		{
 			state.getLinkState(assem._baseLink)._T = assem._socLink[assem._baseLink]._M;
 			for (unsigned int i = 0; i < assem._Tree.size(); i++)
@@ -327,10 +355,12 @@ namespace rovin
 				state.getLinkState(assem._Mate[mateIdx].getChildLinkIdx())._T = state.getJointStateByMateIndex(mateIdx)._accumulatedT * 
 					assem._socLink[assem._Mate[mateIdx].getChildLinkIdx()]._M;
 			}
-			state.TUpdated();
+			state.setInfoUpToDate(State::LINKS_POS);
 		}
 
-		if ((options & (ACCUMULATED_J | ACCUMULATED_JDOT | VELOCITY | ACCELERATION)) && !state._accumulatedJ)
+		if (((options & (State::JOINTS_JACOBIAN | State::JOINTS_JACOBIAN_DOT)) && !state.getInfoUpToDate(State::JOINTS_JACOBIAN)) ||
+			((options & State::LINKS_VEL) && !state.getInfoUpToDate(State::LINKS_VEL)) ||
+			((options & State::LINKS_ACC) && !state.getInfoUpToDate(State::LINKS_ACC)))
 		{
 			for (unsigned int i = 0; i < assem._Tree.size(); i++)
 			{
@@ -345,12 +375,11 @@ namespace rovin
 					state.getJointStateByMateIndex(mateIdx)._accumulatedJ = assem.getJacobian(mateIdx, state.getJointStateByMateIndex(mateIdx));
 				}
 			}
-			state._accumulatedJ = true;
-			state._accumulatedJDot = false;
-			state.needUpdate(false, true, true);
+			state.setInfoUpToDate(State::JOINTS_JACOBIAN);
+			state.setInfoUpToDate(State::JOINTS_JACOBIAN_DOT|State::LINKS_VEL|State::State::LINKS_ACC, false);
 		}
 
-		if ((options & VELOCITY) && !state.isUpdated(false, true, false))
+		if ((options & State::LINKS_VEL) && !state.getInfoUpToDate(State::LINKS_VEL))
 		{
 			se3 V;
 			V.setZero();
@@ -359,14 +388,14 @@ namespace rovin
 			for (unsigned int i = 0; i < assem._Tree.size(); i++)
 			{
 				unsigned int mateIdx = assem._Tree[i].first;
-
 				V += state.getJointStateByMateIndex(mateIdx)._accumulatedJ * state.getJointStateByMateIndex(mateIdx).getqdot();
 				state.getLinkState(assem._Mate[mateIdx].getChildLinkIdx(assem._Tree[i].second))._V = V;
 			}
-			state.VUpdated();
+			state.setInfoUpToDate(State::LINKS_VEL);
 		}
 
-		if ((options & (ACCUMULATED_JDOT| ACCELERATION)) && !state._accumulatedJDot)
+		if (((options & State::JOINTS_JACOBIAN_DOT) && !state.getInfoUpToDate(State::JOINTS_JACOBIAN_DOT)) ||
+			((options & State::LINKS_ACC) && !state.getInfoUpToDate(State::LINKS_ACC)))
 		{
 			Matrix6 adjoint;
 			adjoint.setZero();
@@ -389,15 +418,15 @@ namespace rovin
 					adjoint += SE3::ad(state.getJointStateByMateIndex(mateIdx)._accumulatedJ.col(j)) * state.getJointStateByMateIndex(mateIdx).getqdot()[j];
 				}
 			}
-			state._accumulatedJDot = true;
-			state.needUpdate(false, false, true);
+			state.setInfoUpToDate(State::JOINTS_JACOBIAN_DOT);
+			state.setInfoUpToDate(State::LINKS_ACC,false);
 		}
 
-		if ((options & ACCELERATION) && !state.isUpdated(false, false, true))
+		if ((options & State::State::LINKS_ACC) && !state.getInfoUpToDate(State::LINKS_ACC))
 		{
 			se3 VDot;
 			VDot.setZero();
-
+			VDot(5) = 9.8;
 			state.getLinkState(assem._baseLink)._VDot = VDot;
 			for (unsigned int i = 0; i < assem._Tree.size(); i++)
 			{
@@ -407,19 +436,19 @@ namespace rovin
 					state.getJointStateByMateIndex(mateIdx)._accumulatedJDot * state.getJointStateByMateIndex(mateIdx).getqdot();
 				state.getLinkState(assem._Mate[mateIdx].getChildLinkIdx(assem._Tree[i].second))._VDot = VDot;
 			}
-			state.VDotUpdated();
+			state.setInfoUpToDate(State::LINKS_ACC);
 		}
 	}
 
 	Math::SE3 Kinematics::calculateEndeffectorFrame(const SerialOpenChainAssembly& assem, State& state)
 	{
-		solveForwardKinematics(assem, state, ACCUMULATED_T);
+		solveForwardKinematics(assem, state, State::JOINTS_T_FROM_BASE);
 		return state.getJointStateByMateIndex(assem._Tree[assem._Tree.size() - 1].first)._accumulatedT * assem._socLink[assem._endeffectorLink]._M;
 	}
 
 	Matrix6X Kinematics::computeJacobian(const SerialOpenChainAssembly& assem, State& state)
 	{
-		solveForwardKinematics(assem, state, ACCUMULATED_J);
+		solveForwardKinematics(assem, state, State::JOINTS_JACOBIAN);
 
 		MatrixX J(6, state.getDOF(State::ACTIVEJOINT));
 
@@ -439,7 +468,7 @@ namespace rovin
 
 	Matrix6X Kinematics::computeJacobianDot(const SerialOpenChainAssembly& assem, State& state)
 	{
-		solveForwardKinematics(assem, state, ACCUMULATED_JDOT);
+		solveForwardKinematics(assem, state, State::JOINTS_JACOBIAN_DOT);
 
 		MatrixX JDot(6, state.getDOF(State::ACTIVEJOINT));
 
@@ -463,12 +492,12 @@ namespace rovin
 		Matrix6X J;
 		while (true)
 		{
-			solveForwardKinematics(assem, state, ACCUMULATED_T);
+			solveForwardKinematics(assem, state, State::JOINTS_T_FROM_BASE);
 
 			J = computeJacobian(assem, state);
 			if ((S = SE3::Log(goalT * (state.getJointStateByMateIndex(assem._Tree[assem._Tree.size() - 1].first)._accumulatedT * assem._socLink[assem._endeffectorLink]._M).inverse())).norm() < InverseKinematicsExitCondition)
 				break;
-			state.addActiveJointq(pInv(J) * S);
+			state.addJointq(State::ACTIVEJOINT, pInv(J) * S);
 		}
 	}
 }

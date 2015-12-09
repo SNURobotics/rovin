@@ -16,7 +16,7 @@ namespace rovin
 				_algorithm = LineSearch::Algorithm::Backtracking;
 				_alpha0 = 1.0;
 				_tau = 0.90;
-				_c = 0.01;
+				_c = 0.1;
 			}
 		}
 
@@ -34,7 +34,7 @@ namespace rovin
 			_alpha = _alpha0;
 			Real t = -_c*((*_objectiveFunc).Jacobian(x)*P)(0);
 			Real fval = (*_objectiveFunc)(x)(0);
-			while (RealLess(fval - (*_objectiveFunc)(x + _alpha*P)(0), _alpha*t))
+			while (RealLess(fval - (*_objectiveFunc)(x + _alpha*P)(0), _alpha*t) && _alpha >= RealEps)
 			{
 				_alpha *= _tau;
 			}
@@ -49,9 +49,9 @@ namespace rovin
 			if (algo == QPOptimization::Algorithm::InteriorPoint)
 			{
 				_algorithm = QPOptimization::Algorithm::InteriorPoint;
-				_maxIteration = 150;
+				_maxIteration = 300;
 				_stepSize = 0.95;
-				_tolCon = 1e-8;
+				_tolCon = 1e-6;
 			}
 		}
 
@@ -221,7 +221,7 @@ namespace rovin
 					break;
 				}
 			}
-			if (!(OptRealEqual(_A*_xf-_b, 0.0) && OptRealLessEqual(_C*_xf-_d, 0.0)) || !OptRealLessEqual(_xf, 1/OptEps))
+			if (!(OptRealEqual(_A*_xf - _b, 0.0) && OptRealLessEqual(_C*_xf - _d, 0.0)) || !OptRealLessEqual(_xf, 1 / OptEps))
 			{
 				_exit = ExitFlag::InfeasibleProblem;
 			}
@@ -255,6 +255,11 @@ namespace rovin
 				_tolCon = 1e-5;
 				_maxIteration = 5000;
 			}
+			else if (algo == NonlinearOptimization::Algorithm::NLopt)
+			{
+				_algorithm = NonlinearOptimization::Algorithm::NLopt;
+				obj = eq = ineq = false;
+			}
 		}
 
 		VectorX NonlinearOptimization::solve(const VectorX& x)
@@ -263,7 +268,103 @@ namespace rovin
 			{
 				return SQPMethod(x);
 			}
+			else if (_algorithm == NonlinearOptimization::Algorithm::NLopt)
+			{
+				return NLoptMethod(x);
+			}
 			return x;
+		}
+
+		double objective(unsigned n, const double* x, double* grad, void *f_data)
+		{
+			NonlinearOptimization* ptr = reinterpret_cast<NonlinearOptimization*>(f_data);
+			VectorX xv(n);
+			for (unsigned int i = 0; i < n; i++) xv(i) = x[i];
+			if (grad)
+			{
+				MatrixX jacobian = (*ptr->_objectiveFunc).Jacobian(xv);
+				for (unsigned int j = 0; j < n; j++)
+				{
+					grad[j] = jacobian(0, j);
+				}
+			}
+			//cout << (*ptr->_objectiveFunc)(xv)(0) << endl;
+			return (*ptr->_objectiveFunc)(xv)(0);
+		}
+
+		void mineqconstraint(unsigned m, double* result, unsigned n, const double* x, double* grad, void* f_data)
+		{
+			NonlinearOptimization* ptr = reinterpret_cast<NonlinearOptimization*>(f_data);
+			VectorX xv(n);
+			for (unsigned int i = 0; i < n; i++) xv(i) = x[i];
+			if (grad)
+			{
+				MatrixX jacobian = (*ptr->_ineqFunc).Jacobian(xv);
+				for (unsigned int i = 0; i < m; i++)
+				{
+					for (unsigned int j = 0; j < n; j++)
+					{
+						grad[i*n + j] = jacobian(i, j);
+					}
+				}
+			}
+			VectorX fval = (*ptr->_ineqFunc)(xv);
+			for (unsigned int i = 0; i < m; i++)
+			{
+				result[i] = fval(i);
+			}
+		}
+
+		void meqconstraint(unsigned m, double* result, unsigned n, const double* x, double* grad, void* f_data)
+		{
+			NonlinearOptimization* ptr = reinterpret_cast<NonlinearOptimization*>(f_data);
+			VectorX xv(n);
+			for (unsigned int i = 0; i < n; i++) xv(i) = x[i];
+			if (grad)
+			{
+				MatrixX jacobian = (*ptr->_eqFunc).Jacobian(xv);
+				for (unsigned int i = 0; i < m; i++)
+				{
+					for (unsigned int j = 0; j < n; j++)
+					{
+						grad[i*n + j] = jacobian(i, j);
+					}
+				}
+			}
+			VectorX fval = (*ptr->_eqFunc)(xv);
+			for (unsigned int i = 0; i < m; i++)
+			{
+				result[i] = fval(i);
+			}
+		}
+
+		VectorX NonlinearOptimization::NLoptMethod(const VectorX& x)
+		{
+			_xf = x;
+
+			int xN = _xf.size();
+			int eqN = (*_eqFunc)(_xf).size();
+			int ineqN = (*_ineqFunc)(_xf).size();
+
+			opt = nlopt::opt(nlopt::LD_MMA, xN);
+			opt.set_min_objective(objective, this);
+			opt.add_inequality_mconstraint(mineqconstraint, this, vector<Real>(ineqN, 1e-8));
+			//opt.add_equality_mconstraint(meqconstraint, this, vector<Real>(eqN, 1e-8));
+			opt.set_xtol_rel(1e-4);
+			opt.set_ftol_rel(1e-4);
+
+			std::vector<Real> xi(xN);
+			for (int i = 0; i < xN; i++)
+			{
+				xi[i] = _xf(i);
+			}
+			double minf;
+			nlopt::result result = opt.optimize(xi, minf);
+			for (int i = 0; i < xN; i++)
+			{
+				_xf(i) = xi[i];
+			}
+			return _xf;
 		}
 
 		VectorX NonlinearOptimization::SQPMethod(const VectorX& x)
@@ -281,35 +382,10 @@ namespace rovin
 			VectorX d(xN);
 
 			// InitialGuess
-			NewtonRapshon nr;
-			FunctionPtr constraintFunction = FunctionPtr(new ConstraintFunction(xN, eqN, ineqN));
-			static_pointer_cast<ConstraintFunction>(constraintFunction)->_ceq = _eqFunc;
-			static_pointer_cast<ConstraintFunction>(constraintFunction)->_cineq = _ineqFunc;
-			VectorX xnr(xN + ineqN), eta(xN + ineqN);
-			MatrixX nrJ;
-			bool flag;
-			xnr.head(xN) = _xf;
-			xnr.tail(ineqN).setOnes();
-			nr._func = constraintFunction;
-			xnr = nr.solve(xnr);
-			while (true)
-			{
-				eta.setZero();
-				flag = false;
-				for (int i = xN; i < xN + ineqN; i++)
-				{
-					if (OptRealLessEqual(xnr(i), 0.0))
-					{
-						eta(i) = -xnr(i) + 10;
-						flag = true;
-					}
-				}
-				if (!flag) break;
-				nrJ = static_pointer_cast<ConstraintFunction>(constraintFunction)->Jacobian(xnr);
-				xnr += eta - nrJ.transpose()*(nrJ*nrJ.transpose()).ldlt().solve(nrJ*eta);
-			}
-			cout << xnr << endl;
-			_xf = xnr.head(xN);
+			//ProjectToFeasibleSpace projectToFeasibleSpace;
+			//projectToFeasibleSpace._eqConstraintFunc = _eqFunc;
+			//projectToFeasibleSpace._inEqConstraintFunc = _ineqFunc;
+			//_xf = projectToFeasibleSpace.project(_xf);
 
 			// QPOptimization
 			QPOptimization qpSolver;
@@ -333,7 +409,7 @@ namespace rovin
 			// LineSearch
 			LineSearch linesearchSolver;
 			linesearchSolver._objectiveFunc = meritFunction;
-			linesearchSolver._alpha0 = 1.0;
+			//linesearchSolver._alpha0 = 1.0;
 
 			Real alpha, theta, fval, fval_last;
 			MatrixX H(xN, xN);
@@ -356,25 +432,29 @@ namespace rovin
 				{
 					d = qpSolver._G.ldlt().solve(-qpSolver._g).normalized();
 				}
-
-				theta = RealMin;
-				for (int i = 0; i < eqN; i++)
+				else
 				{
-					theta = max(std::abs(qpSolver._y(i)), theta);
+					theta = RealMin;
+					for (int i = 0; i < eqN; i++)
+					{
+						theta = max(std::abs(qpSolver._y(i)), theta);
+					}
+					for (int i = 0; i < ineqN; i++)
+					{
+						theta = max(qpSolver._z(i), theta);
+					}
+					if (RealBiggerEqual(static_pointer_cast<MeritFunction>(meritFunction)->_theta, theta));
+					else static_pointer_cast<MeritFunction>(meritFunction)->_theta = max(static_pointer_cast<MeritFunction>(meritFunction)->_theta * 2, theta);
 				}
-				for (int i = 0; i < ineqN; i++)
-				{
-					theta = max(qpSolver._z(i), theta);
-				}
-				if (RealBiggerEqual(static_pointer_cast<MeritFunction>(meritFunction)->_theta, theta));
-				else static_pointer_cast<MeritFunction>(meritFunction)->_theta = max(static_pointer_cast<MeritFunction>(meritFunction)->_theta * 2, theta);
-				alpha = max(linesearchSolver.solve(_xf, d), 0.15);
+				alpha = linesearchSolver.solve(_xf, d);
 				_xf += alpha*d;
 
 				// DISPLAY
 				fval_last = fval;
 				fval = (*_objectiveFunc)(_xf)(0);
-				//cout << fval << " " << alpha*d.norm() << endl;
+				cout << fval << " " << alpha << endl;
+				//cout << d << endl;
+				//cout << (*_objectiveFunc).Jacobian(_xf) << endl;
 
 				if (OptRealLessEqual(alpha*d.norm(), _tolCon) || OptRealEqual(fval_last, fval))
 				{
@@ -393,7 +473,7 @@ namespace rovin
 						H += qpSolver._y(i) * Hessian[i];
 					}
 					Hessian = (*_ineqFunc).Hessian(_xf);
-					for (int i = 0; i < eqN; i++)
+					for (int i = 0; i < ineqN; i++)
 					{
 						H += qpSolver._z(i) * Hessian[i];
 					}
@@ -414,13 +494,115 @@ namespace rovin
 			_xf = x;
 
 			VectorX f;
-
+			MatrixX J;
 			while (!OptRealEqual(f = (*_func)(_xf), 0.0))
 			{
-				_xf += pInv((*_func).Jacobian(_xf))*(-f);
+				J = (*_func).Jacobian(_xf);
+				_xf += J.transpose()*(J*J.transpose()).ldlt().solve(-f);
 			}
 
 			return _xf;
+		}
+		ProjectToFeasibleSpace::ProjectToFeasibleSpace()
+		{
+			_tolCon = 1e-6;
+			_maxIter = 10000;
+		}
+		VectorX ProjectToFeasibleSpace::project(const VectorX & x0)
+		{
+			if (_eqConstraintFunc == NULL && _inEqConstraintFunc == NULL)
+				return x0;
+			else
+			{
+				int xN = x0.size();
+				int inEqN = (*_inEqConstraintFunc)(x0).size();
+
+				FunctionPtr augmentedFunc = FunctionPtr(new AugmentedFunction(xN, inEqN));
+				static_pointer_cast<AugmentedFunction> (augmentedFunc)->_eqConstraintFunc = _eqConstraintFunc;
+				static_pointer_cast<AugmentedFunction> (augmentedFunc)->_inEqConstraintFunc = _inEqConstraintFunc;
+				
+				NewtonRapshon nr;
+				nr._func = _eqConstraintFunc;
+				VectorX x(xN);
+				x = nr.solve(x0);
+				
+				VectorX xAug(xN + inEqN);
+				xAug.head(xN) = x;
+				xAug.tail(inEqN) = -(*_inEqConstraintFunc)(x);
+				
+				VectorX updateDir(xN + inEqN);
+				MatrixX J;
+				VectorX f;
+				int iter = 0;
+				while (1)
+				{
+					iter++;
+					updateDir.setZero();
+					for (int i = 0; i < inEqN; i++)
+					{
+						if (xAug(xN + i) < _tolCon)
+							updateDir(xN + i) = -xAug(xN + i) + 1;
+					}
+					f = (*augmentedFunc)(xAug);
+					//cout << "x = " << endl << xAug << endl;
+					//cout << "update = " << updateDir.squaredNorm() << endl << endl;
+					//cout << "f = " << f.squaredNorm() << endl << endl;
+					if (updateDir.squaredNorm() > 0.0 || f.squaredNorm() > _tolCon)
+					{
+						J = (*augmentedFunc).Jacobian(xAug);
+						updateDir = updateDir - J.transpose()
+							*(J*J.transpose()).ldlt().solve(J*updateDir);
+						xAug += -J.transpose() * (J*J.transpose()).ldlt().solve(f) + updateDir;
+					}
+					else
+						break;
+					if (iter > _maxIter)
+					{
+						cout << "Projection Failed !!!" << endl;
+						break;
+					}
+				}
+				return xAug.head(xN);
+			}
+		}
+		ProjectToFeasibleSpace::AugmentedFunction::AugmentedFunction(const int xN, const int inEqN)
+		{
+			_xN = xN;
+			_inEqN = inEqN;
+			_eqConstraintFunc = NULL;
+			_inEqConstraintFunc = NULL;
+		}
+		VectorX ProjectToFeasibleSpace::AugmentedFunction::func(const VectorX & x) const
+		{
+			VectorX xF = x.head(_xN);
+			VectorX s = x.tail(_inEqN);
+			VectorX valEq(0);
+			VectorX valInEq(0);
+			if (_eqConstraintFunc != NULL)
+				valEq = (*_eqConstraintFunc)(xF);
+			if (_inEqConstraintFunc != NULL)
+				valInEq = (*_inEqConstraintFunc)(xF) + s;
+			VectorX val(valEq.size() + valInEq.size());
+			val.head(valEq.size()) = valEq;
+			val.tail(valInEq.size()) = valInEq;
+			return val;
+		}
+		MatrixX ProjectToFeasibleSpace::AugmentedFunction::Jacobian(const VectorX & x) const
+		{
+			VectorX xF = x.head(_xN);
+			MatrixX valEq(0, 0);
+			MatrixX valInEq(0, 0);
+			if (_eqConstraintFunc != NULL)
+				valEq = (*_eqConstraintFunc).Jacobian(xF);
+			if (_inEqConstraintFunc != NULL)
+				valInEq = (*_inEqConstraintFunc).Jacobian(xF);
+			MatrixX val(valEq.rows() + valInEq.rows(), x.size());
+			val.setZero();
+			val.block(0, 0, valEq.rows(), _xN) = valEq;
+			val.block(valEq.rows(), 0, _inEqN, _xN) = valInEq;
+			for (int i = 0; i < _inEqN; i++)
+				val(valEq.rows() + i, _xN + i) = 1.0;
+			return val;
 		}
 	}
 }

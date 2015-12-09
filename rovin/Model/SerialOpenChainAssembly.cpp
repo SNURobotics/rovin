@@ -62,7 +62,7 @@ namespace rovin
 		{
 			if (jointState.getJointReferenceFrame() != JointReferenceFrame::SPATIAL)
 			{
-				jointState.needUpdate(true, true, true);
+				jointState.setInfoUpToDate(State::JointState::ALL_INFO, false);
 				jointState.setJointReferenceFrame(JointReferenceFrame::SPATIAL);
 			}
 
@@ -70,27 +70,27 @@ namespace rovin
 			const Math::VectorX &qdot = jointState.getqdot();
 			int dof = _socMate[mateIdx]._axes.cols();
 
-			if (((options & JOINT_TRANSFORM) | (options & JOINT_JACOBIAN) | (options & JOINT_JACOBIANDOT)) && !jointState.isUpdated(true, false, false))
+			if (((options & JOINT_TRANSFORM) | (options & JOINT_JACOBIAN) | (options & JOINT_JACOBIANDOT)) && !jointState.getInfoUpToDate(State::JointState::TRANSFORM))
 			{
 				jointState._T[0] = SE3::Exp(_socMate[mateIdx]._axes.col(0), q[0]);
 				for (int i = 1; i < dof; i++)
 				{
 					jointState._T[i] = jointState._T[i - 1] * SE3::Exp(_socMate[mateIdx]._axes.col(i), q[i]);
 				}
-				jointState.TUpdated();
+				jointState.setInfoUpToDate(State::JointState::TRANSFORM);
 			}
 
-			if (((options & JOINT_JACOBIAN) | (options & JOINT_JACOBIANDOT)) && !jointState.isUpdated(false, true, false))
+			if (((options & JOINT_JACOBIAN) | (options & JOINT_JACOBIANDOT)) && !jointState.getInfoUpToDate(State::JointState::JACOBIAN))
 			{
 				jointState._J.col(0) = _socMate[mateIdx]._axes.col(0);
 				for (int i = 1; i < dof; i++)
 				{
 					jointState._J.col(i) = SE3::Ad(jointState._T[i - 1]) * _socMate[mateIdx]._axes.col(i);
 				}
-				jointState.JUpdated();
+				jointState.setInfoUpToDate(State::JointState::JACOBIAN);
 			}
 
-			if ((options & JOINT_JACOBIANDOT) && !jointState.isUpdated(false, false, true))
+			if ((options & JOINT_JACOBIANDOT) && !jointState.getInfoUpToDate(State::JointState::JACOBIAN_DOT))
 			{
 				jointState._JDot.setZero();
 				for (int i = 1; i < dof; i++)
@@ -100,7 +100,7 @@ namespace rovin
 						jointState._JDot.col(i) += SE3::ad(jointState._J.col(j)) * jointState._J.col(i) * qdot(j);
 					}
 				}
-				jointState.JDotUpdated();
+				jointState.setInfoUpToDate(State::JointState::JACOBIAN_DOT);
 			}
 		}
 

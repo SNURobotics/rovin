@@ -530,26 +530,26 @@ namespace rovin
 		{
 			if (jointState.getJointReferenceFrame() != JointReferenceFrame::JOINTFRAME)
 			{
-				jointState.needUpdate(true, true, true);
+				jointState.setInfoUpToDate(State::JointState::ALL_INFO, false);
 				jointState.setJointReferenceFrame(JointReferenceFrame::JOINTFRAME);
 			}
 
-			if (((options & JOINT_TRANSFORM) | (options & JOINT_JACOBIAN) | (options & JOINT_JACOBIANDOT)) && !jointState.isUpdated(true, false, false))
+			if (((options & JOINT_TRANSFORM) | (options & JOINT_JACOBIAN) | (options & JOINT_JACOBIANDOT)) && !jointState.getInfoUpToDate(State::JointState::TRANSFORM))
 			{
 				_Mate[mateIdx]._joint->updateTransform(jointState);
-				jointState.TUpdated();
+				jointState.setInfoUpToDate(State::JointState::TRANSFORM);
 			}
 
-			if (((options & JOINT_JACOBIAN) | (options & JOINT_JACOBIANDOT)) && !jointState.isUpdated(true, false, false))
+			if (((options & JOINT_JACOBIAN) | (options & JOINT_JACOBIANDOT)) && !jointState.getInfoUpToDate(State::JointState::JACOBIAN))
 			{
 				_Mate[mateIdx]._joint->updateJacobian(jointState);
-				jointState.JUpdated();
+				jointState.setInfoUpToDate(State::JointState::JACOBIAN);
 			}
 
-			if ((options & JOINT_JACOBIANDOT) && !jointState.isUpdated(true, false, false))
+			if ((options & JOINT_JACOBIANDOT) && !jointState.getInfoUpToDate(State::JointState::JACOBIAN_DOT))
 			{
 				_Mate[mateIdx]._joint->updateJacobianDot(jointState);
-				jointState.JDotUpdated();
+				jointState.setInfoUpToDate(State::JointState::JACOBIAN_DOT);
 			}
 		}
 
@@ -557,8 +557,8 @@ namespace rovin
 		{
 			updateJointKinematics(mateIdx, jointState, JOINT_TRANSFORM);
 
-			if (jointDirection == JointDirection::REGULAR) return _Mate[mateIdx]._Tmj * jointState._T[jointState._dof - 1] * _Mate[mateIdx]._Tja;
-			else return (_Mate[mateIdx]._Tmj * jointState._T[jointState._dof - 1] * _Mate[mateIdx]._Tja).inverse();
+			if (jointDirection == JointDirection::REGULAR) return _Mate[mateIdx]._Tmj * jointState._T[jointState.getDOF() - 1] * _Mate[mateIdx]._Tja;
+			else return (_Mate[mateIdx]._Tmj * jointState._T[jointState.getDOF() - 1] * _Mate[mateIdx]._Tja).inverse();
 		}
 
 		Matrix6X Assembly::getJacobian(const unsigned int mateIdx, State::JointState& jointState, const JointDirection& jointDirection) const
@@ -566,7 +566,7 @@ namespace rovin
 			updateJointKinematics(mateIdx, jointState, JOINT_JACOBIAN);
 
 			if (jointDirection == JointDirection::REGULAR) return SE3::Ad(_Mate[mateIdx]._Tmj)*jointState._J;
-			else return (-SE3::InvAd(jointState._T[jointState._dof - 1] * _Mate[mateIdx]._Tja))*jointState._J;
+			else return (-SE3::InvAd(jointState._T[jointState.getDOF() - 1] * _Mate[mateIdx]._Tja))*jointState._J;
 		}
 
 		Matrix6X Assembly::getJacobianDot(const unsigned int mateIdx, State::JointState& jointState, const JointDirection& jointDirection) const
