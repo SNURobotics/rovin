@@ -30,7 +30,8 @@ namespace rovin
 
 			// Problem definition
 			void setSOCRobotModel(const Model::socAssemblyPtr& socAssem);
-			void setFinalTimeAndTimeStep(const Math::Real tf, const int nStep);
+			void setFinalTimeAndTimeSpan(const Math::Real tf, const int nStep);
+			void setFinalTimeAndTimeSpanUsingGaussianQuadrature(const Math::Real tf, const int nStep);
 			void setBoundaryCondition(const Math::VectorX& q0 = (Math::VectorX()), const Math::VectorX& qf = (Math::VectorX()),
 				const Math::VectorX& qdot0 = (Math::VectorX()), const Math::VectorX& qdotf = (Math::VectorX()),
 				const Math::VectorX& qddot0 = (Math::VectorX()), const Math::VectorX& qddotf = (Math::VectorX()));
@@ -333,6 +334,9 @@ namespace rovin
 			void generateNoptControlPoint();
 			void setdqdp();
 
+			///// PRINT RESULT
+			std::vector<Math::MatrixX> getJointTrj(const Math::VectorX& time) const;
+
 		public:
 			// Number of middle control points & order of B-spline
 			int _nMiddleCP;
@@ -365,6 +369,9 @@ namespace rovin
 			Math::MatrixX _Aineq_nopt;
 			Math::VectorX _bineq_nopt;
 
+			// Solution
+			Math::VectorX _solX;
+			int _result;
 		};
 
 

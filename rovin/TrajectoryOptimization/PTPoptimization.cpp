@@ -1,6 +1,7 @@
 #include "PTPoptimization.h"
 #include <rovin/Model/MotorJoint.h>
 #include <rovin/Math/Optimization.h>
+#include <rovin/Math/GaussianQuadrature.h>
 #include <ctime>
 using namespace std;
 using namespace rovin::Math;
@@ -32,7 +33,7 @@ namespace rovin
 			_nDOF = _defaultState->getDOF(State::TARGET_JOINT::ACTIVEJOINT);
 		}
 
-		void PointToPointOptimization::setFinalTimeAndTimeStep(const Math::Real tf, const int nStep)
+		void PointToPointOptimization::setFinalTimeAndTimeSpan(const Math::Real tf, const int nStep)
 		{
 			_tf = tf;
 			_nStep = nStep;
@@ -44,10 +45,16 @@ namespace rovin
 				_timeSpan(i) = (Real)i * _dt;
 				_timeSpanWeight(i) = _dt;
 			}
-			if (_timeSpan(nStep - 1) > tf)
-				_timeSpan(nStep - 1) -= 1e-10;
+			_timeSpan(nStep - 1) = tf -  1e-10;
+		}
 
-			cout << _timeSpan << endl;
+		void PointToPointOptimization::setFinalTimeAndTimeSpanUsingGaussianQuadrature(const Math::Real tf, const int nStep)
+		{
+			_tf = tf;
+			_nStep = nStep;
+			GaussianQuadrature gaussianQuadrature(nStep, 0.0, tf);
+			_timeSpan = gaussianQuadrature.getQueryPoints();
+			_timeSpanWeight = gaussianQuadrature.getWeights() * tf / 2.0;
 		}
 
 		void PointToPointOptimization::setBoundaryCondition(const Math::VectorX & q0, const Math::VectorX & qf, const Math::VectorX & qdot0, const Math::VectorX & qdotf, const Math::VectorX & qddot0, const Math::VectorX & qddotf)
@@ -427,13 +434,13 @@ namespace rovin
 			_testObjFunc->_sharedDID = sharedDID;
 
 
-			//shared_ptr<trajectoryCheck> _trajectoryCheck = shared_ptr<trajectoryCheck>(new trajectoryCheck());
-			//_trajectoryCheck->_sharedDID = sharedDID;
-			//VectorU _activeJointIdx(6);
-			//_activeJointIdx << 0, 1, 2, 3, 4, 5;
-			//_trajectoryCheck->_activeJointIdx = _optActiveJointIdx;
-			//int timeStep = 6;
-			//_trajectoryCheck->_timeStep = timeStep;
+			shared_ptr<trajectoryCheck> _trajectoryCheck = shared_ptr<trajectoryCheck>(new trajectoryCheck());
+			_trajectoryCheck->_sharedDID = sharedDID;
+			VectorU _activeJointIdx(6);
+			_activeJointIdx << 0, 1, 2, 3, 4, 5;
+			_trajectoryCheck->_activeJointIdx = _activeJointIdx;
+			int timeStep = 16;
+			_trajectoryCheck->_timeStep = timeStep;
 
 			//cout << "constraint func" << endl;
 			//cout << (*nonLinearIneqFunc).func(x) << endl;
@@ -449,13 +456,13 @@ namespace rovin
 			//cout << (*_objectiveFunc).func(x) << endl;
 			//cout << (*_testObjFunc).func(x) << endl;
 
-			cout << "analytic jacobian" << endl;
+			/*cout << "analytic jacobian" << endl;
 			MatrixX Ja = (*_objectiveFunc).Jacobian(x);
-			cout << Ja << endl;
-
-			cout << "numerical jacobian" << endl;
-			MatrixX Jnum = (*_testObjFunc).Jacobian(x);
-			cout << Jnum << endl;
+			cout << Ja << endl;*/
+			//cout << _dqdp[timeStep] << endl;
+			//cout << "numerical jacobian" << endl;
+			//MatrixX Jnum = (*_trajectoryCheck).Jacobian(x);
+			//cout << Jnum << endl;
 
 			//cout << "difference" << endl;
 			//cout << (Ja - Jnum).squaredNorm() << endl;
@@ -470,14 +477,60 @@ namespace rovin
 
 			///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-			x = nonlinearSolver.solve(x);
+			_solX = nonlinearSolver.solve(x);
+			_result = 1;
+			x = _solX;
 			cout << nonlinearSolver._Iter << endl;
-			cout << "x : " << endl << x << endl;
+			cout << "x : " << endl << _solX << endl;
 			cout << "obj : " << endl << (*_objectiveFunc)(x) << endl;
 			cout << "eq : " << endl << (*_eqFunc)(x) << endl;
 			//cout << "ineq : " << endl << (*_ineqFunc)(x) << endl;
 			cout << clock() - c  << "ms" << endl;
 			return (*_objectiveFunc)(x)(0);
+		}
+
+		vector<MatrixX> BSplinePointToPointOptimization::getJointTrj(const VectorX& time) const
+		{
+			MatrixX newCp(_noptActiveJointDOF + _optActiveJointDOF, _nMiddleCP + _nInitCP + _nFinalCP);
+			if (_result != 1)
+			{
+				return vector<MatrixX>();
+			}
+			cout << _solX << endl;
+			for (int i = 0, optActiveDofIdx = 0; i < _optActiveJointIdx.size(); i++)
+			{
+				for (int j = 0; j < _defaultState->getJointState(State::TARGET_JOINT::ACTIVEJOINT, _optActiveJointIdx[i]).getDOF(); j++, optActiveDofIdx++)
+				{
+					newCp.block(_defaultState->getActiveJointIndex(_optActiveJointIdx[i]) + j, _nInitCP, 1, _nMiddleCP) = _solX.segment(_nMiddleCP*optActiveDofIdx, _nMiddleCP).transpose();
+				}
+			}
+			for (int i = 0, noptActiveDofIdx = 0; i < _noptActiveJointIdx.size(); i++)
+			{
+				for (int j = 0; j < _defaultState->getJointState(State::TARGET_JOINT::ACTIVEJOINT, _noptActiveJointIdx[i]).getDOF(); j++, noptActiveDofIdx++)
+				{
+					newCp.block(_defaultState->getActiveJointIndex(_noptActiveJointIdx[i]) + j, _nInitCP, 1, _nMiddleCP) = _noptControlPoint.segment(_nMiddleCP*noptActiveDofIdx, _nMiddleCP).transpose();
+				}
+			}
+
+			for (int i = 0; i < _nInitCP; i++)
+			{
+				newCp.col(i) = BoundaryCP[i];
+			}
+			for (int i = 0; i < _nFinalCP; i++)
+			{
+				newCp.col(newCp.cols() - 1 - i) = BoundaryCP[5 - i];
+			}
+
+			cout << newCp << endl;
+
+			BSpline<-1, -1, -1> val(_knot, newCp);
+			BSpline<-1, -1, -1> vel = val.derivative();
+			BSpline<-1, -1, -1> acc = vel.derivative();
+			vector<MatrixX> result(3);
+			result[0] = val(time);
+			result[1] = vel(time);
+			result[2] = acc(time);
+			return result;
 		}
 
 		void BSplinePointToPointOptimization::setSplineCondition(const unsigned int order, const unsigned int nMiddleCP, BSplinePointToPointOptimization::KnotType knotType)
@@ -1101,12 +1154,6 @@ namespace rovin
 			VectorX ddNi(1);
 			Real ti;
 			unsigned int dofIdx;
-			VectorU accumulatedDOF(_socAssem->getMateList().size());
-			accumulatedDOF(0) = _socAssem->getJointPtrByMateIndex(0)->getDOF();
-			for (int jointID = 1; jointID < accumulatedDOF.size(); jointID++)
-			{
-				accumulatedDOF(jointID) = accumulatedDOF(jointID - 1) + _socAssem->getJointPtrByMateIndex(jointID)->getDOF();
-			}
 
 			//cout << accumulatedDOF << endl;
 
@@ -1124,15 +1171,15 @@ namespace rovin
 					Ni = tempSpline(_timeSpan(i));
 					dNi = dtempSpline(_timeSpan(i));
 					ddNi = ddtempSpline(_timeSpan(i));
-					for (int k = 0, optActiveDofIdx = 0; k < _optActiveJointIdx.size(); k++)
+					for (int k = 0; k < _optActiveJointIdx.size(); k++)
 					{
 						jointID = _defaultState->getJointID(State::TARGET_JOINT::ACTIVEJOINT, _optActiveJointIdx[k]);
-						for (unsigned int l = 0; l < _socAssem->getJointPtrByMateIndex(jointID)->getDOF(); l++, optActiveDofIdx++)
+						for (unsigned int l = 0; l < _socAssem->getJointPtrByMateIndex(jointID)->getDOF(); l++)
 						{
-							dofIdx = accumulatedDOF(jointID) + l - 1;
-							_dqdp[i](dofIdx, _nMiddleCP*optActiveDofIdx + j) = Ni(0);
-							_dqdotdp[i](dofIdx, _nMiddleCP*optActiveDofIdx + j) = dNi(0);
-							_dqddotdp[i](dofIdx, _nMiddleCP*optActiveDofIdx + j) = ddNi(0);
+							dofIdx = _defaultState->getAssemIndex(jointID) + l;
+							_dqdp[i](dofIdx, _nMiddleCP*_defaultState->getActiveJointIndex(_optActiveJointIdx[k]) + j) = Ni(0);
+							_dqdotdp[i](dofIdx, _nMiddleCP*_defaultState->getActiveJointIndex(_optActiveJointIdx[k]) + j) = dNi(0);
+							_dqddotdp[i](dofIdx, _nMiddleCP*_defaultState->getActiveJointIndex(_optActiveJointIdx[k]) + j) = ddNi(0);
 						}
 					}
 				}
@@ -1620,7 +1667,8 @@ namespace rovin
 		Math::VectorX BSplinePointToPointOptimization::trajectoryCheck::func(const Math::VectorX & x) const
 		{
 			_sharedDID->compareControlPoint(x);
-			return _sharedDID->getJointVel(_activeJointIdx).col(_timeStep);
+			return _sharedDID->getJointVal(_activeJointIdx).col(_timeStep);
+			//return _sharedDID->getTau(x).col(4);
 		}
 
 

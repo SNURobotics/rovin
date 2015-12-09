@@ -14,6 +14,7 @@
 #include <rovin/TrajectoryOptimization/PTPoptimization.h>
 #include <rovin/Renderer/SimpleOSG.h>
 #include <rovin/utils/Diagnostic.h>
+#include <rovin/utils/fileIO.h>
 
 using namespace std;
 using namespace rovin::Math;
@@ -43,6 +44,8 @@ class effort : public Function
 int main()
 {
 	effortRobotModeling();
+	double total_time = clock();
+
 	//cout << static_pointer_cast<SerialOpenChainAssembly>(openchain)->_socLink[6]._M << endl;
 	//cout << static_pointer_cast<SerialOpenChainAssembly>(openchain)->_socLink[6]._G << endl;
 	//for (int i = 0; i < 6; i++)
@@ -80,7 +83,7 @@ int main()
 
 	setBoundaryValues(checkq0, checkqf, checkdq0, checkdqf, checkddq0, checkddqf);
 
-	int optdof = 6;
+	int optdof = 3;
 	VectorU optActiveJointIdx(optdof);
 	for (int i = 0; i < optdof; i++)
 		optActiveJointIdx(i) = i;
@@ -108,10 +111,36 @@ int main()
 	Real ti = 0.3;
 
 	///////////////////////////////////////////////////////// varying tf
-	BsplinePTP.setFinalTimeAndTimeStep(3.0, 101);
-	BsplinePTP.setSplineCondition(order, nMiddleCP, BSplinePointToPointOptimization::KnotType::Sided);
+	//BsplinePTP.setFinalTimeAndTimeSpan(3.0, 100);
+	BsplinePTP.setFinalTimeAndTimeSpanUsingGaussianQuadrature(3.0, 25);
+	BsplinePTP.setSplineCondition(order, nMiddleCP, BSplinePointToPointOptimization::KnotType::Uniform);
 	cout << "knot = " << BsplinePTP._knot.transpose() << endl;
 	BsplinePTP.run(BSplinePointToPointOptimization::Effort);
+
+	///////////////////////////////////////////////////////////PRINT
+	int N = 10000;
+	VectorX timeSpan(N);
+	for (int i = 0; i < N; i++)
+	{
+		timeSpan(i) = BsplinePTP._tf / (Real)(N - 1)*(Real)i;
+	}
+	timeSpan(N - 1) = BsplinePTP._tf - 1e-10;
+	vector<MatrixX> valvelacc = BsplinePTP.getJointTrj(timeSpan);
+	rovin::utils::writeText(valvelacc[0], "val.txt");
+	rovin::utils::writeText(valvelacc[1], "vel.txt");
+	rovin::utils::writeText(valvelacc[2], "acc.txt");
+
+	StatePtr tempState = openchain->makeState();
+	Real sum = 0;
+	for (int i = 1; i < N; i++)
+	{
+		tempState->setJointq(State::TARGET_JOINT::ACTIVEJOINT,		valvelacc[0].col(i));
+		tempState->setJointqdot(State::TARGET_JOINT::ACTIVEJOINT,	valvelacc[1].col(i));
+		tempState->setJointqddot(State::TARGET_JOINT::ACTIVEJOINT,	valvelacc[2].col(i));
+		rovin::Dynamics::solveInverseDynamics(*openchain, *tempState);
+		sum += tempState->getJointTorque(State::TARGET_JOINT::ACTIVEJOINT).squaredNorm() * BsplinePTP._tf/(N - 1);
+	}
+	cout << "Objective : " << sum << endl;
 	
 	///////////////////////////////////////////////////////// varying tf
 	//VectorX tfSet(10);
@@ -134,15 +163,15 @@ int main()
 	//}
 
 
-	MatrixX Aeq_opt = BsplinePTP._Aeq_opt;
-	MatrixX Aeq_nopt = BsplinePTP._Aeq_nopt;
-	MatrixX beq_opt = BsplinePTP._beq_opt;
-	MatrixX beq_nopt = BsplinePTP._beq_nopt;
+	//MatrixX Aeq_opt = BsplinePTP._Aeq_opt;
+	//MatrixX Aeq_nopt = BsplinePTP._Aeq_nopt;
+	//MatrixX beq_opt = BsplinePTP._beq_opt;
+	//MatrixX beq_nopt = BsplinePTP._beq_nopt;
 
-	MatrixX Aineq_opt = BsplinePTP._Aineq_opt;
-	MatrixX bineq_opt = BsplinePTP._bineq_opt;
-	MatrixX Aineq_nopt = BsplinePTP._Aineq_nopt;
-	MatrixX bineq_nopt = BsplinePTP._bineq_nopt;
+	//MatrixX Aineq_opt = BsplinePTP._Aineq_opt;
+	//MatrixX bineq_opt = BsplinePTP._bineq_opt;
+	//MatrixX Aineq_nopt = BsplinePTP._Aineq_nopt;
+	//MatrixX bineq_nopt = BsplinePTP._bineq_nopt;
 
 	//cout << "Aineq = " << endl;
 	//cout << Aineq_opt << endl;
@@ -153,21 +182,21 @@ int main()
 	//cout << "bineq_nopt = " << endl;
 	//cout << bineq_nopt << endl;
 
-	MatrixX middleCPs;
-	if (Aeq_opt.rows() > 0)
-		middleCPs = -(pInv(Aeq_opt)*beq_opt).transpose();
-	else
-		middleCPs.setRandom(1,dof*(nMiddleCP));
-	MatrixX testCP(dof, (nMiddleCP + BsplinePTP._nInitCP + BsplinePTP._nFinalCP));
-	for (unsigned int i = 0; i < dof; i++)
-	{
-		testCP.block(i, BsplinePTP._nInitCP, 1, nMiddleCP) = middleCPs.block(0, i*nMiddleCP, 1, nMiddleCP);
-		for (int i = 0; i < BsplinePTP._nInitCP; i++)
-			testCP.col(i) = BsplinePTP.BoundaryCP[i];
-		for (int i = 0; i < BsplinePTP._nFinalCP; i++)
-			testCP.col(testCP.cols() - i - 1) = BsplinePTP.BoundaryCP[5 - i];
-	}
-	
+	//MatrixX middleCPs;
+	//if (Aeq_opt.rows() > 0)
+	//	middleCPs = -(pInv(Aeq_opt)*beq_opt).transpose();
+	//else
+	//	middleCPs.setRandom(1,dof*(nMiddleCP));
+	//MatrixX testCP(dof, (nMiddleCP + BsplinePTP._nInitCP + BsplinePTP._nFinalCP));
+	//for (unsigned int i = 0; i < dof; i++)
+	//{
+	//	testCP.block(i, BsplinePTP._nInitCP, 1, nMiddleCP) = middleCPs.block(0, i*nMiddleCP, 1, nMiddleCP);
+	//	for (int i = 0; i < BsplinePTP._nInitCP; i++)
+	//		testCP.col(i) = BsplinePTP.BoundaryCP[i];
+	//	for (int i = 0; i < BsplinePTP._nFinalCP; i++)
+	//		testCP.col(testCP.cols() - i - 1) = BsplinePTP.BoundaryCP[5 - i];
+	//}
+	//
 
 
 
@@ -208,6 +237,10 @@ int main()
 	//		cout << "real ddq = " << ddqf.transpose() << endl;
 	//	}
 	//}
+
+	cout << "=======================================================" << endl;
+	cout << "TOTAL COMPUTATION TIME WITHOUT MODELING" << endl;
+	cout << clock() - total_time << endl;
 	
 	return 0;
 }

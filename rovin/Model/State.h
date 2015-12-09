@@ -149,6 +149,11 @@ namespace rovin
 				return _assemIndex[jointID];
 			}
 
+			unsigned int getActiveJointIndex(const unsigned int jointID)
+			{
+				return _stateIndex[jointID];
+			}
+
 		private:
 			State(const std::vector< std::string >& linkNameList, const std::vector< std::pair< std::string, unsigned int >>& jointNameList);
 
