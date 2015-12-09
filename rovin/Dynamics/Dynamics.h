@@ -31,6 +31,7 @@ namespace rovin
 			const bool needInverseDynamics = (false));
 
 		static void solveForwardDynamics(const Model::SerialOpenChainAssembly& assem, Model::State& state, const std::vector< std::pair< unsigned int, Math::dse3 >>& extForce = (std::vector< std::pair< unsigned int, Math::dse3 >>()));
+		static void solveForwardDynamics_renew(const Model::SerialOpenChainAssembly& assem, Model::State& state, const std::vector< std::pair< unsigned int, Math::dse3 >>& extForce = (std::vector< std::pair< unsigned int, Math::dse3 >>()));
 	private:
 		virtual ~Dynamics() = 0;
 	};

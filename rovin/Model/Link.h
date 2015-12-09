@@ -11,6 +11,7 @@
 #include <list>
 #include <map>
 #include <memory>
+#include <vector>
 
 #include <rovin/utils/Checker.h>
 #include <rovin/Math/LieGroup.h>
@@ -37,18 +38,18 @@ namespace rovin
 
 		public:
 			/// 기본 생성자
-			Link() : _name(""), _inertia(), _visual(NULL), _collision(NULL), _material(""), _marker() {}
+			Link() : _name(""), _inertia(), _drawingShapes(std::vector<GeometryInfoPtr>()), _collisionShapes(std::vector<GeometryInfoPtr>()), _material(""), _marker() {}
 			/**
 			*	\warning 이름에 _BANNED_CHRACTERS 가 들어있는 경우 에러가 납니다.
 			*	\brief	이름, 관성행렬, 보여지는 geometry, 충돌 geometry, 재료 이름을 차례로 받아서 생성한다.
 			*/
 			Link(const std::string name,
 				const Math::Inertia& I = Math::Inertia(),
-				const GeometryInfoPtr& visual = NULL,
-				const GeometryInfoPtr& collision = NULL,
+				const std::vector<GeometryInfoPtr>& visual = std::vector<GeometryInfoPtr>(),
+				const std::vector<GeometryInfoPtr>& collision = std::vector<GeometryInfoPtr>(),
 				const std::string material = "",
 				const std::map< std::string, Math::SE3 >& marker = std::map< std::string, Math::SE3 >()
-				) : _name((utils::checkName(name) ? (name) : (assert(0 && "링크의 이름으로 사용할 수 없는 이름이 들어왔습니다."), ""))), _inertia(I), _visual(visual), _collision(collision),
+				) : _name((utils::checkName(name) ? (name) : (assert(0 && "링크의 이름으로 사용할 수 없는 이름이 들어왔습니다."), ""))), _inertia(I), _drawingShapes(visual), _collisionShapes(collision),
 				_material(material), _marker(marker) {}
 
 			/// 관성행렬을 설정합니다.
@@ -57,14 +58,14 @@ namespace rovin
 				_inertia = I;
 			}
 			/// 보여지는 geometry를 설정합니다.
-			void setVisualGeometry(const std::shared_ptr<GeometryInfo>& visual)
+			void addDrawingShapes(const std::shared_ptr<GeometryInfo>& shape)
 			{
-				_visual = visual;
+				_drawingShapes.push_back(shape);
 			}
 			/// 충돌 검사를 위한 geometry를 설정합니다.
-			void setCollisionGeometry(const std::shared_ptr<GeometryInfo>& collision)
+			void addCollisionShapes(const std::shared_ptr<GeometryInfo>& collision)
 			{
-				_collision = collision;
+				_collisionShapes.push_back(collision);
 			}
 			/// 재료 이름을 설정합니다.
 			void setMaterial(const std::string& material)
@@ -83,14 +84,14 @@ namespace rovin
 				return _inertia;
 			}
 			/// 보여지는 geometry를 가져옵니다.
-			const GeometryInfoPtr& getVisualGeometry()
+			const std::vector<GeometryInfoPtr>& getDrawingShapes()
 			{
-				return _visual;
+				return _drawingShapes;
 			}
 			/// 충돌 검사를 위한 geometry를 가져옵니다.
-			const GeometryInfoPtr& getCollisionGeometry()
+			const std::vector<GeometryInfoPtr>& getCollisionShapes()
 			{
-				return _collision;
+				return _collisionShapes;
 			}
 			/// 재료 이름을 가져옵니다.
 			const std::string& getMaterial()
@@ -140,14 +141,20 @@ namespace rovin
 			/// 깊은 복사 - joint와 관련된 정보는 복사하지 않는다.
 			LinkPtr copy() const
 			{
-				return LinkPtr(new Link(_name, _inertia, (*_visual).copy(), (*_collision).copy(), _material, _marker));
+				LinkPtr ret(new Link(_name, _inertia, std::vector<GeometryInfoPtr>(), std::vector<GeometryInfoPtr>(), _material, _marker));
+				for (unsigned int i = 0; i < _drawingShapes.size(); i++)
+					ret->addDrawingShapes(_drawingShapes[i]->copy());
+				for (unsigned int i = 0; i < _collisionShapes.size(); i++)
+					ret->addCollisionShapes(_drawingShapes[i]->copy());
+				return ret;
+				//return LinkPtr(new Link(_name, _inertia, (*_drawingShapes).copy(), (*_collisionShapes).copy(), _material, _marker));
 			}
 
 		private:
 			std::string _name; ///< Link의 이름, identity로 쓰이므로 system 내부에서는 유일해야한다.
 			Math::Inertia _inertia; ///< Inertia를 저장하고 있는 변수
-			GeometryInfoPtr _visual; ///< 보여지는 geometry를 저장하는 변수
-			GeometryInfoPtr _collision; ///< 충돌 검사를 위한 geometry를 저장하는 변수
+			std::vector<GeometryInfoPtr> _drawingShapes; ///< 보여지는 geometry를 저장하는 변수
+			std::vector<GeometryInfoPtr> _collisionShapes; ///< 충돌 검사를 위한 geometry를 저장하는 변수
 
 			std::string _material; ///< Link의 물성을 나타내는 변수(재료 이름), 탄성계수와 마찰계수를 정의하기 위해서 쓰인다.
 

@@ -4,7 +4,7 @@
 
 #include <rovin/Math/Inertia.h>
 #include <rovin/Math/Constant.h>
-#include <rovin/Math/LinearAlgebra.h>
+//#include <rovin/Math/LinearAlgebra.h>
 #include <rovin/Math/LieGroup.h>
 #include <rovin/Model/Assembly.h>
 #include <rovin/Model/RevoluteJoint.h>
@@ -51,9 +51,11 @@ int main()
 	cout << state->getLinkState("L4")._T << endl;
 
 	SimpleOSG renderer(*openchain, *state, 600, 600);
+	
 	renderer._viewer.run();
-
-
+	renderer._viewer.requestContinuousUpdate(false);
+	renderer._viewer.requestRedraw();
+	
 	return 0;
 }
 
@@ -65,10 +67,11 @@ void Modeling()
 	shared_ptr< Link > L2 = shared_ptr< Link >(new Link("L2"));
 	shared_ptr< Link > L3 = shared_ptr< Link >(new Link("L3"));
 	shared_ptr< Link > L4 = shared_ptr< Link >(new Link("L4"));
-	L1->setVisualGeometry(shared_ptr< Box >(new Box(2, 10, 2)));
-	L2->setVisualGeometry(shared_ptr< Box >(new Box(6, 2, 2)));
-	L3->setVisualGeometry(shared_ptr< Box >(new Box(2, 10, 2)));
-	L4->setVisualGeometry(shared_ptr< Box >(new Box(6, 2, 2)));
+	L1->addDrawingShapes(shared_ptr< Box >(new Box(2, 10, 2)));
+	L1->addDrawingShapes(shared_ptr<Mesh>(new Mesh("./sample.STL")));
+	L2->addDrawingShapes(shared_ptr< Box >(new Box(6, 2, 2)));
+	L3->addDrawingShapes(shared_ptr< Box >(new Box(2, 10, 2)));
+	L4->addDrawingShapes(shared_ptr< Box >(new Box(6, 2, 2)));
 	openchain->addLink(L1);
 	openchain->addLink(L2);
 	openchain->addLink(L3);

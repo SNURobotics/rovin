@@ -140,6 +140,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Common.cpp" />
+    <ClCompile Include="GaussianQuadrature.cpp" />
     <ClCompile Include="Inertia.cpp" />
     <ClCompile Include="Optimization.cpp" />
     <ClCompile Include="SE3.cpp" />
@@ -148,6 +149,7 @@
   <ItemGroup>
     <ClInclude Include="Common.h" />
     <ClInclude Include="Constant.h" />
+    <ClInclude Include="GaussianQuadrature.h" />
     <ClInclude Include="Inertia.h" />
     <ClInclude Include="LieGroup.h" />
     <ClInclude Include="Numeric.h" />
