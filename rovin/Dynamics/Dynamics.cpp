@@ -462,25 +462,20 @@ namespace rovin
 		unsigned int lastMateIdx = assem._Tree.size() - 1;
 		unsigned int cLinkIdx = assem._Mate[assem._Tree[lastMateIdx].first].getChildLinkIdx();
 		unsigned int pLinkIdx = assem._Mate[assem._Tree[lastMateIdx].first].getParentLinkIdx();
-		//	J_a[i] means articulated inertia of child link of i-th mate.
-		vector<Matrix6, Eigen::aligned_allocator<Matrix6>>	J_a(assem._Tree.size());
-		//	Bias force applied on child link of i-th mate.
-		vector<dse3, Eigen::aligned_allocator<dse3>>	bias(assem._Tree.size());
-		//	Inertia of child link of i-th mate w.r.t. spatial frame.
 		Inertia linkInertia = assem._socLink[cLinkIdx]._G.getTransformed(state.getJointStateByMateIndex(assem._Tree[lastMateIdx].first)._accumulatedT, true);
 
-
-		J_a[lastMateIdx] = linkInertia;
-		bias[lastMateIdx] = -SE3::adTranspose(state.getLinkState(cLinkIdx)._V) * linkInertia * state.getLinkState(cLinkIdx)._V;
+		state.getLinkState(cLinkIdx)._Ja.noalias() = linkInertia;
+		state.getLinkState(cLinkIdx)._b.noalias() =
+			-SE3::adTranspose(state.getLinkState(cLinkIdx)._V)
+			* (static_cast<Matrix6&>(linkInertia)
+			* state.getLinkState(cLinkIdx)._V);
 		if (!extF[lastMateIdx + 1].isZero())
-			bias[lastMateIdx] -= SE3::InvAd(state.getLinkState(cLinkIdx)._T).transpose() * extF[lastMateIdx + 1];
+			state.getLinkState(cLinkIdx)._b.noalias() -= SE3::InvAd(state.getLinkState(cLinkIdx)._T).transpose() * extF[lastMateIdx + 1];
 
 		//	Intermediate variables for efficient computation.
 		Matrix6X Ja_S;
 		MatrixX inv_ST_Ja_S;
 		se3 ad_V_S_qdot;
-
-
 		//
 		//	Backward recursion
 		//
@@ -493,24 +488,26 @@ namespace rovin
 
 			//	Pre-calculate frequently used variables.
 			linkInertia = assem._socLink[pLinkIdx]._G.getTransformed(state.getJointStateByMateIndex(assem._Tree[idx - 1].first)._accumulatedT, true);
-			Ja_S = (Matrix6)J_a[idx] * jStat._accumulatedJ;
+			Ja_S = (Matrix6)state.getLinkState(cLinkIdx)._Ja * jStat._accumulatedJ;
 			inv_ST_Ja_S = (jStat._accumulatedJ.transpose()*Ja_S).inverse();
 			ad_V_S_qdot = SE3::ad(state.getLinkState(cLinkIdx)._V) * (jStat._accumulatedJ * jStat.getqdot());
 
 			//	Articulated inertia of parent link of 'idx'-th mate.
-			J_a[idx - 1] =
+			state.getLinkState(pLinkIdx)._Ja.noalias() =
 				static_cast<Matrix6&>(linkInertia)
-				+ J_a[idx]
+				+ state.getLinkState(cLinkIdx)._Ja
 				- Ja_S * inv_ST_Ja_S * Ja_S.transpose();
+			
 			//	Bias force of parent link of 'idx'-th mate.
-			bias[idx - 1] =
-				-SE3::adTranspose(state.getLinkState(pLinkIdx)._V) * linkInertia * state.getLinkState(pLinkIdx)._V
-				+ bias[idx]
-				+ J_a[idx] * ad_V_S_qdot
-				+ Ja_S * inv_ST_Ja_S * (jStat._tau - Ja_S.transpose() * ad_V_S_qdot - jStat._accumulatedJ.transpose()*bias[idx]);
+			state.getLinkState(pLinkIdx)._b.noalias() =
+				-SE3::adTranspose(state.getLinkState(pLinkIdx)._V) * (static_cast<Matrix6&>(linkInertia) * state.getLinkState(pLinkIdx)._V)
+				+ state.getLinkState(cLinkIdx)._b
+				+ state.getLinkState(cLinkIdx)._Ja * ad_V_S_qdot
+				+ Ja_S * inv_ST_Ja_S * (jStat._tau - Ja_S.transpose() * ad_V_S_qdot - jStat._accumulatedJ.transpose()*state.getLinkState(cLinkIdx)._b);
+			
 			//	Apply external force if exists.
 			if (!extF[idx].isZero())
-				bias[idx - 1] -= SE3::InvAd(state.getLinkState(pLinkIdx)._T).transpose() * extF[idx];
+				state.getLinkState(pLinkIdx)._b.noalias() -= SE3::InvAd(state.getLinkState(pLinkIdx)._T).transpose() * extF[idx];
 		}
 
 		//
@@ -525,17 +522,108 @@ namespace rovin
 
 			//	Pre-calculate frequently used variables.
 			//	TODO: Avoid duplicated calculation. (Most of these need only a single calculation among back/forward iteration)
-			Ja_S = (Matrix6)J_a[idx] * jStat._accumulatedJ;
+			Ja_S = static_cast<Matrix6&>(state.getLinkState(cLinkIdx)._Ja) * jStat._accumulatedJ;
 			inv_ST_Ja_S = (jStat._accumulatedJ.transpose()*Ja_S).inverse();
 			ad_V_S_qdot = SE3::ad(state.getLinkState(cLinkIdx)._V) * (jStat._accumulatedJ * jStat.getqdot());
 			 
 			VectorX qddot =
-				inv_ST_Ja_S * (jStat._tau - Ja_S.transpose()*(state.getLinkState(pLinkIdx)._VDot + ad_V_S_qdot) - jStat._accumulatedJ.transpose()*bias[idx]);
+				inv_ST_Ja_S * (jStat._tau - Ja_S.transpose()*(state.getLinkState(pLinkIdx)._VDot + ad_V_S_qdot) - jStat._accumulatedJ.transpose()*state.getLinkState(cLinkIdx)._b);
 			state.setJointqddot(assem._Tree[idx].first, qddot);
 
 			state.getLinkState(cLinkIdx)._VDot = jStat._accumulatedJ * qddot + state.getLinkState(pLinkIdx)._VDot + ad_V_S_qdot;
 		}
 
+	}
+
+	void Dynamics::solveForwardDynamics_renew(const Model::SerialOpenChainAssembly & assem, Model::State & state, const std::vector<std::pair<unsigned int, Math::dse3>>& extForce)
+	{
+		//	Term 'extF' includes the force applied on base link which will be ignored.
+		vector< dse3, Eigen::aligned_allocator<dse3>> extF(assem.getLinkList().size());
+		for (unsigned int i = 0; i < extF.size(); i++)
+			extF[i].setZero();
+		for (unsigned int i = 0; i < extForce.size(); i++)
+			extF[extForce[i].first] += extForce[i].second;
+
+		Kinematics::solveForwardKinematics(assem, state, State::LINKS_VEL | State::JOINTS_JACOBIAN | State::JOINTS_T_FROM_BASE);
+
+		//
+		//	Initialization
+		//
+
+		//	Define indices.
+		unsigned int lastMateIdx = assem._Tree.size() - 1;
+		unsigned int cLinkIdx = assem._Mate[assem._Tree[lastMateIdx].first].getChildLinkIdx();
+		unsigned int pLinkIdx = assem._Mate[assem._Tree[lastMateIdx].first].getParentLinkIdx();
+		Inertia linkInertia = assem._socLink[cLinkIdx]._G.getTransformed(state.getJointStateByMateIndex(assem._Tree[lastMateIdx].first)._accumulatedT, true);
+
+		state.getLinkState(cLinkIdx)._Ja.noalias() = linkInertia;
+		state.getLinkState(cLinkIdx)._b.noalias() =
+			-SE3::adTranspose(state.getLinkState(cLinkIdx)._V)
+			* (static_cast<Matrix6&>(linkInertia)
+			   * state.getLinkState(cLinkIdx)._V);
+		if (!extF[lastMateIdx + 1].isZero())
+			state.getLinkState(cLinkIdx)._b.noalias() -= SE3::InvAd(state.getLinkState(cLinkIdx)._T).transpose() * extF[lastMateIdx + 1];
+
+		//	Intermediate variables for efficient computation.
+		Matrix6X Ja_S;
+		MatrixX inv_ST_Ja_S;
+		se3 ad_V_S_qdot;
+		//
+		//	Backward recursion
+		//
+		for (unsigned idx = lastMateIdx; idx > 0; idx--)
+		{
+			//	Define indices.
+			cLinkIdx = assem._Mate[assem._Tree[idx].first].getChildLinkIdx();
+			pLinkIdx = assem._Mate[assem._Tree[idx].first].getParentLinkIdx();
+			State::JointState&	jStat = state.getJointStateByMateIndex(assem._Tree[idx].first);
+
+			//	Pre-calculate frequently used variables.
+			linkInertia = assem._socLink[pLinkIdx]._G.getTransformed(state.getJointStateByMateIndex(assem._Tree[idx - 1].first)._accumulatedT, true);
+			Ja_S = (Matrix6)state.getLinkState(cLinkIdx)._Ja * jStat._accumulatedJ;
+			inv_ST_Ja_S = (jStat._accumulatedJ.transpose()*Ja_S).inverse();
+			ad_V_S_qdot = SE3::ad(state.getLinkState(cLinkIdx)._V) * (jStat._accumulatedJ * jStat.getqdot());
+
+			//	Articulated inertia of parent link of 'idx'-th mate.
+			state.getLinkState(pLinkIdx)._Ja.noalias() =
+				static_cast<Matrix6&>(linkInertia)
+				+ state.getLinkState(cLinkIdx)._Ja
+				- Ja_S * inv_ST_Ja_S * Ja_S.transpose();
+
+			//	Bias force of parent link of 'idx'-th mate.
+			state.getLinkState(pLinkIdx)._b.noalias() =
+				-SE3::adTranspose(state.getLinkState(pLinkIdx)._V) * (static_cast<Matrix6&>(linkInertia) * state.getLinkState(pLinkIdx)._V)
+				+ state.getLinkState(cLinkIdx)._b
+				+ state.getLinkState(cLinkIdx)._Ja * ad_V_S_qdot
+				+ Ja_S * inv_ST_Ja_S * (jStat._tau - Ja_S.transpose() * ad_V_S_qdot - jStat._accumulatedJ.transpose()*state.getLinkState(cLinkIdx)._b);
+
+			//	Apply external force if exists.
+			if (!extF[idx].isZero())
+				state.getLinkState(pLinkIdx)._b.noalias() -= SE3::InvAd(state.getLinkState(pLinkIdx)._T).transpose() * extF[idx];
+		}
+
+		//
+		//	Forward recursion
+		//
+		for (unsigned idx = 0; idx < assem._Tree.size(); idx++)
+		{
+			//	Define indices.
+			cLinkIdx = assem._Mate[assem._Tree[idx].first].getChildLinkIdx();
+			pLinkIdx = assem._Mate[assem._Tree[idx].first].getParentLinkIdx();
+			State::JointState&	jStat = state.getJointStateByMateIndex(assem._Tree[idx].first);
+
+			//	Pre-calculate frequently used variables.
+			//	TODO: Avoid duplicated calculation. (Most of these need only a single calculation among back/forward iteration)
+			Ja_S = static_cast<Matrix6&>(state.getLinkState(cLinkIdx)._Ja) * jStat._accumulatedJ;
+			inv_ST_Ja_S = (jStat._accumulatedJ.transpose()*Ja_S).inverse();
+			ad_V_S_qdot = SE3::ad(state.getLinkState(cLinkIdx)._V) * (jStat._accumulatedJ * jStat.getqdot());
+
+			VectorX qddot =
+				inv_ST_Ja_S * (jStat._tau - Ja_S.transpose()*(state.getLinkState(pLinkIdx)._VDot + ad_V_S_qdot) - jStat._accumulatedJ.transpose()*state.getLinkState(cLinkIdx)._b);
+			state.setJointqddot(assem._Tree[idx].first, qddot);
+
+			state.getLinkState(cLinkIdx)._VDot = jStat._accumulatedJ * qddot + state.getLinkState(pLinkIdx)._VDot + ad_V_S_qdot;
+		}
 	}
 
 }

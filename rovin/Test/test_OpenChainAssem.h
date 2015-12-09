@@ -1,3 +1,10 @@
+/**
+*	\file	test_OpenChainAssem.h
+*	\date	2015.12.08
+*	\author	Jisoo Hong (jshong@robotics.snu.ac.kr)
+*	\brief	General serial open chain model
+*/
+
 #pragma once
 
 #include <vector>

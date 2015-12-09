@@ -247,6 +247,10 @@ namespace rovin
 				//	setInfoUpToDate(TRANSFORM | JACOBIAN | JACOBIAN_DOT, false);
 				void	setInfoUpToDate(int infoIdx, bool upToDate = true);
 
+
+				//	Temporary variables which prevents repetitive memory allocations.
+
+
 			private:
 				//	Warning: Do access in 'State'. //
 				void setq(const Math::VectorX& q) { assert(_q.size() == q.size());  _q = q; setInfoUpToDate(ALL_INFO,false); }
@@ -275,11 +279,17 @@ namespace rovin
 				LinkState()
 				{
 					_V.setZero();
+					_VDot.setZero();
 				}
 
 				Math::SE3 _T;
 				Math::se3 _V;
 				Math::se3 _VDot;
+
+				//	Articulated inertia of link which is used in forward dynamics.
+				Math::Matrix6	_Ja;
+				//	Bias force which is also used in forward dynamics.
+				Math::dse3		_b;
 			};
 
 		};
