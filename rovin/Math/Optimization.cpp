@@ -436,7 +436,7 @@ namespace rovin
 			}
 			Real minf;
 			nlopt::result result;
-			srand(time(NULL));
+			srand((unsigned int)time(NULL));
 			while ((result = opt.optimize(xi, minf)) == nlopt::result::MAXEVAL_REACHED)
 			{
 				for (int i = 0; i < xN; i++)

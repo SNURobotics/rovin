@@ -84,7 +84,7 @@ public:
 			p = -mx.col(i);
 			G[i] = Inertia(I, p, m(i));
 		}
-		for (int i = 0; i < this->getMateList().size(); i++)
+		for (unsigned int i = 0; i < this->getMateList().size(); i++)
 			this->getLinkPtr("L" + to_string(i + 1))->setInertia(G[i]);
 
 		// set motor parameters
