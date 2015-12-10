@@ -310,5 +310,63 @@ namespace rovin
 		{
 			_functionList.push_back(func);
 		}
+
+		int findIdx(const VectorX& data, const Real& x)
+		{
+			int n = data.size();
+
+			int start = 0;
+			int end = n;
+			int middle = (start + end) / 2;
+			int result;
+
+			while (start < end)
+			{
+				if (data(middle) <= x)
+				{
+					result = middle;
+					start = middle + 1;
+				}
+				else
+				{
+					end = middle;
+				}
+				middle = (start + end) / 2;
+			}
+
+			if (result < 0) result = 0;
+			if (result >= n) result = n - 1;
+
+			return result;
+		}
+
+		VectorX BilinearInterpolation::operator ()(const Math::Real& x, const Math::Real& y)
+		{
+			int xidx = findIdx(_x, x);
+			int yidx = findIdx(_y, y);
+
+			Real x1 = _x(xidx);
+			Real x2 = _x(xidx + 1);
+
+			Real y1 = _y(yidx);
+			Real y2 = _y(yidx + 1);
+			
+			return (1.0 / ((x2 - x1) * (y2 - y1))) * (_fs[xidx][yidx] * (x2 - x)*(y2 - y) + _fs[xidx + 1][yidx] * (x - x1)*(y2 - y) + _fs[xidx][yidx + 1] * (x2 - x)*(y - y1) + _fs[xidx + 1][yidx + 1] * (x - x1)*(y - y1));
+		}
+
+		void BilinearInterpolation::setX(const VectorX& x)
+		{
+			_x = x;
+		}
+
+		void BilinearInterpolation::setY(const VectorX& y)
+		{
+			_y = y;
+		}
+
+		void BilinearInterpolation::setElements(const vector<vector<VectorX>>& fs)
+		{
+			_fs = fs;
+		}
 	}
 }

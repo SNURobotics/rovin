@@ -84,7 +84,7 @@ public:
 			p = -mx.col(i);
 			G[i] = Inertia(I, p, m(i));
 		}
-		for (int i = 0; i < this->getMateList().size(); i++)
+		for (unsigned int i = 0; i < this->getMateList().size(); i++)
 			this->getLinkPtr("L" + to_string(i + 1))->setInertia(G[i]);
 
 		// set motor parameters
@@ -176,61 +176,85 @@ public:
 	{
 		StatePtr efortState = this->makeState();
 		Kinematics::solveForwardKinematics(static_cast<socAssembly&>(*this), *efortState, State::LINKS_POS);
-		SE3 offset(Vector3(-240.95 / 1000, 346.10 / 1000, -110.30 / 1000));
-		for (unsigned int i = 0; i < 4; i++)
+		Vector4	orange(254 / 255.0, 193 / 255.0, 27 / 255.0, 1.0), black(55 / 255.0, 55 / 255.0, 55 / 255.0, 1.0);
+		//for (unsigned int i = 0; i < _links.size(); i++)
+		//{
+		//	shared_ptr<Box> boxShape(new Box(0.2, 0.2, 0.2));
+		//	this->getLinkPtr(i)->addDrawingShapes(boxShape);
+		//}
+		for (unsigned int i = 0; i < 1; i++)
 		{
 			auto linkStatePtr = efortState->getLinkState("L0");
 			shared_ptr<Mesh> STL_file(new Mesh(string("../Data/CAD/efort_robot/LINK0_0") + std::to_string(i + 1) + string(".STL")));
-			STL_file->setFrame(linkStatePtr._T.inverse()*offset* SE3(SO3::RotX(PI_HALF)));
-			STL_file->setDimension(0.001);
+			STL_file->setFrame(linkStatePtr._T.inverse());
+			STL_file->setDimension(1);
+			STL_file->setColor(orange);
 			this->getLinkPtr("L0")->addDrawingShapes(STL_file);
 		}
 		for (unsigned int i = 0; i < 6; i++)
 		{
 			auto linkStatePtr = efortState->getLinkState("L1");
 			shared_ptr<Mesh> STL_file(new Mesh(string("../Data/CAD/efort_robot/LINK1_0") + std::to_string(i + 1) + string(".STL")));
-			STL_file->setFrame(linkStatePtr._T.inverse()*offset* SE3(SO3::RotX(PI_HALF)));
-			STL_file->setDimension(0.001);
+			STL_file->setFrame(linkStatePtr._T.inverse());
+			STL_file->setDimension(1);
+			if(i==1||i==2||i==3||i==4)
+				STL_file->setColor(black);
+			else
+				STL_file->setColor(orange);
 			this->getLinkPtr("L1")->addDrawingShapes(STL_file);
 		}
 		for (unsigned int i = 0; i < 1; i++)
 		{
 			auto linkStatePtr = efortState->getLinkState("L2");
 			shared_ptr<Mesh> STL_file(new Mesh(string("../Data/CAD/efort_robot/LINK2_0") + std::to_string(i + 1) + string(".STL")));
-			STL_file->setFrame(linkStatePtr._T.inverse()*offset* SE3(SO3::RotX(PI_HALF)));
-			STL_file->setDimension(0.001);
+			STL_file->setFrame(linkStatePtr._T.inverse());
+			STL_file->setDimension(1);
+			STL_file->setColor(orange);
 			this->getLinkPtr("L2")->addDrawingShapes(STL_file);
 		}
 		for (unsigned int i = 0; i < 7; i++)
 		{
 			auto linkStatePtr = efortState->getLinkState("L3");
 			shared_ptr<Mesh> STL_file(new Mesh(string("../Data/CAD/efort_robot/LINK3_0") + std::to_string(i + 1) + string(".STL")));
-			STL_file->setFrame(linkStatePtr._T.inverse()*offset* SE3(SO3::RotX(PI_HALF)));
-			STL_file->setDimension(0.001);
+			STL_file->setFrame(linkStatePtr._T.inverse());
+			STL_file->setDimension(1);
+			if (i == 1 || i == 2 || i == 3 || i == 4 ||i==5)
+				STL_file->setColor(black);
+			else
+				STL_file->setColor(orange);
 			this->getLinkPtr("L3")->addDrawingShapes(STL_file);
 		}
 		for (unsigned int i = 0; i < 8; i++)
 		{
 			auto linkStatePtr = efortState->getLinkState("L4");
 			shared_ptr<Mesh> STL_file(new Mesh(string("../Data/CAD/efort_robot/LINK4_0") + std::to_string(i + 1) + string(".STL")));
-			STL_file->setFrame(linkStatePtr._T.inverse()*offset* SE3(SO3::RotX(PI_HALF)));
-			STL_file->setDimension(0.001);
+			STL_file->setFrame(linkStatePtr._T.inverse());
+			STL_file->setDimension(1);
+			if (i == 0)
+				STL_file->setColor(black);
+			else
+				STL_file->setColor(orange);
 			this->getLinkPtr("L4")->addDrawingShapes(STL_file);
 		}
 		for (unsigned int i = 0; i < 3; i++)
 		{
 			auto linkStatePtr = efortState->getLinkState("L5");
 			shared_ptr<Mesh> STL_file(new Mesh(string("../Data/CAD/efort_robot/LINK5_0") + std::to_string(i + 1) + string(".STL")));
-			STL_file->setFrame(linkStatePtr._T.inverse()*offset* SE3(SO3::RotX(PI_HALF)));
-			STL_file->setDimension(0.001);
+			STL_file->setFrame(linkStatePtr._T.inverse());
+			STL_file->setDimension(1);
+			STL_file->setColor(orange);
 			this->getLinkPtr("L5")->addDrawingShapes(STL_file);
 		}
 		for (unsigned int i = 0; i < 1; i++)
 		{
 			auto linkStatePtr = efortState->getLinkState("L6");
 			shared_ptr<Mesh> STL_file(new Mesh(string("../Data/CAD/efort_robot/LINK6_0") + std::to_string(i + 1) + string(".STL")));
-			STL_file->setFrame(linkStatePtr._T.inverse()*offset* SE3(SO3::RotX(PI_HALF)));
-			STL_file->setDimension(0.001);
+			STL_file->setFrame(linkStatePtr._T.inverse());
+			STL_file->setDimension(1);
+			if (i == 0)
+				STL_file->setColor(black);
+			else
+				STL_file->setColor(orange);
 			this->getLinkPtr("L6")->addDrawingShapes(STL_file);
 		}
 	}

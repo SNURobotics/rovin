@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
 #include <rovin/Math/Constant.h>
 #include <rovin/Math/Common.h>
@@ -35,6 +36,8 @@ namespace rovin
 		static Math::Matrix6X computeJacobian(const Model::SerialOpenChainAssembly& assem, Model::State& state);
 		static Math::Matrix6X computeJacobianDot(const Model::SerialOpenChainAssembly& assem, Model::State& state);
 		static void solveInverseKinematics(const Model::SerialOpenChainAssembly& assem, Model::State& state, const Math::SE3 goalT);
+
+		static std::vector<Math::VectorX> solveInverseKinematicsOnlyForEfort(const Model::SerialOpenChainAssembly& assem, const Math::SE3& goalT);
 
 	private:
 		virtual ~Kinematics() = 0;

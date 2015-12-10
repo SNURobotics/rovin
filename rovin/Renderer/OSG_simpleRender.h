@@ -13,11 +13,13 @@
 #include <osgViewer/ViewerEventHandlers>
 #include <osgDB/ReadFile>
 
+#include "OSG_NodeVisitor.h"
+
 namespace rovin
 {
 	namespace Renderer
 	{
-		class SimpleOSG
+		class OSG_simpleRender
 		{
 			class SimpleGUIHandler : public osgGA::GUIEventHandler
 			{
@@ -34,7 +36,7 @@ namespace rovin
 		public:
 			typedef std::pair< osg::ref_ptr< osg::MatrixTransform >, const Model::State::LinkState* > NodeStatePair;
 
-			SimpleOSG(const Model::Assembly& assem, const Model::State& state, int width, int height);
+			OSG_simpleRender(const Model::Assembly& assem, const Model::State& state, int width, int height);
 
 			static const unsigned int numTiles = 25;
 			static osg::ref_ptr< osg::Node > createGround(const float& size = (1.0f));
@@ -47,8 +49,9 @@ namespace rovin
 			osgViewer::Viewer _viewer;
 			osg::ref_ptr< osg::Group > _rootNode;
 			osg::ref_ptr< osgGA::TerrainManipulator > _cameraManipulator;
-
+			
 			std::vector< NodeStatePair > _NodeStateList;
+			
 		};
 	}
 }
