@@ -1,7 +1,7 @@
 #include "GaussianQuadrature.h"
 
 GaussianQuadrature::GaussianQuadrature(unsigned int num_of_points, Real initialTime, Real finalTime)
-	: _N(num_of_points)
+	: _N(num_of_points), _t0(-1.0), _tf(+1.0)
 {
 	_t.resize(_N);
 	_x.resize(_N);
@@ -13,11 +13,10 @@ GaussianQuadrature::GaussianQuadrature(unsigned int num_of_points, Real initialT
 void	GaussianQuadrature::setTimeInterval(Real initialTime, Real finalTime)
 {
 	assert(finalTime > initialTime && "final time must larger than initial time");
+	_t = (_tf - _t0) / 2 * _x + (_tf + _t0) / 2*VectorX::Ones(_N);
+	_w *= (finalTime - initialTime) / (_tf - _t0);
 	_t0 = initialTime;
 	_tf = finalTime;
-
-	_t = (_tf - _t0) / 2 * _x + (_tf + _t0) / 2*VectorX::Ones(_N);
-	_w *= (_tf - _t0) / 2;
 }
 
 const Real GaussianQuadrature::evalIntegration(const VectorX & functionVal) const
@@ -42,7 +41,7 @@ void GaussianQuadrature::_calcCoeffs()
 		do {
 			p1 = 1.0;
 			p2 = 0.0;
-			for (int j = 0; j<_N; j++) {
+			for (unsigned int j = 0; j<_N; j++) {
 				//	Loop up the recurrence relation to get the
 				//	Legendre polynomial evaluated at z.
 				p3 = p2;
