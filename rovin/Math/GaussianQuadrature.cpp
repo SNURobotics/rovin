@@ -1,23 +1,32 @@
 #include "GaussianQuadrature.h"
 
 GaussianQuadrature::GaussianQuadrature(unsigned int num_of_points, Real initialTime, Real finalTime)
-	: _N(num_of_points)
+	: _N(num_of_points), _t0(initialTime), _tf(finalTime)
 {
+	setNumOfPoints(_N);
+	//setTimeInterval(initialTime, finalTime);
+}
+
+void GaussianQuadrature::setNumOfPoints(unsigned int num_of_points)
+{
+	_N = num_of_points;
 	_t.resize(_N);
 	_x.resize(_N);
 	_w.resize(_N);
 	_calcCoeffs();
-	setTimeInterval(initialTime, finalTime);
 }
 
 void	GaussianQuadrature::setTimeInterval(Real initialTime, Real finalTime)
 {
 	assert(finalTime > initialTime && "final time must larger than initial time");
+	
+	_w *= (finalTime - initialTime) / (_tf - _t0);
+
 	_t0 = initialTime;
 	_tf = finalTime;
+	_t = (_tf - _t0) / 2 * _x + (_tf + _t0) / 2 * VectorX::Ones(_N);
+	
 
-	_t = (_tf - _t0) / 2 * _x + (_tf + _t0) / 2*VectorX::Ones(_N);
-	_w *= (_tf - _t0) / 2;
 }
 
 const Real GaussianQuadrature::evalIntegration(const VectorX & functionVal) const
@@ -42,7 +51,7 @@ void GaussianQuadrature::_calcCoeffs()
 		do {
 			p1 = 1.0;
 			p2 = 0.0;
-			for (int j = 0; j<_N; j++) {
+			for (unsigned int j = 0; j<_N; j++) {
 				//	Loop up the recurrence relation to get the
 				//	Legendre polynomial evaluated at z.
 				p3 = p2;
@@ -58,8 +67,10 @@ void GaussianQuadrature::_calcCoeffs()
 		} while (abs(z - z1) > RealEps);
 		//Scale the root to the desired interval,
 		_x[i] = -z;
+		_t[i] = (_tf - _t0) / 2 * _x[i] + (_tf + _t0) / 2;
 		//and put in its symmetric counterpart.
 		_x[_N - 1 - i] = z;
+		_t[_N - 1 - i] = (_tf - _t0) / 2 * _x[_N - 1 - i] + (_tf + _t0) / 2;
 		//Compute the weight
 		_w[i] = 2.0 / ((1.0 - z*z)*pp*pp);
 		//and its symmetric counterpart.
