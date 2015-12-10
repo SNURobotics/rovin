@@ -284,5 +284,31 @@ namespace rovin
 			return Hess;
 		}
 
+		VectorX MultiObjectiveFunction::func(const VectorX & x) const
+		{
+			VectorX result;
+			result = (*_functionList[0])(x);
+			for (unsigned int i = 1; i < _functionList.size(); i++)
+			{
+				result += (*_functionList[i])(x);
+			}
+			return result;
+		}
+
+		MatrixX MultiObjectiveFunction::Jacobian(const VectorX & x) const
+		{
+			MatrixX result;
+			result = (*_functionList[0]).Jacobian(x);
+			for (unsigned int i = 1; i < _functionList.size(); i++)
+			{
+				result += (*_functionList[i]).Jacobian(x);
+			}
+			return result;
+		}
+
+		void MultiObjectiveFunction::addFunction(FunctionPtr func)
+		{
+			_functionList.push_back(func);
+		}
 	}
 }

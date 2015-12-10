@@ -77,7 +77,7 @@ VectorX energyConsumptionTrj(const socAssembly& socAssem, const MatrixX& jointVe
 	Real voltage;
 	Real current;
 	VectorX energyConsumptionTrj(jointTorqueTrj.cols());
-	
+	energyConsumptionTrj.setZero();
 	for (int i = 0; i < jointTorqueTrj.cols(); i++)
 	{
 		for (unsigned int j = 0; j < socAssem.getMateList().size(); j++)
@@ -86,7 +86,7 @@ VectorX energyConsumptionTrj(const socAssembly& socAssem, const MatrixX& jointVe
 			current = 1.0 / (tempJointPtr->getMotorConstant() * tempJointPtr->getGearRatio()) * jointTorqueTrj(j, i)
 				+ tempJointPtr->getRotorInertia() * tempJointPtr->getGearRatio() / tempJointPtr->getMotorConstant() * jointAccTrj(j, i);
 			voltage = current * tempJointPtr->getResistance() + tempJointPtr->getBackEMFConstant() * tempJointPtr->getGearRatio() * jointVelTrj(j, i);
-			energyConsumptionTrj(i) = max(current * voltage, 0.0);
+			energyConsumptionTrj(i) += max(current * voltage, 0.0);
 		}
 	}
 	return energyConsumptionTrj;
@@ -97,7 +97,7 @@ int main()
 {
 	effortRobotModeling();
 	double total_time = clock();
-
+	BSplinePointToPointOptimization::ObjectiveFunctionType objfunCond = BSplinePointToPointOptimization::Effort;
 	//cout << static_pointer_cast<SerialOpenChainAssembly>(openchain)->_socLink[6]._M << endl;
 	//cout << static_pointer_cast<SerialOpenChainAssembly>(openchain)->_socLink[6]._G << endl;
 	//for (int i = 0; i < 6; i++)
@@ -143,31 +143,40 @@ int main()
 	
 	BsplinePTP->setBoundaryCondition(q0, qf, dq0, dqf, ddq0, ddqf);
 	BsplinePTP->setConstraintRange(true, true, true, true);
-	bool useWaypoint = true;
+	bool useWaypoint = false;
 	vector<pair<VectorX, Real>> wayPoints(2);
+	wayPoints[0].first = 0.3*VectorX::Ones(dof);
+	wayPoints[0].first(1) = 0.1;
+	wayPoints[0].second = 0.3;
+	wayPoints[1].first = 0.7*VectorX::Ones(dof);
+	wayPoints[1].first(1) = 0.2;
+	wayPoints[1].second = 0.7;
 	if (useWaypoint)
 	{
-		wayPoints[0].first = 0.3*VectorX::Ones(dof);
-		wayPoints[0].first(1) = 0.1;
-		wayPoints[0].second = 0.3;
-		wayPoints[1].first = 0.7*VectorX::Ones(dof);
-		wayPoints[1].first(1) = 0.2;
-		wayPoints[1].second = 0.7;
 		BsplinePTP->setWayPoint(wayPoints);
 	}
+
+	///////////////////////////////////////////////////// TEST ////////////////////////////////////////
+	//vector<Vector3> waypointposition;
+	//StatePtr kjState = openchain->makeState();
+	//kjState->setJointq(State::TARGET_JOINT::ACTIVEJOINT, wayPoints[0].first);
+	//waypointposition.push_back(rovin::Kinematics::calculateEndeffectorFrame(*openchain, *kjState).getPosition());
+	//kjState->setJointq(State::TARGET_JOINT::ACTIVEJOINT, wayPoints[1].first);
+	//waypointposition.push_back(rovin::Kinematics::calculateEndeffectorFrame(*openchain, *kjState).getPosition());
+	//BsplinePTP->setWayPointOnlyPosition(waypointposition);
 	
 	BsplinePTP->setOptimizingJointIndex(optActiveJointIdx);
 
 	int order = 4;
-	int nMiddleCP = 4;
+	int nMiddleCP = 6;
 	Real ti = 0.3;
 
 	///////////////////////////////////////////////////////// varying tf
 	//BsplinePTP->setFinalTimeAndTimeSpan(3.0, 100);
 	BsplinePTP->setFinalTimeAndTimeSpanUsingGaussianQuadrature(3.0, 25);
 	BsplinePTP->setSplineCondition(order, nMiddleCP, BSplinePointToPointOptimization::KnotType::Uniform);
-	//cout << "knot = " << BsplinePTP->_knot.transpose() << endl;
-	BsplinePTP->run(BSplinePointToPointOptimization::Effort, useWaypoint);
+	cout << "knot = " << BsplinePTP->_knot.transpose() << endl;
+	BsplinePTP->run(objfunCond, useWaypoint);
 
 	///////////////////////////////////////////////////// linesearch Tf
 	//FunctionPtr tfF = FunctionPtr(new tfFunction);
@@ -190,28 +199,27 @@ int main()
 		timeSpan(i) = BsplinePTP->_tf / (Real)(N - 1)*(Real)i;
 	}
 	timeSpan(N - 1) = BsplinePTP->_tf - 1e-10;
-	vector<MatrixX> valvelacc = BsplinePTP->getJointTrj(timeSpan);
-	rovin::utils::writeText(valvelacc[0], "val.txt");
-	rovin::utils::writeText(valvelacc[1], "vel.txt");
-	rovin::utils::writeText(valvelacc[2], "acc.txt");
+	vector<MatrixX> valvelacctau = BsplinePTP->getJointTrj(timeSpan);
+	rovin::utils::writeText(valvelacctau[0], "val.txt");
+	rovin::utils::writeText(valvelacctau[1], "vel.txt");
+	rovin::utils::writeText(valvelacctau[2], "acc.txt");
 
 	StatePtr tempState = openchain->makeState();
 	Real sum = 0;
-	for (int i = 1; i < N; i++)
+	if (objfunCond == BSplinePointToPointOptimization::EnergyLoss)
+		sum = (energyConsumptionTrj(*openchain, valvelacctau[1], valvelacctau[2], valvelacctau[3]).transpose()*VectorX::Ones(valvelacctau[0].cols()))(0) * BsplinePTP->_tf / (Real)(N - 1);
+	else if (objfunCond == BSplinePointToPointOptimization::Effort)
 	{
-		tempState->setJointq(State::TARGET_JOINT::ACTIVEJOINT,		valvelacc[0].col(i));
-		tempState->setJointqdot(State::TARGET_JOINT::ACTIVEJOINT,	valvelacc[1].col(i));
-		tempState->setJointqddot(State::TARGET_JOINT::ACTIVEJOINT,	valvelacc[2].col(i));
-		rovin::Dynamics::solveInverseDynamics(*openchain, *tempState);
-		sum += tempState->getJointTorque(State::TARGET_JOINT::ACTIVEJOINT).squaredNorm() * BsplinePTP->_tf/(N - 1);
+		sum = (effortTrj(valvelacctau[3]).transpose()*VectorX::Ones(valvelacctau[3].cols()))(0) * BsplinePTP->_tf / (Real)(N - 1);
 	}
+	
 	cout << "Objective (fine Euler integration) : " << sum << endl;
 	cout << "Objective : " << BsplinePTP->_fval << endl;
 	cout << "Computation time : " << BsplinePTP->_computationTime << "ms" << endl;
 	///////////////////////////////////////////////////////// varying tf
 	VectorX tfSet(40);
 	for (int i = 0; i < tfSet.size(); i++)
-		tfSet(i) = (Real)(i + 1)*0.025+1.0;
+		tfSet(i) = 2.0 + (Real)(i + 1)*0.025;
 
 	VectorX result(tfSet.size());
 
@@ -221,7 +229,7 @@ int main()
 		BsplinePTP->setSplineCondition(order, nMiddleCP, BSplinePointToPointOptimization::KnotType::Uniform);
 		//cout << "knot = " << BsplinePTP->_knot.transpose() << endl;
 		cout << tfSet(i) << endl;
-		if (BsplinePTP->run(BSplinePointToPointOptimization::Effort).size() == 0)
+		if (BsplinePTP->run(objfunCond).size() == 0)
 		{
 			cout << "X" << endl;
 			result(i) = 0.0;
@@ -444,7 +452,7 @@ void effortRobotModeling()
 	qdotmax << 100, 80, 140, 290, 290, 440;
 	qdotmax *= PI / 180;
 	
-	qddotmax = 5 * qdotmax;             // user defined
+	qddotmax = 2 * qdotmax;             // user defined
 	qddotmin = -qddotmax;
 	qdddotmax = 300 * VectorX::Ones(dof);          // user defined
 	qdddotmin = -qdddotmax;

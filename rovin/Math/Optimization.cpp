@@ -415,14 +415,14 @@ namespace rovin
 			{
 				opt = nlopt::opt(nlopt::LD_SLSQP, xN);
 				opt.set_min_objective(objective, this);
-				opt.add_inequality_mconstraint(mineqconstraint, this, vector<Real>(ineqN, 1e-5));
-				opt.add_equality_mconstraint(meqconstraint, this, vector<Real>(eqN, 1e-5));
+				opt.add_inequality_mconstraint(mineqconstraint, this, vector<Real>(ineqN, 1e-8));
+				opt.add_equality_mconstraint(meqconstraint, this, vector<Real>(eqN, 1e-8));
 			}
 			else
 			{
 				opt = nlopt::opt(nlopt::LD_MMA, xN);
 				opt.set_min_objective(objective, this);
-				opt.add_inequality_mconstraint(mineqconstraint, this, vector<Real>(ineqN, 1e-5));
+				opt.add_inequality_mconstraint(mineqconstraint, this, vector<Real>(ineqN, 1e-8));
 
 			}
 			opt.set_xtol_rel(1e-4);
@@ -620,10 +620,16 @@ namespace rovin
 				nr._func = _eqConstraintFunc;
 				VectorX x(xN);
 				x = nr.solve(x0);
-				
+
 				VectorX xAug(xN + inEqN);
 				xAug.head(xN) = x;
 				xAug.tail(inEqN) = -(*_inEqConstraintFunc)(x);
+				
+				//cout << "xAug0 =" << endl;
+				//cout << xAug << endl;
+
+				//cout << "f0 = " << endl;
+				//cout << (*augmentedFunc)(xAug) << endl;
 				
 				VectorX updateDir(xN + inEqN);
 				MatrixX J;
@@ -656,6 +662,10 @@ namespace rovin
 						cout << "Projection Failed !!!" << endl;
 						break;
 					}
+					//cout << "f : " << endl;
+					//cout << f << endl;
+					//cout << "xAug : " << endl;
+					//cout << xAug << endl;
 				}
 				return xAug.head(xN);
 			}

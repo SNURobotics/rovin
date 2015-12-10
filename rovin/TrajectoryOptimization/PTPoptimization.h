@@ -37,6 +37,7 @@ namespace rovin
 				const Math::VectorX& qdot0 = (Math::VectorX()), const Math::VectorX& qdotf = (Math::VectorX()),
 				const Math::VectorX& qddot0 = (Math::VectorX()), const Math::VectorX& qddotf = (Math::VectorX()));
 			void setWayPoint(const std::vector< std::pair<Math::VectorX, Math::Real>>& wayPoints);
+			void setWayPointOnlyPosition(const std::vector<Math::Vector3>& waypoint);
 			void addWayPoint(std::pair<Math::VectorX, Math::Real>& wayPoint);
 			void setOptimizingJointIndex(const Math::VectorU& optActiveJointIdx);
 
@@ -55,8 +56,8 @@ namespace rovin
 			// time span points from Gaussian Quadrature (to reduce step number efficiently)
 			Math::VectorX _timeSpan;
 			Math::VectorX _timeSpanWeight;
-			//GaussianQuadrature _gaussianQuadrature;
-			//bool _gaussianQuadratureInitialized;
+			GaussianQuadrature _gaussianQuadrature;
+			bool _gaussianQuadratureInitialized;
 
 			// Boundary values
 			Math::VectorX _q0;
@@ -83,6 +84,9 @@ namespace rovin
 			bool _torqueConstraintExist;
 			bool _accConstraintExist;
 			//bool _jerkConstraintExist;
+
+			bool _waypointPositionExist;
+			std::vector<Math::Vector3> _waypointPosition;
 
 			// functions in optimization
 			Math::FunctionPtr _objectiveFunc;
@@ -254,6 +258,20 @@ namespace rovin
 				std::shared_ptr<SharedDID> _sharedDID;
 				Math::VectorX _tauMin;
 				Math::VectorX _tauMax;
+			};
+
+			////////////////////////////////////////////////////////////// WAYPOINT OBJECTIVE FUNCTION
+			class waypointObjectiveFunction : public Math::Function
+			{
+			public:
+				waypointObjectiveFunction() {}
+
+				Math::VectorX func(const Math::VectorX& x) const;
+				Math::MatrixX Jacobian(const Math::VectorX& x) const;
+
+				Real _weight;
+				std::vector<Vector3> _waypoint;
+				std::shared_ptr<SharedDID> _sharedDID;
 			};
 
 

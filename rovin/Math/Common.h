@@ -36,6 +36,19 @@ namespace rovin
 			Real _eps;
 		};
 
+		class MultiObjectiveFunction : public Function
+		{
+		public:
+			MultiObjectiveFunction() : _functionList(std::vector<FunctionPtr>()) {}
+
+			VectorX func(const VectorX& x) const;
+			MatrixX Jacobian(const VectorX& x) const;
+
+			void addFunction(FunctionPtr func);
+
+			std::vector<FunctionPtr> _functionList;
+		};
+
 		class EmptyFunction : public Function
 		{
 		public:
