@@ -124,10 +124,12 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="SimpleOSG.h" />
+    <ClInclude Include="OSG_NodeVisitor.h" />
+    <ClInclude Include="OSG_simpleRender.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="SimpleOSG.cpp" />
+    <ClCompile Include="OSG_NodeVisitor.cpp" />
+    <ClCompile Include="OSG_simpleRender.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Dynamics\Dynamics.vcxproj">
