@@ -63,7 +63,7 @@ namespace rovin
 			void setColor(const Math::Real& R, ///< Red
 				const Math::Real& G, ///< Green
 				const Math::Real& B, ///< Blue
-				const Math::Real& Alpha = (0.0) /// Alpha
+				const Math::Real& Alpha = (1.0) /// Alpha
 				)
 			{
 				_Color << R, G, B, Alpha;

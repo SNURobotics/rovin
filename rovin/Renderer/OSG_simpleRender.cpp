@@ -1,4 +1,4 @@
-#include "SimpleOSG.h"
+#include "OSG_simpleRender.h"
 #include <osgUtil/IncrementalCompileOperation>
 
 #include <cmath>
@@ -12,82 +12,92 @@ namespace rovin
 			Math::Matrix3 R = T.getRotation().matrix();
 			Math::Vector3 p = T.getPosition();
 
-			return osg::Matrix((float)R(0, 0), (float)R(1, 0), (float)R(2, 0), 0.0f, 
-				(float)R(0, 1), (float)R(1, 1), (float)R(2, 1), 0.0f, 
-				(float)R(0, 2), (float)R(1, 2), (float)R(2, 2), 0.0f, 
-				(float)p(0), (float)p(1), (float)p(2), 1.0f);
+			return osg::Matrix((float)R(0, 0), (float)R(1, 0), (float)R(2, 0), 0.0f,
+							   (float)R(0, 1), (float)R(1, 1), (float)R(2, 1), 0.0f,
+							   (float)R(0, 2), (float)R(1, 2), (float)R(2, 2), 0.0f,
+							   (float)p(0), (float)p(1), (float)p(2), 1.0f);
 		}
 
 		osg::ref_ptr< osg::Node > convertGeo2Node(const Model::GeometryInfoPtr geoPtr)
 		{
-			osg::ref_ptr< osg::MatrixTransform > transformNode;
-			osg::ref_ptr< osg::MatrixTransform > scaleSTL;
+			osg::ref_ptr< osg::MatrixTransform > linkPositionTransform;
+			osg::ref_ptr< osg::MatrixTransform > scaleTransform;
 
 			switch (geoPtr->getType())
 			{
 			case Model::GeometryInfo::GEOMETRY_TYPE::_BOX:
 			{
-				transformNode = new osg::MatrixTransform;
-				transformNode->setMatrix(convertMatrix(geoPtr->getTransform()));
+				linkPositionTransform = new osg::MatrixTransform;
+				linkPositionTransform->setMatrix(convertMatrix(geoPtr->getTransform()));
 				Math::Vector3 dim = (std::static_pointer_cast<Model::Box>(geoPtr))->getDimension();
-				transformNode->addChild(new osg::ShapeDrawable(new osg::Box(osg::Vec3(), (float)dim(1), (float)dim(0), (float)dim(2))));
-				return transformNode;
+				linkPositionTransform->addChild(new osg::ShapeDrawable(new osg::Box(osg::Vec3(), (float)dim(1), (float)dim(0), (float)dim(2))));
+				return linkPositionTransform;
 			}
 
 			case Model::GeometryInfo::GEOMETRY_TYPE::_SPHERE:
 			{
-				transformNode = new osg::MatrixTransform;
-				transformNode->setMatrix(convertMatrix(geoPtr->getTransform()));
-				transformNode->addChild(new osg::ShapeDrawable(new osg::Sphere(osg::Vec3(), (float)(std::static_pointer_cast<Model::Sphere>(geoPtr))->getRadius())));
-				return transformNode;
+				linkPositionTransform = new osg::MatrixTransform;
+				linkPositionTransform->setMatrix(convertMatrix(geoPtr->getTransform()));
+				linkPositionTransform->addChild(new osg::ShapeDrawable(new osg::Sphere(osg::Vec3(), (float)(std::static_pointer_cast<Model::Sphere>(geoPtr))->getRadius())));
+				return linkPositionTransform;
 			}
 
 			case Model::GeometryInfo::GEOMETRY_TYPE::_CAPSULE:
 			{
-				transformNode = new osg::MatrixTransform;
-				transformNode->setMatrix(convertMatrix(geoPtr->getTransform()));
+				linkPositionTransform = new osg::MatrixTransform;
+				linkPositionTransform->setMatrix(convertMatrix(geoPtr->getTransform()));
 				Math::Vector2 dim = (std::static_pointer_cast<Model::Capsule>(geoPtr))->getDimension();
-				transformNode->addChild(new osg::ShapeDrawable(new osg::Capsule(osg::Vec3(), (float)dim(0), (float)dim(1))));
-				return transformNode;
+				linkPositionTransform->addChild(new osg::ShapeDrawable(new osg::Capsule(osg::Vec3(), (float)dim(0), (float)dim(1))));
+				return linkPositionTransform;
 			}
 
 			case Model::GeometryInfo::GEOMETRY_TYPE::_CYLINDER:
 			{
-				transformNode = new osg::MatrixTransform;
-				transformNode->setMatrix(convertMatrix(geoPtr->getTransform()));
+				linkPositionTransform = new osg::MatrixTransform;
+				linkPositionTransform->setMatrix(convertMatrix(geoPtr->getTransform()));
 				Math::Vector2 dim = (std::static_pointer_cast<Model::Cylinder>(geoPtr))->getDimension();
-				transformNode->addChild(new osg::ShapeDrawable(new osg::Cylinder(osg::Vec3(), (float)dim(0), (float)dim(1))));
-				return transformNode;
+				linkPositionTransform->addChild(new osg::ShapeDrawable(new osg::Cylinder(osg::Vec3(), (float)dim(0), (float)dim(1))));
+				return linkPositionTransform;
 			}
 
 			case Model::GeometryInfo::GEOMETRY_TYPE::_MESH:
 			{
-				osgUtil::Optimizer optimzer;
+				osg::ref_ptr<osgDB::ReaderWriter::Options> _options = new osgDB::ReaderWriter::Options();
+				_options->setObjectCacheHint(osgDB::ReaderWriter::Options::CACHE_ALL);
 				auto meshPtr = std::static_pointer_cast<Model::Mesh>(geoPtr);
-				osg::ref_ptr<osg::Node> node = osgDB::readNodeFile(meshPtr->getUrl());
-				transformNode = new osg::MatrixTransform;
-				transformNode->setMatrix(convertMatrix(geoPtr->getTransform()));
-				scaleSTL = new osg::MatrixTransform;
-				scaleSTL->setMatrix(osg::Matrixd::scale(meshPtr->getDimension(), meshPtr->getDimension(), meshPtr->getDimension()));
-				scaleSTL->getOrCreateStateSet()->setMode(GL_RESCALE_NORMAL, osg::StateAttribute::ON);
-				node->setCullingActive(true);
-				node->setDataVariance(osg::Object::DataVariance::STATIC);
-				optimzer.optimize(node);
-				scaleSTL->addChild(node);
-				transformNode->addChild(scaleSTL);
-				return transformNode;
+
+				linkPositionTransform = new osg::MatrixTransform;
+				linkPositionTransform->setMatrix(convertMatrix(geoPtr->getTransform()));
+
+				scaleTransform = new osg::MatrixTransform;
+				scaleTransform->setMatrix(osg::Matrixd::scale(meshPtr->getDimension(), meshPtr->getDimension(), meshPtr->getDimension()));
+				scaleTransform->getOrCreateStateSet()->setMode(GL_RESCALE_NORMAL, osg::StateAttribute::ON);
+
+				osg::ref_ptr<osg::Node> STL_node = osgDB::readNodeFile(meshPtr->getUrl(), _options);
+
+				STL_node->setCullingActive(true);
+				STL_node->setDataVariance(osg::Object::DataVariance::STATIC);
+				auto meshColor = meshPtr->getColor();
+
+				OSG_NodeVisitor _nodeVisitor;
+				_nodeVisitor.setColor(meshColor[0], meshColor[1], meshColor[2], meshColor[3]);
+				STL_node->accept(_nodeVisitor);
+
+				scaleTransform->addChild(STL_node);
+				linkPositionTransform->addChild(scaleTransform);
+				return linkPositionTransform;
 			}
 
 			default:
 			{
-				transformNode = new osg::MatrixTransform;
+				linkPositionTransform = new osg::MatrixTransform;
 				// TODO
-				return transformNode;
+				return linkPositionTransform;
 			}
 			}
 		}
 
-		bool SimpleOSG::SimpleGUIHandler::handle(const osgGA::GUIEventAdapter &ea, osgGA::GUIActionAdapter &aa)
+		bool OSG_simpleRender::SimpleGUIHandler::handle(const osgGA::GUIEventAdapter &ea, osgGA::GUIActionAdapter &aa)
 		{
 			switch (ea.getEventType())
 			{
@@ -121,7 +131,7 @@ namespace rovin
 			}
 		}
 
-		SimpleOSG::SimpleOSG(const Model::Assembly& assem, const Model::State& state, int width, int height)
+		OSG_simpleRender::OSG_simpleRender(const Model::Assembly& assem, const Model::State& state, int width, int height)
 		{
 			_cameraManipulator = new osgGA::TerrainManipulator();
 			_rootNode = new osg::Group;
@@ -138,14 +148,15 @@ namespace rovin
 				osg::ref_ptr< osg::MatrixTransform > transformNode = new osg::MatrixTransform;
 				transformNode->setMatrix(convertMatrix(linkState._T));
 				shapes = linkPtr[i]->getDrawingShapes();
-				for (unsigned int j = 0; j< shapes.size(); j++)
+				for (unsigned int j = 0; j < shapes.size(); j++)
 					transformNode->addChild(convertGeo2Node(shapes[j]));
 				_NodeStateList.push_back(NodeStatePair(transformNode, &linkState));
 
 				rootGroup->addChild(transformNode);
 			}
-			_optimzer.optimize(rootGroup);
+			//_optimzer.optimize(rootGroup);
 			_rootNode->addChild(rootGroup);
+			_optimzer.optimize(_rootNode);
 
 			rootGroup->setMatrix(osg::Matrix(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, -0.7f, 1));
 			_cameraManipulator->setDistance(5.0f);
@@ -158,12 +169,12 @@ namespace rovin
 			_viewer.setUpViewInWindow(40, 40, width, height);
 			_viewer.setSceneData(_rootNode);
 			_viewer.getCamera()->setClearColor(osg::Vec4(1.0f, 1.0f, 1.0f, 1.0f));
-			_viewer.setCameraManipulator(_cameraManipulator.get(), false);
+			_viewer.setCameraManipulator(_cameraManipulator.get(), true);
 			_viewer.addEventHandler(new osgViewer::WindowSizeHandler);
 			_viewer.addEventHandler(new SimpleGUIHandler());
 		}
 
-		osg::ref_ptr< osg::Node > SimpleOSG::createGround(const float& size)
+		osg::ref_ptr< osg::Node > OSG_simpleRender::createGround(const float& size)
 		{
 			osg::ref_ptr< osg::Geode > geode = new osg::Geode;
 			osg::ref_ptr< osg::Geometry > geom = new osg::Geometry;
@@ -194,7 +205,7 @@ namespace rovin
 				{
 					osg::Vec3 color;
 					color = ((iy + ix) % 2 == 0) ? osg::Vec3(1.0f, 1.0f, 1.0f) : osg::Vec3(0.2f, 0.2f, 0.2f);
-					
+
 					for (unsigned int sy = iy * 2; sy < (iy + 1) * 2; sy++)
 					{
 						for (unsigned int sx = ix * 2; sx < (ix + 1) * 2; sx++)
@@ -206,9 +217,9 @@ namespace rovin
 							primitives->push_back((sx + 1) + (sy + 1)*numIndicesPerRow);
 							geom->addPrimitiveSet(primitives.get());
 
-							float length = std::sqrtf((float)((sy- numTiles)*(sy- numTiles) + (sx- numTiles)*(sx- numTiles)));
+							float length = std::sqrtf((float)((sy - numTiles)*(sy - numTiles) + (sx - numTiles)*(sx - numTiles)));
 							float kapa = 5.0f / (numTiles*std::sqrtf(2) - numTiles);
-							colors->push_back(osg::Vec4(color, 0.7f/(1 + std::expf(-kapa*(numTiles - length)))));
+							colors->push_back(osg::Vec4(color, 0.7f / (1 + std::expf(-kapa*(numTiles - length)))));
 						}
 					}
 				}
@@ -230,7 +241,7 @@ namespace rovin
 
 			return geode;
 		}
-		void SimpleOSG::updateFrame()
+		void OSG_simpleRender::updateFrame()
 		{
 			for (unsigned int i = 0; i < _NodeStateList.size(); i++)
 			{
