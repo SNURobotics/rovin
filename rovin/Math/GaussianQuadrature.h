@@ -16,8 +16,9 @@ public:
 	};
 
 	//	Warning: Constructor has high computational cost. Reduce construction of this class as possible as you can.
-	GaussianQuadrature(unsigned int num_of_points, Real initialTime, Real finalTime);
+	GaussianQuadrature(unsigned int num_of_points = 0, Real initialTime = 0, Real finalTime = 1);
 
+	void	setNumOfPoints(unsigned int num_of_points);
 	void	setTimeInterval(Real initialTime, Real finalTime);
 
 	const VectorX&	getQueryPoints() const { return _t; }
