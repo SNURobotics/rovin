@@ -16,6 +16,7 @@
 #include <rovin/Dynamics/Dynamics.h>
 #include <rovin/Model/State.h>
 #include <rovin/Math/Spline.h>
+#include <rovin/Math/GaussianQuadrature.h>
 
 namespace rovin
 {
@@ -54,7 +55,8 @@ namespace rovin
 			// time span points from Gaussian Quadrature (to reduce step number efficiently)
 			Math::VectorX _timeSpan;
 			Math::VectorX _timeSpanWeight;
-			
+			//GaussianQuadrature _gaussianQuadrature;
+			//bool _gaussianQuadratureInitialized;
 
 			// Boundary values
 			Math::VectorX _q0;
@@ -315,7 +317,7 @@ namespace rovin
 			////////////////////// run
 
 
-			Math::VectorX run(const ObjectiveFunctionType& objectiveType);
+			Math::VectorX run(const ObjectiveFunctionType& objectiveType, bool withEQ = (false));
 
 
 			////////////////////////////

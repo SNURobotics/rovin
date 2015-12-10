@@ -1,6 +1,7 @@
 #include "Optimization.h"
 
 #include <iostream>
+#include <ctime>
 
 using namespace std;
 using namespace Eigen;
@@ -16,7 +17,12 @@ namespace rovin
 				_algorithm = LineSearch::Algorithm::Backtracking;
 				_alpha0 = 1.0;
 				_tau = 0.90;
-				_c = 0.1;
+				_c = 0.01;
+			}
+			if (algo == LineSearch::Algorithm::GoldenSection)
+			{
+				_algorithm = LineSearch::Algorithm::GoldenSection;
+				_tol = 0.05;
 			}
 		}
 
@@ -34,11 +40,69 @@ namespace rovin
 			_alpha = _alpha0;
 			Real t = -_c*((*_objectiveFunc).Jacobian(x)*P)(0);
 			Real fval = (*_objectiveFunc)(x)(0);
-			while (RealLess(fval - (*_objectiveFunc)(x + _alpha*P)(0), _alpha*t) && _alpha >= RealEps)
+			VectorX nfval;
+			while (_alpha >= RealEps)
 			{
+				nfval = (*_objectiveFunc)(x + _alpha*P);
+				if(nfval.size() != 0)
+				{
+					if (!RealLess(fval - nfval(0), _alpha*t)) break;
+				}
 				_alpha *= _tau;
 			}
 			return _alpha;
+		}
+
+		Real LineSearch::GoldenSectionMethod(const Real x1, const Real x2, const Real x3)
+		{
+			Real x;
+			if (x3 - x2 > x2 - x1)
+				x = x2 + _resphi*(x3 - x2);
+			else
+				x = x2 - _resphi*(x2 - x1);
+			if (std::abs(x3 - x1) < _tol*(std::abs(x2) + std::abs(x)))
+				return (x3 + x1) / 2.0;
+
+			VectorX xt(1); xt(0) = x;
+			VectorX x2t(1); x2t(0) = x2;
+			Real fx = (*_objectiveFunc)(xt)(0);
+			Real fx2 = (*_objectiveFunc)(x2t)(0);
+			if (RealEqual(fx, fx2))
+			{
+				xt(0) = x1;
+				x2t(0) = x3;
+				fx = (*_objectiveFunc)(xt)(0);
+				fx2 = (*_objectiveFunc)(x2t)(0);
+
+				if (fx < fx2)
+				{
+					if (x3 - x2 > x2 - x1)
+						return GoldenSectionMethod(x1, x2, x);
+					else
+						return GoldenSectionMethod(x1, x, x2);
+				}
+				else
+				{
+					if (x3 - x2 > x2 - x1)
+						return GoldenSectionMethod(x2, x, x3);
+					else
+						return GoldenSectionMethod(x, x2, x3);
+				}
+			}
+			if (fx < fx2)
+			{
+				if (x3 - x2 > x2 - x1)
+					return GoldenSectionMethod(x2, x, x3);
+				else
+					return GoldenSectionMethod(x1, x, x2);
+			}
+			else
+			{
+				if (x3 - x2 > x2 - x1)
+					return GoldenSectionMethod(x1, x2, x);
+				else
+					return GoldenSectionMethod(x, x1, x3);
+			}
 		}
 
 		QPOptimization::QPOptimization(const QPOptimization::Algorithm& algo) : QPOptimization(MatrixX(), VectorX(), MatrixX(), VectorX(), MatrixX(), VectorX(), algo) {}
@@ -258,6 +322,7 @@ namespace rovin
 			else if (algo == NonlinearOptimization::Algorithm::NLopt)
 			{
 				_algorithm = NonlinearOptimization::Algorithm::NLopt;
+				_NLoptSubAlgo = NonlinearOptimization::NLoptAlgorithm::NLoptMMA;
 				obj = eq = ineq = false;
 			}
 		}
@@ -346,23 +411,53 @@ namespace rovin
 			int eqN = (*_eqFunc)(_xf).size();
 			int ineqN = (*_ineqFunc)(_xf).size();
 
-			opt = nlopt::opt(nlopt::LD_MMA, xN);
-			opt.set_min_objective(objective, this);
-			opt.add_inequality_mconstraint(mineqconstraint, this, vector<Real>(ineqN, 1e-8));
-			//opt.add_equality_mconstraint(meqconstraint, this, vector<Real>(eqN, 1e-8));
+			if (_NLoptSubAlgo == NonlinearOptimization::NLoptAlgorithm::NLoptSLSQP)
+			{
+				opt = nlopt::opt(nlopt::LD_SLSQP, xN);
+				opt.set_min_objective(objective, this);
+				opt.add_inequality_mconstraint(mineqconstraint, this, vector<Real>(ineqN, 1e-5));
+				opt.add_equality_mconstraint(meqconstraint, this, vector<Real>(eqN, 1e-5));
+			}
+			else
+			{
+				opt = nlopt::opt(nlopt::LD_MMA, xN);
+				opt.set_min_objective(objective, this);
+				opt.add_inequality_mconstraint(mineqconstraint, this, vector<Real>(ineqN, 1e-5));
+
+			}
 			opt.set_xtol_rel(1e-4);
 			opt.set_ftol_rel(1e-4);
+			opt.set_maxeval(100);
 
 			std::vector<Real> xi(xN);
 			for (int i = 0; i < xN; i++)
 			{
 				xi[i] = _xf(i);
 			}
-			double minf;
-			nlopt::result result = opt.optimize(xi, minf);
+			Real minf;
+			nlopt::result result;
+			srand(time(NULL));
+			while ((result = opt.optimize(xi, minf)) == nlopt::result::MAXEVAL_REACHED)
+			{
+				for (int i = 0; i < xN; i++)
+				{
+					xi[i] += ((rand() % 100) / 50.0 - 1.0) * 1e-4;
+				}
+			}
+			if (result < 0) return VectorX();
 			for (int i = 0; i < xN; i++)
 			{
 				_xf(i) = xi[i];
+			}
+			if (_NLoptSubAlgo == NonlinearOptimization::NLoptAlgorithm::NLoptSLSQP)
+			{
+				if (!OptRealEqual((*_eqFunc)(_xf), 0.0)) return VectorX();
+				if (!OptRealLessEqual((*_ineqFunc)(_xf), 0.0)) return VectorX();
+			}
+			else
+			{
+				if (!OptRealLessEqual((*_ineqFunc)(_xf), 0.0)) return VectorX();
+
 			}
 			return _xf;
 		}

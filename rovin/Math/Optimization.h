@@ -17,19 +17,24 @@ namespace rovin
 		public:
 			enum Algorithm
 			{
-				Backtracking
+				Backtracking,
+				GoldenSection
 			};
 
 			LineSearch(const Algorithm& algo = (Algorithm::Backtracking));
 
-			Real solve(const VectorX& x, const VectorX& P);
+			Real solve(const VectorX& x, const VectorX& P = (VectorX()));
 			Real BacktrackingMethod(const VectorX& x, const VectorX& P);
+			Real GoldenSectionMethod(const Real x1, const Real x2, const Real x3);
 
 			Algorithm _algorithm;
 
 			FunctionPtr _objectiveFunc;
 
 			Real _alpha;
+
+			Real _resphi = 2 - (1 + std::sqrt(5)) / 2.0;
+			Real _tol;
 
 			Real _alpha0;
 			Real _tau;
@@ -117,6 +122,11 @@ namespace rovin
 				SQP,
 				NLopt
 			};
+			enum NLoptAlgorithm
+			{
+				NLoptMMA,
+				NLoptSLSQP
+			};
 
 			/////////////////////////////////////// NLOPT ////////////////////////////////////////////////////
 			nlopt::opt opt;
@@ -139,6 +149,7 @@ namespace rovin
 			VectorX SQPMethod(const VectorX& x);
 
 			Algorithm _algorithm;
+			NLoptAlgorithm _NLoptSubAlgo;
 
 			VectorX _xf;
 
@@ -196,7 +207,7 @@ namespace rovin
 			int _maxIter;
 		};
 
-		static const Real	OptEps = 1e-7;
+		static const Real	OptEps = 1e-5;
 
 		static MatrixX PDCorrection(const MatrixX& SquareMatrix)
 		{

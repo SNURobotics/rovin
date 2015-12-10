@@ -1,7 +1,7 @@
 #include "PTPoptimization.h"
 #include <rovin/Model/MotorJoint.h>
 #include <rovin/Math/Optimization.h>
-#include <rovin/Math/GaussianQuadrature.h>
+
 #include <ctime>
 using namespace std;
 using namespace rovin::Math;
@@ -18,6 +18,8 @@ namespace rovin
 			_noptActiveJointIdx.resize(0);
 			_optActiveJointDOF = 0;
 			_noptActiveJointDOF = 0;
+			_nStep = 2;
+			//_gaussianQuadratureInitialized = false;
 		}
 
 		PointToPointOptimization::~PointToPointOptimization()
@@ -52,9 +54,19 @@ namespace rovin
 		{
 			_tf = tf;
 			_nStep = nStep;
-			GaussianQuadrature gaussianQuadrature(nStep, 0.0, tf);
-			_timeSpan = gaussianQuadrature.getQueryPoints();
-			_timeSpanWeight = gaussianQuadrature.getWeights();
+			//if (_nStep != nStep || _gaussianQuadratureInitialized == false)
+			//{
+			//	_nStep = nStep;
+			//	_gaussianQuadrature = GaussianQuadrature(nStep, 0.0, tf);
+			//}
+			//else
+			//{
+			//	_gaussianQuadrature.setTimeInterval(0.0, tf);
+			//	_gaussianQuadratureInitialized = true;
+			//}
+			GaussianQuadrature _gaussianQuadrature(_nStep, 0.0, _tf);
+			_timeSpan = _gaussianQuadrature.getQueryPoints();
+			_timeSpanWeight = _gaussianQuadrature.getWeights();
 		}
 
 		void PointToPointOptimization::setBoundaryCondition(const Math::VectorX & q0, const Math::VectorX & qf, const Math::VectorX & qdot0, const Math::VectorX & qdotf, const Math::VectorX & qddot0, const Math::VectorX & qddotf)
@@ -336,16 +348,38 @@ namespace rovin
 		{
 		}
 
-		Math::VectorX BSplinePointToPointOptimization::run(const ObjectiveFunctionType & objectiveType)
+		Math::VectorX BSplinePointToPointOptimization::run(const ObjectiveFunctionType & objectiveType, bool withEQ)
 		{
+			NonlinearOptimization nonlinearSolver;;
+			VectorX x(_optActiveJointDOF*_nMiddleCP);
+
+			///////////////////////////////////////// INITIAL GUESS ///////////////////////////////////
+			//x.setRandom();
+
+			for (int i = 0; i < _optActiveJointDOF; i++)
+			{
+				for (int j = 0; j < _nMiddleCP; j++)
+				{
+					x(i*_nMiddleCP + j) = BoundaryCP[0](_optActiveJointIdx(i)) + (Real)(j + 1) * (BoundaryCP[5](_optActiveJointIdx(i)) - BoundaryCP[0](_optActiveJointIdx(i))) / (Real)(_nMiddleCP + 1);
+				}
+			}
+
 			///////////////////////////////////////// EQUALITY CONSTRAINT ///////////////////////////////////
 			generateLinearEqualityConstraint();
 			_eqFunc = Math::FunctionPtr(new LinearFunction());
-			//static_pointer_cast<LinearFunction>(_eqFunc)->A = _Aeq_opt;
-			//static_pointer_cast<LinearFunction>(_eqFunc)->b = _beq_opt;
+			if (withEQ)
+			{
+				nonlinearSolver._NLoptSubAlgo = NonlinearOptimization::NLoptAlgorithm::NLoptSLSQP;
+				static_pointer_cast<LinearFunction>(_eqFunc)->A = _Aeq_opt;
+				static_pointer_cast<LinearFunction>(_eqFunc)->b = _beq_opt;
+			}
+			else
+			{
+				nonlinearSolver._NLoptSubAlgo = NonlinearOptimization::NLoptAlgorithm::NLoptMMA;
+				static_pointer_cast<LinearFunction>(_eqFunc)->A = MatrixX::Zero(1, _nMiddleCP * _optActiveJointDOF);
+				static_pointer_cast<LinearFunction>(_eqFunc)->b = MatrixX::Zero(1, 1);
+			}
 
-			static_pointer_cast<LinearFunction>(_eqFunc)->A = MatrixX::Zero(1,_nMiddleCP * _optActiveJointDOF);
-			static_pointer_cast<LinearFunction>(_eqFunc)->b = MatrixX::Zero(1,1);
 			/////////////////////////////////////////////////////////////////////////////////////////////////
 
 			/////////////////////////////////////// INEQUALITY CONSTRAINT ///////////////////////////////////
@@ -355,7 +389,7 @@ namespace rovin
 			//generateLinearInequalityConstraint_large();
 			//std::shared_ptr<nonLinearInequalitySmallConstraint> nonLinearIneqFunc = std::shared_ptr<nonLinearInequalitySmallConstraint>(new nonLinearInequalitySmallConstraint());
 			//nonLinearIneqFunc->loadConstraint(_socAssem);
-			
+
 			////////////////// small linear inequality & large nonlinear inequality <<<<< faster
 			generateLinearInequalityConstraint();
 			std::shared_ptr<nonLinearInequalityConstraint> nonLinearIneqFunc = std::shared_ptr<nonLinearInequalityConstraint>(new nonLinearInequalityConstraint());
@@ -391,27 +425,24 @@ namespace rovin
 
 			/////////////////////////////////////////// TEST FUNCTIONS ////////////////////////////////////////////////////////
 			shared_ptr<EmptyFunction> _testIneqConstFun = shared_ptr<EmptyFunction>(new EmptyFunction());
-			
+
 			shared_ptr<nonLinearInequalityTestConstraint> _testNonLinearIneqConstFun = shared_ptr<nonLinearInequalityTestConstraint>(new nonLinearInequalityTestConstraint());
 			_testNonLinearIneqConstFun->_sharedDID = sharedDID;
 			_testNonLinearIneqConstFun->loadConstraint(_socAssem, _optActiveJointIdx, _optActiveJointDOF, _velConstraintExist, _torqueConstraintExist, _accConstraintExist);
 			////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-			NonlinearOptimization nonlinearSolver;
 			nonlinearSolver._objectiveFunc = _objectiveFunc;
 			nonlinearSolver._eqFunc = _eqFunc;
 			nonlinearSolver._ineqFunc = _ineqFunc;
 
 			double c = clock();
-			VectorX x(_optActiveJointDOF*_nMiddleCP);
-			//x.setRandom();
 
-			for (int i = 0; i < _optActiveJointDOF; i++)
+			if (withEQ)
 			{
-				for (int j = 0; j < _nMiddleCP; j++)
-				{
-					x(i*_nMiddleCP + j) = BoundaryCP[0](_optActiveJointIdx(i)) + (Real)(j + 1) * (BoundaryCP[5](_optActiveJointIdx(i)) - BoundaryCP[0](_optActiveJointIdx(i))) / (Real)(_nMiddleCP + 1);
-				}
+				ProjectToFeasibleSpace proj;
+				proj._eqConstraintFunc = _eqFunc;
+				proj._inEqConstraintFunc = _ineqFunc;
+				x = proj.project(x);
 			}
 
 			//cout << _Aineq_opt*x + _bineq_opt << endl;
@@ -477,13 +508,16 @@ namespace rovin
 			//cout << Hnum[0] << endl;
 
 			///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-			cout << "initial objective function : " << (*_objectiveFunc)(x)(0) << endl;
+			//cout << "initial objective function : " << (*_objectiveFunc)(x)(0) << endl;
 			_resultFlag = false;
 			_solX = nonlinearSolver.solve(x);
-			_resultFlag = true;
-			_fval = (*_objectiveFunc)(_solX)(0);
-			if(_eqFunc != NULL) _eqConstraintVal = (*_eqFunc)(_solX);
-			if (_ineqFunc != NULL) _ineqConstraintVal = (*_ineqFunc)(_solX);
+			if (_solX.size() != 0)
+			{
+				_resultFlag = true;
+				_fval = (*_objectiveFunc)(_solX)(0);
+				if (_eqFunc != NULL) _eqConstraintVal = (*_eqFunc)(_solX);
+				if (_ineqFunc != NULL) _ineqConstraintVal = (*_ineqFunc)(_solX);
+			}
 			//cout << nonlinearSolver._Iter << endl;
 			//cout << "x : " << endl << _solX << endl;
 			//cout << "obj : " << endl << (*_objectiveFunc)(x) << endl;
