@@ -72,7 +72,8 @@ void GaussianQuadrature::_calcCoeffs()
 		_x[_N - 1 - i] = z;
 		_t[_N - 1 - i] = (_tf - _t0) / 2 * _x[_N - 1 - i] + (_tf + _t0) / 2;
 		//Compute the weight
-		_w[i] = 2.0 / ((1.0 - z*z)*pp*pp);
+		//_w[i] = 2.0 / ((1.0 - z*z)*pp*pp);
+		_w[i] = (_tf - _t0) / ((1.0 - z*z)*pp*pp);
 		//and its symmetric counterpart.
 		_w[_N - 1 - i] = _w[i];
 	}
