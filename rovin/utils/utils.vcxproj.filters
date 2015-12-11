@@ -24,9 +24,15 @@
     <ClInclude Include="fileIO.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="utils.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="conversion.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="util.cpp">
+    <ClCompile Include="utils.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>
