@@ -30,8 +30,9 @@ int main()
 	double frameRate = 120;
 
 	Line	trajLine;
-	trajLine.setLineWidth(2);
+	Points	trajPoints;
 	renderer.addGeometry(trajLine);
+	renderer.addGeometry(trajPoints);
 
 	while (1)
 	{
@@ -43,6 +44,7 @@ int main()
 			state->addJointq(State::ACTIVEJOINT, q);
 			rovin::Kinematics::solveForwardKinematics(gAssem, *state, State::LINKS_POS);
 			trajLine.push_back(eigen2osgVec<osg::Vec3>(state->getLinkState(6)._T.getPosition()));
+			//trajPoints.push_back(eigen2osgVec<osg::Vec3>(state->getLinkState(6)._T.getPosition()));
 			
 			c = clock();
 		}

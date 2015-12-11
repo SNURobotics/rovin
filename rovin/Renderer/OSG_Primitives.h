@@ -3,6 +3,7 @@
 #include <osg/io_utils>
 #include <osg/ShapeDrawable>
 #include <osg/LineWidth>
+#include <osg/Point>
 
 namespace rovin
 {
@@ -20,6 +21,16 @@ namespace rovin
 				_color->setBinding(osg::Array::BIND_OVERALL);
 				_geometry->setVertexArray(_points);
 				_geometry->setColorArray(_color);
+			}
+			virtual ~Primitives() {}
+
+
+			void push_back(const osg::Vec3&	point)
+			{
+				_points->push_back(point);
+				_drawArrays->setFirst(0);
+				_drawArrays->setCount(_points->size());
+				_geometry->setVertexArray(_points);
 			}
 
 			void setColor(float r, float g, float b, float a = 1.0)
@@ -46,31 +57,39 @@ namespace rovin
 		class Line : public Primitives
 		{
 		public:
-			Line(float lineWidth = 1, osg::Vec4 color = osg::Vec4(0.0, 0.0, 0.0, 1.0))
+			Line(float lineWidth = 2, osg::Vec4 color = osg::Vec4(0.0, 0.0, 0.0, 1.0))
 				: Primitives(color)
 			{
 				_lineWidth = new osg::LineWidth(lineWidth);
 				_drawArrays = new osg::DrawArrays(osg::PrimitiveSet::LINE_STRIP);
 				_geometry->getOrCreateStateSet()->setAttributeAndModes(_lineWidth, osg::StateAttribute::ON);
 				_geometry->addPrimitiveSet(_drawArrays);
-				
+
 			}
 
-			void setLineWidth(float w)
-			{
-				_lineWidth->setWidth(w);
-			}
+			virtual ~Line() {}
 
-			void push_back(const osg::Vec3&	point)
-			{
-				_points->push_back(point);
-				_drawArrays->setFirst(0);
-				_drawArrays->setCount(_points->size());
-				_geometry->setVertexArray(_points);
-			}
-
+			void setWidth(float w) { _lineWidth->setWidth(w); }
 		protected:
 			osg::ref_ptr<osg::LineWidth>		_lineWidth;
+		};
+
+		class Points :public Primitives
+		{
+		public:
+			Points(float size = 3, osg::Vec4 color = osg::Vec4(0.0, 0.0, 0.0, 1.0))
+				: Primitives(color)
+			{
+				_point = new osg::Point(size);
+				_drawArrays = new osg::DrawArrays(osg::PrimitiveSet::POINTS);
+				_geometry->getOrCreateStateSet()->setAttribute(_point);
+				_geometry->addPrimitiveSet(_drawArrays);
+			}
+
+			void setSize(float d) { _point->setSize(d); }
+
+		protected:
+			osg::ref_ptr<osg::Point>	_point;
 		};
 	}
 }
