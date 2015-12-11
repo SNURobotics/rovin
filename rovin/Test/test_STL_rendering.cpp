@@ -19,12 +19,7 @@ int main()
 	rovin::Kinematics::solveForwardKinematics(gAssem, *state, State::LINKS_POS);
 	OSG_simpleRender renderer(gAssem, *state, 600, 600);
 
-	
-	
-
 	renderer.getViewer().realize();
-	
-
 	double c = clock();
 	auto q = state->getJointq(State::STATEJOINT);
 	double frameRate = 120;
