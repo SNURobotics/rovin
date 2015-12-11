@@ -133,14 +133,15 @@ namespace rovin
 
 		OSG_simpleRender::OSG_simpleRender(const Model::Assembly& assem, const Model::State& state, int width, int height)
 		{
-			_cameraManipulator = new osgGA::TerrainManipulator();
 			_rootNode = new osg::Group;
+			_cameraManipulator = new osgGA::TerrainManipulator();
+			_geometryNode = new osg::Geode();
+			
+			_rootNode->addChild(createGround());
+			_rootNode->addChild(_geometryNode);
 
-			osg::ref_ptr< osg::MatrixTransform > rootGroup = new osg::MatrixTransform;
-			rootGroup->addChild(createGround());
-
-			std::vector< Model::LinkPtr > linkPtr = assem.getLinkList();
-			std::vector<Model::GeometryInfoPtr>& shapes = std::vector<Model::GeometryInfoPtr>();
+			const auto& linkPtr = assem.getLinkList();
+			auto& shapes = std::vector<Model::GeometryInfoPtr>();
 			for (unsigned int i = 0; i < linkPtr.size(); i++)
 			{
 				const Model::State::LinkState &linkState = state.getLinkState(linkPtr[i]->getName());
@@ -151,25 +152,22 @@ namespace rovin
 				for (unsigned int j = 0; j < shapes.size(); j++)
 					transformNode->addChild(convertGeo2Node(shapes[j]));
 				_NodeStateList.push_back(NodeStatePair(transformNode, &linkState));
-
-				rootGroup->addChild(transformNode);
+				_rootNode->addChild(transformNode);
 			}
-			//_optimzer.optimize(rootGroup);
-			_rootNode->addChild(rootGroup);
-			_optimzer.optimize(_rootNode);
 
-			rootGroup->setMatrix(osg::Matrix(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, -0.7f, 1));
-			_cameraManipulator->setDistance(5.0f);
-			_cameraManipulator->setRotation(osg::Quat(1, osg::Vec3d(1, 0, 0)));
-
-			osg::ref_ptr<osgUtil::IncrementalCompileOperation> ico = new osgUtil::IncrementalCompileOperation;
-			ico->add(rootGroup);
-			ico->release();
-			_viewer.setIncrementalCompileOperation(ico);
+			//_optimzer.optimize(_rootNode,osgUtil::Optimizer::DEFAULT_OPTIMIZATIONS);
+			//osg::ref_ptr<osgUtil::IncrementalCompileOperation> ico = new osgUtil::IncrementalCompileOperation;
+			//ico->add(_rootNode);
+			//ico->release();
+			//_viewer.setIncrementalCompileOperation(ico);
+			
 			_viewer.setUpViewInWindow(40, 40, width, height);
 			_viewer.setSceneData(_rootNode);
-			_viewer.getCamera()->setClearColor(osg::Vec4(1.0f, 1.0f, 1.0f, 1.0f));
+			_viewer.getCamera()->setClearColor(osg::Vec4(90/255.0, 102/255.0, 117/255.0, 1.0f));
 			_viewer.setCameraManipulator(_cameraManipulator.get(), true);
+			_cameraManipulator->setDistance(5.0f);
+			_cameraManipulator->setRotation(osg::Quat(1, osg::Vec3d(1, 0, 0)));
+			
 			_viewer.addEventHandler(new osgViewer::WindowSizeHandler);
 			_viewer.addEventHandler(new SimpleGUIHandler());
 		}

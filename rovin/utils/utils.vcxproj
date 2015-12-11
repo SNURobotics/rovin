@@ -128,11 +128,13 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="Checker.h" />
+    <ClInclude Include="conversion.h" />
     <ClInclude Include="Diagnostic.h" />
     <ClInclude Include="fileIO.h" />
+    <ClInclude Include="utils.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="util.cpp" />
+    <ClCompile Include="utils.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
