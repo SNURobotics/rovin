@@ -207,7 +207,7 @@ namespace rovin
 			int _maxIter;
 		};
 
-		static const Real	OptEps = 1e-5;
+		static const Real	OptEps = 1e-4;
 
 		static MatrixX PDCorrection(const MatrixX& SquareMatrix)
 		{

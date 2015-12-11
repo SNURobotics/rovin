@@ -427,7 +427,7 @@ namespace rovin
 			}
 			opt.set_xtol_rel(1e-4);
 			opt.set_ftol_rel(1e-4);
-			opt.set_maxeval(100);
+			opt.set_maxeval(500);
 
 			std::vector<Real> xi(xN);
 			for (int i = 0; i < xN; i++)
@@ -443,6 +443,7 @@ namespace rovin
 				{
 					xi[i] += ((rand() % 100) / 50.0 - 1.0) * 1e-4;
 				}
+				opt.set_maxeval(100);
 			}
 			if (result < 0) return VectorX();
 			for (int i = 0; i < xN; i++)

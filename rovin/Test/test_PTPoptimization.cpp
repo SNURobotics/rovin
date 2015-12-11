@@ -13,14 +13,12 @@
 #include <rovin/Dynamics/Dynamics.h>
 #include <rovin/Math/Optimization.h>
 #include <rovin/TrajectoryOptimization/PTPoptimization.h>
-#include <rovin/Renderer/SimpleOSG.h>
 #include <rovin/utils/Diagnostic.h>
 #include <rovin/utils/fileIO.h>
 
 using namespace std;
 using namespace rovin::Math;
 using namespace rovin::Model;
-using namespace rovin::Renderer;
 using namespace rovin::TrajectoryOptimization;
 
 socAssemblyPtr openchain;
@@ -452,7 +450,7 @@ void effortRobotModeling()
 	qdotmax << 100, 80, 140, 290, 290, 440;
 	qdotmax *= PI / 180;
 	
-	qddotmax = 2 * qdotmax;             // user defined
+	qddotmax = 5 * qdotmax;             // user defined
 	qddotmin = -qddotmax;
 	qdddotmax = 300 * VectorX::Ones(dof);          // user defined
 	qdddotmin = -qdddotmax;
