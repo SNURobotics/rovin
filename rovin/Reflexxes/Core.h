@@ -55,20 +55,17 @@ namespace Reflexxes
 
 			int	ResultValue = 0;
 			int count = 0;
+
+			//	put initial state.
+			for (int i = 0; i < _DOF; i++)
+			{
+				_qResult(i, count) = _IP.CurrentPositionVector->VecData[i];
+				_dqResult(i, count) = _IP.CurrentVelocityVector->VecData[i];
+				_ddqResult(i, count) = _IP.CurrentAccelerationVector->VecData[i];
+			}
+			count++;
 			while (ResultValue != ReflexxesAPI::RML_FINAL_STATE_REACHED)
 			{
-				_qResult.conservativeResize(Eigen::NoChange, count + 1);
-				_dqResult.conservativeResize(Eigen::NoChange, count + 1);
-				_ddqResult.conservativeResize(Eigen::NoChange, count + 1);
-
-				for (int i = 0; i < _DOF; i++)
-				{
-					_qResult(i, count) = _IP.CurrentPositionVector->VecData[i];
-					_dqResult(i, count) = _IP.CurrentVelocityVector->VecData[i];
-					_ddqResult(i, count) = _IP.CurrentAccelerationVector->VecData[i];
-				}
-					
-
 				ResultValue = _RML.RMLPosition(_IP, &_OP, _Flag);
 				if (ResultValue < 0)
 				{
@@ -80,8 +77,20 @@ namespace Reflexxes
 				_IP.CurrentVelocityVector = _OP.NewVelocityVector;
 				_IP.CurrentAccelerationVector = _OP.NewAccelerationVector;
 
+				_qResult.conservativeResize(Eigen::NoChange, count + 1);
+				_dqResult.conservativeResize(Eigen::NoChange, count + 1);
+				_ddqResult.conservativeResize(Eigen::NoChange, count + 1);
+
+				for (int i = 0; i < _DOF; i++)
+				{
+					_qResult(i, count) = _IP.CurrentPositionVector->VecData[i];
+					_dqResult(i, count) = _IP.CurrentVelocityVector->VecData[i];
+					_ddqResult(i, count) = _IP.CurrentAccelerationVector->VecData[i];
+				}
+
 				count++;
 			}
+			
 
 			return _qResult;
 		}

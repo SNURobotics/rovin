@@ -13,7 +13,7 @@ using namespace rovin::Renderer;
 using namespace rovin::utils;
 
 efortRobot gAssem;
-const double timeStep = 0.01;
+const double timeStep = 0.02;
 int main()
 {
 	StatePtr state = gAssem.makeState();
