@@ -1,7 +1,7 @@
 #include "PTPoptimization.h"
 #include <rovin/Model/MotorJoint.h>
 #include <rovin/Math/Optimization.h>
-#include <rovin/Math/GaussianQuadrature.h>
+
 #include <ctime>
 using namespace std;
 using namespace rovin::Math;
@@ -18,6 +18,9 @@ namespace rovin
 			_noptActiveJointIdx.resize(0);
 			_optActiveJointDOF = 0;
 			_noptActiveJointDOF = 0;
+			_nStep = 2;
+			_gaussianQuadratureInitialized = false;
+			_waypointPositionExist = false;
 		}
 
 		PointToPointOptimization::~PointToPointOptimization()
@@ -51,10 +54,18 @@ namespace rovin
 		void PointToPointOptimization::setFinalTimeAndTimeSpanUsingGaussianQuadrature(const Math::Real tf, const int nStep)
 		{
 			_tf = tf;
+			if (_nStep != nStep || _gaussianQuadratureInitialized == false)
+			{
+				_gaussianQuadrature = GaussianQuadrature(nStep, 0.0, _tf);
+			}
+			else
+			{
+				_gaussianQuadrature.setTimeInterval(0.0, _tf);
+			}
 			_nStep = nStep;
-			GaussianQuadrature gaussianQuadrature(nStep, 0.0, tf);
-			_timeSpan = gaussianQuadrature.getQueryPoints();
-			_timeSpanWeight = gaussianQuadrature.getWeights();
+			_gaussianQuadratureInitialized = true;
+			_timeSpan = _gaussianQuadrature.getQueryPoints();
+			_timeSpanWeight = _gaussianQuadrature.getWeights();
 		}
 
 		void PointToPointOptimization::setBoundaryCondition(const Math::VectorX & q0, const Math::VectorX & qf, const Math::VectorX & qdot0, const Math::VectorX & qdotf, const Math::VectorX & qddot0, const Math::VectorX & qddotf)
@@ -336,16 +347,44 @@ namespace rovin
 		{
 		}
 
-		Math::VectorX BSplinePointToPointOptimization::run(const ObjectiveFunctionType & objectiveType)
+		Math::VectorX BSplinePointToPointOptimization::run(const ObjectiveFunctionType & objectiveType, bool withEQ, bool useInitialGuess)
 		{
+			NonlinearOptimization nonlinearSolver;;
+			VectorX x(_optActiveJointDOF*_nMiddleCP);
+
+			///////////////////////////////////////// INITIAL GUESS ///////////////////////////////////
+			//x.setRandom();
+
+			if (!useInitialGuess)
+			{
+				for (int i = 0; i < _optActiveJointDOF; i++)
+				{
+					for (int j = 0; j < _nMiddleCP; j++)
+					{
+						x(i*_nMiddleCP + j) = BoundaryCP[0](_optActiveJointIdx(i)) + (Real)(j + 1) * (BoundaryCP[5](_optActiveJointIdx(i)) - BoundaryCP[0](_optActiveJointIdx(i))) / (Real)(_nMiddleCP + 1);
+					}
+				}
+			}
+			else
+			{
+				x = _initoptGuess;
+			}
 			///////////////////////////////////////// EQUALITY CONSTRAINT ///////////////////////////////////
 			generateLinearEqualityConstraint();
 			_eqFunc = Math::FunctionPtr(new LinearFunction());
-			//static_pointer_cast<LinearFunction>(_eqFunc)->A = _Aeq_opt;
-			//static_pointer_cast<LinearFunction>(_eqFunc)->b = _beq_opt;
+			if (withEQ)
+			{
+				nonlinearSolver._NLoptSubAlgo = NonlinearOptimization::NLoptAlgorithm::NLoptSLSQP;
+				static_pointer_cast<LinearFunction>(_eqFunc)->A = _Aeq_opt;
+				static_pointer_cast<LinearFunction>(_eqFunc)->b = _beq_opt;
+			}
+			else
+			{
+				nonlinearSolver._NLoptSubAlgo = NonlinearOptimization::NLoptAlgorithm::NLoptMMA;
+				static_pointer_cast<LinearFunction>(_eqFunc)->A = MatrixX::Zero(1, _nMiddleCP * _optActiveJointDOF);
+				static_pointer_cast<LinearFunction>(_eqFunc)->b = MatrixX::Zero(1, 1);
+			}
 
-			static_pointer_cast<LinearFunction>(_eqFunc)->A = MatrixX::Zero(1,_nMiddleCP * _optActiveJointDOF);
-			static_pointer_cast<LinearFunction>(_eqFunc)->b = MatrixX::Zero(1,1);
 			/////////////////////////////////////////////////////////////////////////////////////////////////
 
 			/////////////////////////////////////// INEQUALITY CONSTRAINT ///////////////////////////////////
@@ -355,7 +394,7 @@ namespace rovin
 			//generateLinearInequalityConstraint_large();
 			//std::shared_ptr<nonLinearInequalitySmallConstraint> nonLinearIneqFunc = std::shared_ptr<nonLinearInequalitySmallConstraint>(new nonLinearInequalitySmallConstraint());
 			//nonLinearIneqFunc->loadConstraint(_socAssem);
-			
+
 			////////////////// small linear inequality & large nonlinear inequality <<<<< faster
 			generateLinearInequalityConstraint();
 			std::shared_ptr<nonLinearInequalityConstraint> nonLinearIneqFunc = std::shared_ptr<nonLinearInequalityConstraint>(new nonLinearInequalityConstraint());
@@ -370,7 +409,14 @@ namespace rovin
 
 
 			/////////////////////////////////////// NOPT CP & SET SHARED DID ///////////////////////////////////
-			generateNoptControlPoint();
+			if (!useInitialGuess)
+			{
+				generateNoptControlPoint();
+			}
+			else
+			{
+				_noptControlPoint = _initnoptGuess;
+			}
 			setdqdp();
 			shared_ptr<SharedDID> sharedDID = shared_ptr<SharedDID>(new SharedDID(_socAssem, _nStep, _timeSpan, _timeSpanWeight, _knot,
 				BoundaryCP, _nInitCP, _nFinalCP, _nMiddleCP,
@@ -391,27 +437,39 @@ namespace rovin
 
 			/////////////////////////////////////////// TEST FUNCTIONS ////////////////////////////////////////////////////////
 			shared_ptr<EmptyFunction> _testIneqConstFun = shared_ptr<EmptyFunction>(new EmptyFunction());
-			
+
 			shared_ptr<nonLinearInequalityTestConstraint> _testNonLinearIneqConstFun = shared_ptr<nonLinearInequalityTestConstraint>(new nonLinearInequalityTestConstraint());
 			_testNonLinearIneqConstFun->_sharedDID = sharedDID;
 			_testNonLinearIneqConstFun->loadConstraint(_socAssem, _optActiveJointIdx, _optActiveJointDOF, _velConstraintExist, _torqueConstraintExist, _accConstraintExist);
 			////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-			NonlinearOptimization nonlinearSolver;
-			nonlinearSolver._objectiveFunc = _objectiveFunc;
+			if (!_waypointPositionExist)
+			{
+				nonlinearSolver._objectiveFunc = _objectiveFunc;
+			}
+			else
+			{
+				Math::FunctionPtr multiObject = Math::FunctionPtr(new MultiObjectiveFunction);
+				Math::FunctionPtr penaltyFunction = Math::FunctionPtr(new waypointObjectiveFunction);
+				std::static_pointer_cast<waypointObjectiveFunction>(penaltyFunction)->_waypoint = _waypointPosition;
+				std::static_pointer_cast<waypointObjectiveFunction>(penaltyFunction)->_sharedDID = sharedDID;
+				std::static_pointer_cast<waypointObjectiveFunction>(penaltyFunction)->_weight = 99999999.9;
+				std::static_pointer_cast<MultiObjectiveFunction>(multiObject)->addFunction(_objectiveFunc);
+				std::static_pointer_cast<MultiObjectiveFunction>(multiObject)->addFunction(penaltyFunction);
+				nonlinearSolver._objectiveFunc = multiObject;
+
+			}
 			nonlinearSolver._eqFunc = _eqFunc;
 			nonlinearSolver._ineqFunc = _ineqFunc;
 
 			double c = clock();
-			VectorX x(_optActiveJointDOF*_nMiddleCP);
-			//x.setRandom();
 
-			for (int i = 0; i < _optActiveJointDOF; i++)
+			if (withEQ)
 			{
-				for (int j = 0; j < _nMiddleCP; j++)
-				{
-					x(i*_nMiddleCP + j) = BoundaryCP[0](_optActiveJointIdx(i)) + (Real)(j + 1) * (BoundaryCP[5](_optActiveJointIdx(i)) - BoundaryCP[0](_optActiveJointIdx(i))) / (Real)(_nMiddleCP + 1);
-				}
+				ProjectToFeasibleSpace proj;
+				proj._eqConstraintFunc = _eqFunc;
+				proj._inEqConstraintFunc = _ineqFunc;
+				x = proj.project(x);
 			}
 
 			//cout << _Aineq_opt*x + _bineq_opt << endl;
@@ -477,13 +535,16 @@ namespace rovin
 			//cout << Hnum[0] << endl;
 
 			///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-			cout << "initial objective function : " << (*_objectiveFunc)(x)(0) << endl;
+			//cout << "initial objective function : " << (*_objectiveFunc)(x)(0) << endl;
 			_resultFlag = false;
 			_solX = nonlinearSolver.solve(x);
-			_resultFlag = true;
-			_fval = (*_objectiveFunc)(_solX)(0);
-			if(_eqFunc != NULL) _eqConstraintVal = (*_eqFunc)(_solX);
-			if (_ineqFunc != NULL) _ineqConstraintVal = (*_ineqFunc)(_solX);
+			if (_solX.size() != 0)
+			{
+				_resultFlag = true;
+				_fval = (*_objectiveFunc)(_solX)(0);
+				if (_eqFunc != NULL) _eqConstraintVal = (*_eqFunc)(_solX);
+				if (_ineqFunc != NULL) _ineqConstraintVal = (*_ineqFunc)(_solX);
+			}
 			//cout << nonlinearSolver._Iter << endl;
 			//cout << "x : " << endl << _solX << endl;
 			//cout << "obj : " << endl << (*_objectiveFunc)(x) << endl;
@@ -530,10 +591,22 @@ namespace rovin
 			BSpline<-1, -1, -1> val(_knot, newCp);
 			BSpline<-1, -1, -1> vel = val.derivative();
 			BSpline<-1, -1, -1> acc = vel.derivative();
-			vector<MatrixX> result(3);
+			vector<MatrixX> result(4);
 			result[0] = val(time);
 			result[1] = vel(time);
 			result[2] = acc(time);
+			// get joint torque
+			MatrixX jointTorqueTrj(result[0].rows(), result[0].cols());
+			for (int i = 0; i < result[0].cols(); i++)
+			{
+				_defaultState->setJointq(State::TARGET_JOINT::ACTIVEJOINT, result[0].col(i));
+				_defaultState->setJointqdot(State::TARGET_JOINT::ACTIVEJOINT, result[1].col(i));
+				_defaultState->setJointqddot(State::TARGET_JOINT::ACTIVEJOINT, result[2].col(i));
+				rovin::Dynamics::solveInverseDynamics(*_socAssem, *_defaultState);
+				jointTorqueTrj.col(i) = _defaultState->getJointTorque(State::TARGET_JOINT::ACTIVEJOINT);
+			}
+			result[3] = jointTorqueTrj;
+
 			return result;
 		}
 
@@ -1116,20 +1189,20 @@ namespace rovin
 			//cout << "noptCP" << endl;
 			//cout << _noptControlPoint.transpose() << endl;
 
-			ProjectToFeasibleSpace proj;
-			FunctionPtr linearEq = FunctionPtr(new LinearFunction());
-			FunctionPtr linearInEq = FunctionPtr(new LinearFunction());
-			static_pointer_cast<LinearFunction> (linearEq)->A = _Aeq_nopt;
-			static_pointer_cast<LinearFunction> (linearEq)->b = _beq_nopt;
+			//ProjectToFeasibleSpace proj;
+			//FunctionPtr linearEq = FunctionPtr(new LinearFunction());
+			//FunctionPtr linearInEq = FunctionPtr(new LinearFunction());
+			//static_pointer_cast<LinearFunction> (linearEq)->A = _Aeq_nopt;
+			//static_pointer_cast<LinearFunction> (linearEq)->b = _beq_nopt;
 
-			static_pointer_cast<LinearFunction> (linearInEq)->A = _Aineq_nopt;
-			static_pointer_cast<LinearFunction> (linearInEq)->b = _bineq_nopt;
+			//static_pointer_cast<LinearFunction> (linearInEq)->A = _Aineq_nopt;
+			//static_pointer_cast<LinearFunction> (linearInEq)->b = _bineq_nopt;
 
-			if (_noptActiveJointDOF > 0)
-			{
-				proj._eqConstraintFunc = linearEq;
-				proj._inEqConstraintFunc = linearInEq;
-			}
+			//if (_noptActiveJointDOF > 0)
+			//{
+			//	proj._eqConstraintFunc = linearEq;
+			//	proj._inEqConstraintFunc = linearInEq;
+			//}
 			
 			
 			
@@ -1181,9 +1254,9 @@ namespace rovin
 						for (unsigned int l = 0; l < _socAssem->getJointPtrByMateIndex(jointID)->getDOF(); l++)
 						{
 							dofIdx = _defaultState->getAssemIndex(jointID) + l;
-							_dqdp[i](dofIdx, _nMiddleCP*_defaultState->getActiveJointIndex(_optActiveJointIdx[k]) + j) = Ni(0);
-							_dqdotdp[i](dofIdx, _nMiddleCP*_defaultState->getActiveJointIndex(_optActiveJointIdx[k]) + j) = dNi(0);
-							_dqddotdp[i](dofIdx, _nMiddleCP*_defaultState->getActiveJointIndex(_optActiveJointIdx[k]) + j) = ddNi(0);
+							_dqdp[i](dofIdx, _nMiddleCP*k+ j) = Ni(0);
+							_dqdotdp[i](dofIdx, _nMiddleCP*k + j) = dNi(0);
+							_dqddotdp[i](dofIdx, _nMiddleCP*k + j) = ddNi(0);
 						}
 					}
 				}
@@ -1783,9 +1856,124 @@ namespace rovin
 			return val;
 		}
 
+		VectorX BSplinePointToPointOptimization::waypointObjectiveFunction::func(const VectorX& x) const
+		{
+			VectorX result(1);
+			result.setZero();
 
+			const MatrixX& tauTrj = _sharedDID->getTau(x);
 
+			for (unsigned int i = 0; i < _waypoint.size(); i++)
+			{
+				Vector3 lastPosition;
+				Vector3 Position = rovin::Kinematics::calculateEndeffectorFrame(*_sharedDID->_socAssem, *_sharedDID->_stateTrj[0]).getPosition();
+				Real minV = (_waypoint[i] - Position).squaredNorm();
+				for (int j = 1; j < _sharedDID->_nStep; j++)
+				{
+					lastPosition = Position;
+					Position = rovin::Kinematics::calculateEndeffectorFrame(*_sharedDID->_socAssem, *_sharedDID->_stateTrj[j]).getPosition();
 
+					if (RealBigger(((lastPosition - Position).transpose()*(_waypoint[i] - Position))(0), 0.0))
+					{
+						Real temp = (_waypoint[i] - Position).squaredNorm();
+						if (minV > temp)
+						{
+							minV = temp;
+						}
+					}
+					else if (RealBigger(((Position - lastPosition).transpose()*(_waypoint[i] - lastPosition))(0), 0.0))
+					{
+						Real temp = (_waypoint[i] - lastPosition).squaredNorm();
+						if (minV > temp)
+						{
+							minV = temp;
+						}
+					}
+					else
+					{
+						Vector3 a, b;
+						a = Position - lastPosition;
+						b = _waypoint[i] - lastPosition;
+						Real temp = a.cross(b).squaredNorm() / a.squaredNorm();
+						if (minV > temp)
+						{
+							minV = temp;
+						}
+					}
+				}
+				result(0) += _weight * minV;
+			}
+			return result;
+		}
+
+		MatrixX BSplinePointToPointOptimization::waypointObjectiveFunction::Jacobian(const VectorX& x) const
+		{
+			MatrixX result(1, x.size());
+			result.setZero();
+
+			const MatrixX& tauTrj = _sharedDID->getTau(x);
+
+			for (unsigned int i = 0; i < _waypoint.size(); i++)
+			{
+				Vector3 lastPosition;
+				Vector3 Position = rovin::Kinematics::calculateEndeffectorFrame(*_sharedDID->_socAssem, *_sharedDID->_stateTrj[0]).getPosition();
+				MatrixX lastJacobi;
+				MatrixX Jacobi = rovin::Kinematics::computeJacobian(*_sharedDID->_socAssem, *_sharedDID->_stateTrj[0]);
+				Real minV = (_waypoint[i] - Position).squaredNorm();
+				MatrixX minJacobi = 2*(_waypoint[i] - Position).transpose()*(-(-Bracket(Position)*Jacobi.topRows(3) + Jacobi.bottomRows(3))*_sharedDID->_dqdp[0]);
+				for (int j = 1; j < _sharedDID->_nStep; j++)
+				{
+					lastPosition = Position;
+					lastJacobi = Jacobi;
+					Position = rovin::Kinematics::calculateEndeffectorFrame(*_sharedDID->_socAssem, *_sharedDID->_stateTrj[j]).getPosition();
+					Jacobi = rovin::Kinematics::computeJacobian(*_sharedDID->_socAssem, *_sharedDID->_stateTrj[j]);
+
+					if (RealBigger(((lastPosition - Position).transpose()*(_waypoint[i] - Position))(0), 0.0))
+					{
+						Real temp = (_waypoint[i] - Position).squaredNorm();
+						if (minV > temp)
+						{
+							minV = temp;
+							minJacobi = 2 * (_waypoint[i] - Position).transpose()*
+								(-(-Bracket(Position)*Jacobi.topRows(3) + Jacobi.bottomRows(3))*_sharedDID->_dqdp[j]);
+						}
+					}
+					else if (RealBigger(((Position - lastPosition).transpose()*(_waypoint[i] - lastPosition))(0), 0.0))
+					{
+						Real temp = (_waypoint[i] - lastPosition).squaredNorm();
+						if (minV > temp)
+						{
+							minV = temp;
+							minJacobi = 2 * (_waypoint[i] - lastPosition).transpose()*
+								(-(-Bracket(lastPosition)*lastJacobi.topRows(3) + lastJacobi.bottomRows(3))*_sharedDID->_dqdp[j - 1]);
+						}
+					}
+					else
+					{
+						Vector3 a, b;
+						a = Position - lastPosition;
+						b = _waypoint[i] - lastPosition;
+						Real temp = a.cross(b).squaredNorm() / a.squaredNorm();
+						if (minV > temp)
+						{
+							minV = temp;
+							minJacobi = -2*(b.transpose()*Bracket(a)*Bracket(a))/(a.transpose()*a)(0)*
+								(-(-Bracket(lastPosition)*lastJacobi.topRows(3) + lastJacobi.bottomRows(3))*_sharedDID->_dqdp[j - 1]) - 
+								2.0/(a.transpose()*a)(0)*(a.transpose()*Bracket(b)*Bracket(b)-(a.transpose()*Bracket(b)*Bracket(b)*a)/(a.transpose()*a)(0)*a.transpose())*
+								(((-Bracket(Position)*Jacobi.topRows(3) + Jacobi.bottomRows(3))*_sharedDID->_dqdp[j]) - ((-Bracket(lastPosition)*lastJacobi.topRows(3) + lastJacobi.bottomRows(3))*_sharedDID->_dqdp[j - 1]));
+						}
+					}
+				}
+				result += _weight * minJacobi;
+			}
+			return result;
+		}
+		
+		void PointToPointOptimization::setWayPointOnlyPosition(const std::vector<Math::Vector3>& waypoint)
+		{
+			_waypointPositionExist = true;
+			_waypointPosition = waypoint;
+		}
 	}
 }
 

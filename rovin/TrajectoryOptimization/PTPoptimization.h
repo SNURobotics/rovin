@@ -16,6 +16,7 @@
 #include <rovin/Dynamics/Dynamics.h>
 #include <rovin/Model/State.h>
 #include <rovin/Math/Spline.h>
+#include <rovin/Math/GaussianQuadrature.h>
 
 namespace rovin
 {
@@ -36,6 +37,7 @@ namespace rovin
 				const Math::VectorX& qdot0 = (Math::VectorX()), const Math::VectorX& qdotf = (Math::VectorX()),
 				const Math::VectorX& qddot0 = (Math::VectorX()), const Math::VectorX& qddotf = (Math::VectorX()));
 			void setWayPoint(const std::vector< std::pair<Math::VectorX, Math::Real>>& wayPoints);
+			void setWayPointOnlyPosition(const std::vector<Math::Vector3>& waypoint);
 			void addWayPoint(std::pair<Math::VectorX, Math::Real>& wayPoint);
 			void setOptimizingJointIndex(const Math::VectorU& optActiveJointIdx);
 
@@ -54,7 +56,8 @@ namespace rovin
 			// time span points from Gaussian Quadrature (to reduce step number efficiently)
 			Math::VectorX _timeSpan;
 			Math::VectorX _timeSpanWeight;
-			
+			GaussianQuadrature _gaussianQuadrature;
+			bool _gaussianQuadratureInitialized;
 
 			// Boundary values
 			Math::VectorX _q0;
@@ -81,6 +84,9 @@ namespace rovin
 			bool _torqueConstraintExist;
 			bool _accConstraintExist;
 			//bool _jerkConstraintExist;
+
+			bool _waypointPositionExist;
+			std::vector<Math::Vector3> _waypointPosition;
 
 			// functions in optimization
 			Math::FunctionPtr _objectiveFunc;
@@ -254,6 +260,20 @@ namespace rovin
 				Math::VectorX _tauMax;
 			};
 
+			////////////////////////////////////////////////////////////// WAYPOINT OBJECTIVE FUNCTION
+			class waypointObjectiveFunction : public Math::Function
+			{
+			public:
+				waypointObjectiveFunction() {}
+
+				Math::VectorX func(const Math::VectorX& x) const;
+				Math::MatrixX Jacobian(const Math::VectorX& x) const;
+
+				Real _weight;
+				std::vector<Vector3> _waypoint;
+				std::shared_ptr<SharedDID> _sharedDID;
+			};
+
 
 
 			////////////////////////////////////////// test function
@@ -315,10 +335,16 @@ namespace rovin
 			////////////////////// run
 
 
-			Math::VectorX run(const ObjectiveFunctionType& objectiveType);
+			Math::VectorX run(const ObjectiveFunctionType& objectiveType, bool withEQ = (false), bool useInitialGuess = (false));
 
 
 			////////////////////////////
+
+			void setInitialGuess(const Math::VectorX& initaloptGuess, const Math::VectorX& initalnoptGuess)
+			{
+				_initoptGuess = initaloptGuess;
+				_initnoptGuess = initalnoptGuess;
+			}
 			
 			void setSplineCondition(const unsigned int order, const unsigned int nMiddleCP, KnotType knotType);
 			void checkKnotVectorFeasibility();
@@ -369,6 +395,8 @@ namespace rovin
 			Math::MatrixX _Aineq_nopt;
 			Math::VectorX _bineq_nopt;
 
+			Math::VectorX _initoptGuess;
+			Math::VectorX _initnoptGuess;
 			// Solution
 			Math::VectorX _solX;
 			Math::Real _fval;

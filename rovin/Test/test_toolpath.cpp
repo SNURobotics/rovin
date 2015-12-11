@@ -12,13 +12,15 @@
 #include <rovin/Dynamics/Kinematics.h>
 #include <rovin/Dynamics/Dynamics.h>
 #include <rovin/Math/Optimization.h>
-#include <rovin/TrajectoryOptimization/PTPoptimization.h>
+#include <rovin/TrajectoryOptimization/GivenPathOptimization.h>
+#include <rovin/Renderer/SimpleOSG.h>
 #include <rovin/utils/Diagnostic.h>
 #include <rovin/utils/fileIO.h>
 
 using namespace std;
 using namespace rovin::Math;
 using namespace rovin::Model;
+using namespace rovin::Renderer;
 using namespace rovin::TrajectoryOptimization;
 
 socAssemblyPtr openchain;
@@ -30,36 +32,9 @@ VectorX dq0;
 VectorX dqf;
 VectorX ddq0;
 VectorX ddqf;
-void Modeling();
+
 void effortRobotModeling();
 void setBoundaryValues(bool checkq0, bool checkqf, bool checkdq0, bool checkdqf, bool checkddq0, bool checkddqf);
-
-//class tfFunction : public Function
-//{
-//public:
-//	tfFunction() {}
-//
-//	VectorX func(const VectorX& x) const
-//	{
-//		VectorX result(1);
-//		BsplinePTP->setFinalTimeAndTimeSpanUsingGaussianQuadrature(x(0), 25);
-//		BsplinePTP->setSplineCondition(order, nMiddleCP, BSplinePointToPointOptimization::KnotType::Uniform);
-//		if (BsplinePTP->run(BSplinePointToPointOptimization::Effort).size() == 0)
-//		{
-//			result(0) = RealMax / 2.0;
-//		}
-//		else
-//		{
-//			result(0) = w*x(0) + (1 - w)*BsplinePTP->_fval;
-//		}
-//		return result;
-//	}
-//
-//	Real w;
-//	int order;
-//	int nMiddleCP;
-//	shared_ptr<BSplinePointToPointOptimization> BsplinePTP;
-//};
 
 VectorX effortTrj(const MatrixX& jointTorqueTrj)
 {
@@ -95,234 +70,21 @@ int main()
 {
 	effortRobotModeling();
 	double total_time = clock();
-	BSplinePointToPointOptimization::ObjectiveFunctionType objfunCond = BSplinePointToPointOptimization::Effort;
-	//cout << static_pointer_cast<SerialOpenChainAssembly>(openchain)->_socLink[6]._M << endl;
-	//cout << static_pointer_cast<SerialOpenChainAssembly>(openchain)->_socLink[6]._G << endl;
-	//for (int i = 0; i < 6; i++)
-	//{
-	//	cout << openchain->_Tree[i].first << endl;
-	//}
-	StatePtr effortState = openchain->makeState();
-	//VectorX q0(dof), dq0(dof), ddq0(dof);
-	//q0.setOnes();
-	//q0 *= 2;
-	//dq0.setOnes();
-	//dq0 *= 2;
-	//ddq0.setOnes();
-	//ddq0 *= 2;
-	//effortState->setJointq(State::TARGET_JOINT::ACTIVEJOINT, q0);
-	//effortState->setJointqdot(State::TARGET_JOINT::ACTIVEJOINT, dq0);
-	//effortState->setJointqddot(State::TARGET_JOINT::ACTIVEJOINT, ddq0);
-	//
-	//
-	//rovin::Dynamics::solveInverseDynamics(*openchain, *effortState);
-	//cout << effortState->getJointTorque(State::TARGET_JOINT::ACTIVEJOINT) << endl;
-	//cout << rovin::Kinematics::calculateEndeffectorFrame(*openchain, *effortState) << endl;
 
-	//rovin::Dynamics::solveForwardDynamics(*openchain, *effortState);
-	//cout << "qddot = " << endl << effortState->getJointqddot(State::TARGET_JOINT::ACTIVEJOINT) << endl;
-	shared_ptr<BSplinePointToPointOptimization> BsplinePTP = shared_ptr<BSplinePointToPointOptimization>(new BSplinePointToPointOptimization);
-	BsplinePTP->setSOCRobotModel(openchain);
-	
-	bool checkq0 = true;
-	bool checkqf = true;
-	bool checkdq0 = true;
-	bool checkdqf = true;
-	bool checkddq0 = true;
-	bool checkddqf = true;
+	GivenPathOptimization givenPath;
 
-	setBoundaryValues(checkq0, checkqf, checkdq0, checkdqf, checkddq0, checkddqf);
-
-	int optdof = 3;
-	VectorU optActiveJointIdx(optdof);
-	for (int i = 0; i < optdof; i++)
-		optActiveJointIdx(i) = i;
-
-	
-	BsplinePTP->setBoundaryCondition(q0, qf, dq0, dqf, ddq0, ddqf);
-	BsplinePTP->setConstraintRange(true, true, true, true);
-	bool useWaypoint = false;
-	vector<pair<VectorX, Real>> wayPoints(2);
-	wayPoints[0].first = 0.3*VectorX::Ones(dof);
-	wayPoints[0].first(1) = 0.1;
-	wayPoints[0].second = 0.3;
-	wayPoints[1].first = 0.7*VectorX::Ones(dof);
-	wayPoints[1].first(1) = 0.2;
-	wayPoints[1].second = 0.7;
-	if (useWaypoint)
-	{
-		BsplinePTP->setWayPoint(wayPoints);
-	}
-
-	///////////////////////////////////////////////////// TEST ////////////////////////////////////////
-	//vector<Vector3> waypointposition;
-	//StatePtr kjState = openchain->makeState();
-	//kjState->setJointq(State::TARGET_JOINT::ACTIVEJOINT, wayPoints[0].first);
-	//waypointposition.push_back(rovin::Kinematics::calculateEndeffectorFrame(*openchain, *kjState).getPosition());
-	//kjState->setJointq(State::TARGET_JOINT::ACTIVEJOINT, wayPoints[1].first);
-	//waypointposition.push_back(rovin::Kinematics::calculateEndeffectorFrame(*openchain, *kjState).getPosition());
-	//BsplinePTP->setWayPointOnlyPosition(waypointposition);
-	
-	BsplinePTP->setOptimizingJointIndex(optActiveJointIdx);
-
-	int order = 4;
-	int nMiddleCP = 6;
-	Real ti = 0.3;
-
-	///////////////////////////////////////////////////////// varying tf
-	//BsplinePTP->setFinalTimeAndTimeSpan(3.0, 100);
-	BsplinePTP->setFinalTimeAndTimeSpanUsingGaussianQuadrature(3.0, 25);
-	BsplinePTP->setSplineCondition(order, nMiddleCP, BSplinePointToPointOptimization::KnotType::Uniform);
-	cout << "knot = " << BsplinePTP->_knot.transpose() << endl;
-	BsplinePTP->run(objfunCond, useWaypoint);
-
-	///////////////////////////////////////////////////// linesearch Tf
-	//FunctionPtr tfF = FunctionPtr(new tfFunction);
-	//static_pointer_cast<tfFunction>(tfF)->BsplinePTP = BsplinePTP;
-	//static_pointer_cast<tfFunction>(tfF)->order = order;
-	//static_pointer_cast<tfFunction>(tfF)->nMiddleCP = nMiddleCP;
-	//static_pointer_cast<tfFunction>(tfF)->w = 0.0;
-
-	//LineSearch linesearch(LineSearch::Algorithm::GoldenSection);
-	//linesearch._objectiveFunc = tfF;
-	//Real start = 1.0;
-	//Real end = 2.5;
-	//cout << linesearch.GoldenSectionMethod(start, (start + end) / 2.0, end);
-
-	/////////////////////////////////////////////////////////////PRINT
-	int N = 10000;
-	VectorX timeSpan(N);
-	for (int i = 0; i < N; i++)
-	{
-		timeSpan(i) = BsplinePTP->_tf / (Real)(N - 1)*(Real)i;
-	}
-	timeSpan(N - 1) = BsplinePTP->_tf - 1e-10;
-	vector<MatrixX> valvelacctau = BsplinePTP->getJointTrj(timeSpan);
-	rovin::utils::writeText(valvelacctau[0], "val.txt");
-	rovin::utils::writeText(valvelacctau[1], "vel.txt");
-	rovin::utils::writeText(valvelacctau[2], "acc.txt");
-
-	StatePtr tempState = openchain->makeState();
-	Real sum = 0;
-	if (objfunCond == BSplinePointToPointOptimization::EnergyLoss)
-		sum = (energyConsumptionTrj(*openchain, valvelacctau[1], valvelacctau[2], valvelacctau[3]).transpose()*VectorX::Ones(valvelacctau[0].cols()))(0) * BsplinePTP->_tf / (Real)(N - 1);
-	else if (objfunCond == BSplinePointToPointOptimization::Effort)
-	{
-		sum = (effortTrj(valvelacctau[3]).transpose()*VectorX::Ones(valvelacctau[3].cols()))(0) * BsplinePTP->_tf / (Real)(N - 1);
-	}
-	
-	cout << "Objective (fine Euler integration) : " << sum << endl;
-	cout << "Objective : " << BsplinePTP->_fval << endl;
-	cout << "Computation time : " << BsplinePTP->_computationTime << "ms" << endl;
-	///////////////////////////////////////////////////////// varying tf
-	VectorX tfSet(40);
-	for (int i = 0; i < tfSet.size(); i++)
-		tfSet(i) = 2.0 + (Real)(i + 1)*0.025;
-
-	VectorX result(tfSet.size());
-
-	for (int i = 0; i < tfSet.size(); i++)
-	{
-		BsplinePTP->setFinalTimeAndTimeSpanUsingGaussianQuadrature(tfSet(i), 25);
-		BsplinePTP->setSplineCondition(order, nMiddleCP, BSplinePointToPointOptimization::KnotType::Uniform);
-		//cout << "knot = " << BsplinePTP->_knot.transpose() << endl;
-		cout << tfSet(i) << endl;
-		if (BsplinePTP->run(objfunCond).size() == 0)
-		{
-			cout << "X" << endl;
-			result(i) = 0.0;
-		}
-		else
-		{
-			result(i) = BsplinePTP->_fval;
-		}
-	}
-	cout << "result = " << endl;
-	for (int i = 0; i < tfSet.size(); i++)
-	{
-		cout << tfSet(i) << " " << result(i) << endl;
-	}
-
-
-	//MatrixX Aeq_opt = BsplinePTP->_Aeq_opt;
-	//MatrixX Aeq_nopt = BsplinePTP->_Aeq_nopt;
-	//MatrixX beq_opt = BsplinePTP->_beq_opt;
-	//MatrixX beq_nopt = BsplinePTP->_beq_nopt;
-
-	//MatrixX Aineq_opt = BsplinePTP->_Aineq_opt;
-	//MatrixX bineq_opt = BsplinePTP->_bineq_opt;
-	//MatrixX Aineq_nopt = BsplinePTP->_Aineq_nopt;
-	//MatrixX bineq_nopt = BsplinePTP->_bineq_nopt;
-
-	//cout << "Aineq = " << endl;
-	//cout << Aineq_opt << endl;
-	//cout << "bineq = " << endl;
-	//cout << bineq_opt << endl;
-	//cout << "Aineq_nopt = " << endl;
-	//cout << Aineq_nopt << endl;
-	//cout << "bineq_nopt = " << endl;
-	//cout << bineq_nopt << endl;
-
-	//MatrixX middleCPs;
-	//if (Aeq_opt.rows() > 0)
-	//	middleCPs = -(pInv(Aeq_opt)*beq_opt).transpose();
-	//else
-	//	middleCPs.setRandom(1,dof*(nMiddleCP));
-	//MatrixX testCP(dof, (nMiddleCP + BsplinePTP->_nInitCP + BsplinePTP->_nFinalCP));
-	//for (unsigned int i = 0; i < dof; i++)
-	//{
-	//	testCP.block(i, BsplinePTP->_nInitCP, 1, nMiddleCP) = middleCPs.block(0, i*nMiddleCP, 1, nMiddleCP);
-	//	for (int i = 0; i < BsplinePTP->_nInitCP; i++)
-	//		testCP.col(i) = BsplinePTP->BoundaryCP[i];
-	//	for (int i = 0; i < BsplinePTP->_nFinalCP; i++)
-	//		testCP.col(testCP.cols() - i - 1) = BsplinePTP->BoundaryCP[5 - i];
-	//}
-	//
+	givenPath.loadToolPath("toolpath_test.txt");
+	Real curvTol = 500;
+	givenPath.truncatePath(curvTol);
 
 
 
-	//BSpline<-1, -1, -1> sp(BsplinePTP->_knot, testCP);
-	//if (useWaypoint)
-	//{
-	//	for (unsigned int k = 0; k < wayPoints.size(); k++)
-	//	{
-	//		cout << "waypoint = " << wayPoints[k].first.transpose() << endl;
-	//		ti = wayPoints[k].second;
-	//		cout << "q(" << ti << ") = " << sp(ti).transpose() << endl;
-	//	}
-	//}
-	
-	//ti = 0.0;
-	//cout << "q(" << ti << ") = " << sp(ti).transpose() << endl;
-	//cout << "real q = " << q0.transpose() << endl;
-	//ti = 1.0 - 1e-8;
-	//cout << "q(" << ti << ") = " << sp(ti).transpose() << endl;
-	//cout << "real q = " << qf.transpose() << endl;
-	//if (checkdq0 || checkdqf)
-	//{
-	//	BSpline<-1, -1, -1> dsp = sp.derivative();
-	//	ti = 0.0;
-	//	cout << "dq(" << ti << ") = " << dsp(ti).transpose() << endl;
-	//	cout << "real dq = " << dq0.transpose() << endl;
-	//	ti = 1.0 - 1e-8;
-	//	cout << "dq(" << ti << ") = " << dsp(ti).transpose() << endl;
-	//	cout << "real dq = " << dqf.transpose() << endl;
-	//	if (checkddq0 || checkddqf)
-	//	{
-	//		BSpline<-1, -1, -1> ddsp = dsp.derivative();
-	//		ti = 0.0;
-	//		cout << "ddq(" << ti << ") = " << ddsp(ti).transpose() << endl;
-	//		cout << "real ddq = " << ddq0.transpose() << endl;
-	//		ti = 1.0-1e-12;
-	//		cout << "ddq(" << ti << ") = " << ddsp(ti).transpose() << endl;
-	//		cout << "real ddq = " << ddqf.transpose() << endl;
-	//	}
-	//}
+	//cout << givenPath._posTrj << endl;
 
 	cout << "=======================================================" << endl;
 	cout << "TOTAL COMPUTATION TIME WITHOUT MODELING" << endl;
 	cout << clock() - total_time << endl;
-	
+
 	return 0;
 }
 
@@ -361,13 +123,13 @@ void effortRobotModeling()
 	openchain->addMate(shared_ptr< Joint >(new MotorJoint("J6")), "L6", "L7", SE3(SO3::RotX(-PI_HALF), Vector3(0, 0, 0)), SE3(Vector3(0, 0, 0)));
 
 	dof = 6;
-	
+
 	// set inertia
 
 	MatrixX par(10, 6);
 	par << 1.0000, -0.2726, 0.4164, 0.0379, 0.0379, 0.0379
 		, 1.0000, 72.0862, 6.3893, 0.3574, -0.1061, -0.0759
-		, 1.0000, - 0.0000, 23.4120, 0.0124, 0.1181, 0.0256
+		, 1.0000, -0.0000, 23.4120, 0.0124, 0.1181, 0.0256
 		, 1.0000, 1.0000, -0.4166, -1.0914, -0.0124, 0.1181
 		, 1.0000, 14.9404, 0.1093, 1.6195, 0.8195, 0.8034
 		, 1.0000, -14.8427, -0.0116, 0.1966, 0.4121, 0.8312
@@ -422,11 +184,11 @@ void effortRobotModeling()
 		static_pointer_cast<MotorJoint> (openchain->getJointPtrByMateIndex(i))->setRotorInertia(J(i));
 		static_pointer_cast<MotorJoint> (openchain->getJointPtrByMateIndex(i))->setGearRatio(gearRatio(i));
 	}
-		
 
-	
+
+
 	// set constraints
-	
+
 	VectorX taumax(dof);
 	VectorX taumin(dof);
 	VectorX qmax(dof);
@@ -449,19 +211,19 @@ void effortRobotModeling()
 	qmin *= -PI / 180;
 	qdotmax << 100, 80, 140, 290, 290, 440;
 	qdotmax *= PI / 180;
-	
-	qddotmax = 5 * qdotmax;             // user defined
+
+	qddotmax = 2 * qdotmax;             // user defined
 	qddotmin = -qddotmax;
 	qdddotmax = 300 * VectorX::Ones(dof);          // user defined
 	qdddotmin = -qdddotmax;
 	taumax = 3000 * VectorX::Ones(dof);          // user defined
-	
+
 	kv << 105.4116, 107.5105, 8.1031, 6.5430, 11.3551, 4.2050;
 	kc << 92.3012, 117.3703, 57.8389, 10.0524, 24.6819, 20.32;
 	smax << 3000, 3000, 4500, 4500, 4500, 4500;
 	smax *= 2 * PI / 60;    // smax = [5000, 5000, 5000, 5000, 5000, 50000] * 2 * pi / 60,    % motor maximum
 	imax << 39, 39, 20, 12, 12, 7.2;
-	
+
 	VectorX temptau = (imax.cwiseProduct(gearRatio)).cwiseProduct(kt);
 	VectorX tempvel = smax.cwiseQuotient(gearRatio);
 	taumax = taumax.cwiseMax(temptau);

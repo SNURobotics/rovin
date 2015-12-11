@@ -63,6 +63,15 @@
     <ClCompile Include="test_Reflexxes_motionPlay.cpp">
       <Filter>소스 파일\Demo</Filter>
     </ClCompile>
+    <ClCompile Include="test_toolpath.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="test_analinvkin.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="test_opt_rendering.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="efortRobot.h">

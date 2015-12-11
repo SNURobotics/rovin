@@ -36,6 +36,19 @@ namespace rovin
 			Real _eps;
 		};
 
+		class MultiObjectiveFunction : public Function
+		{
+		public:
+			MultiObjectiveFunction() : _functionList(std::vector<FunctionPtr>()) {}
+
+			VectorX func(const VectorX& x) const;
+			MatrixX Jacobian(const VectorX& x) const;
+
+			void addFunction(FunctionPtr func);
+
+			std::vector<FunctionPtr> _functionList;
+		};
+
 		class EmptyFunction : public Function
 		{
 		public:
@@ -57,6 +70,23 @@ namespace rovin
 			Math::VectorX func(const Math::VectorX& x) const;
 			Math::MatrixX Jacobian(const Math::VectorX& x) const;
 			std::vector< Math::MatrixX > Hessian(const Math::VectorX& x) const;
+		};
+
+		class BilinearInterpolation
+		{
+		public:
+			BilinearInterpolation() {}
+
+			Math::VectorX operator ()(const Math::Real& x, const Math::Real& y);
+
+			void setX(const Math::VectorX& x);
+			void setY(const Math::VectorX& y);
+			
+			void setElements(const std::vector<std::vector<Math::VectorX>>& fs);
+
+			Math::VectorX _x;
+			Math::VectorX _y;
+			std::vector<std::vector<Math::VectorX>> _fs;
 		};
 
 		static Real min(Real x, Real y)
