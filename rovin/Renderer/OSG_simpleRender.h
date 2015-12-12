@@ -13,6 +13,7 @@
 #include <osgViewer/ViewerEventHandlers>
 #include <osgDB/ReadFile>
 #include <osg/LineWidth>
+#include <osg/Material>
 
 #include "OSG_NodeVisitor.h"
 #include "OSG_Primitives.h"

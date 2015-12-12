@@ -83,6 +83,14 @@ namespace rovin
 				_nodeVisitor.setColor(meshColor[0], meshColor[1], meshColor[2], meshColor[3]);
 				STL_node->accept(_nodeVisitor);
 
+				osg::ref_ptr<osg::Material> _material = new osg::Material;
+				_material->setColorMode(osg::Material::ColorMode::AMBIENT_AND_DIFFUSE);
+				_material->setDiffuse(osg::Material::FRONT, osg::Vec4(0.6, 0.6, 0.6, 0.6));
+				_material->setAmbient(osg::Material::FRONT, osg::Vec4(0.1, 0.1, 0.1, 0.1));
+				_material->setSpecular(osg::Material::FRONT, osg::Vec4(1.0, 1.0, 1.0, 1.0));
+				_material->setShininess(osg::Material::FRONT, 20);
+				STL_node->getOrCreateStateSet()->setAttribute(_material);
+
 				scaleTransform->addChild(STL_node);
 				linkPositionTransform->addChild(scaleTransform);
 				return linkPositionTransform;
@@ -139,6 +147,8 @@ namespace rovin
 			
 			_rootNode->addChild(createGround());
 			_rootNode->addChild(_geometryNode);
+
+			
 
 			const auto& linkPtr = assem.getLinkList();
 			auto& shapes = std::vector<Model::GeometryInfoPtr>();

@@ -74,7 +74,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>..\..\;C:\SNURobotics\include\;C:\SNURobotics\include\NLopt;C:\SNURobotics\include\OpenSceneGraph</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\;C:\SNURobotics\include\;C:\SNURobotics\include\NLopt;C:\SNURobotics\include\OpenSceneGraph;..\Reflexxes\include</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <PreprocessorDefinitions>WIN32;_WINDOWS;_DEBUG;_SCL_SECURE_NO_WARNINGS;_CRT_SECURE_NO_DEPRECATE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -104,7 +104,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>..\..\;C:\SNURobotics\include\;C:\SNURobotics\include\NLopt;C:\SNURobotics\include\OpenSceneGraph</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\;C:\SNURobotics\include\;C:\SNURobotics\include\NLopt;C:\SNURobotics\include\OpenSceneGraph;..\Reflexxes\include</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <PreprocessorDefinitions>WIN32;_WINDOWS;NDEBUG;_SCL_SECURE_NO_WARNINGS;_CRT_SECURE_NO_DEPRECATE;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -185,6 +185,14 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="test_Reflexxes.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="test_Reflexxes_motionPlay.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="test_socassembly.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
@@ -207,6 +215,9 @@
     </ProjectReference>
     <ProjectReference Include="..\Model\Model.vcxproj">
       <Project>{03a17a90-2dba-4587-a039-1b37a0afb1f1}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\Reflexxes\Reflexxes.vcxproj">
+      <Project>{6082484d-044e-48ef-8746-f5e66d998b04}</Project>
     </ProjectReference>
     <ProjectReference Include="..\Renderer\Renderer.vcxproj">
       <Project>{e5c0383c-d620-4e50-b61b-da5bb00b37e2}</Project>

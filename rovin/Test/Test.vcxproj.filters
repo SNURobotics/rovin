@@ -13,6 +13,9 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="소스 파일\Demo">
+      <UniqueIdentifier>{50e8c9ae-a9ac-41fe-a4d0-4d041f3bde61}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="test_math.cpp">
@@ -53,6 +56,12 @@
     </ClInclude>
     <ClCompile Include="test_STL_rendering.cpp">
       <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="test_Reflexxes.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="test_Reflexxes_motionPlay.cpp">
+      <Filter>소스 파일\Demo</Filter>
     </ClCompile>
     <ClCompile Include="test_toolpath.cpp">
       <Filter>소스 파일</Filter>

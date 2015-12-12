@@ -83,6 +83,7 @@ namespace rovin
 				_point = new osg::Point(size);
 				_drawArrays = new osg::DrawArrays(osg::PrimitiveSet::POINTS);
 				_geometry->getOrCreateStateSet()->setAttribute(_point);
+				_geometry->getOrCreateStateSet()->setMode(GL_POINT_SMOOTH, osg::StateAttribute::ON);
 				_geometry->addPrimitiveSet(_drawArrays);
 			}
 

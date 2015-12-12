@@ -3,6 +3,7 @@
 #include <rovin/TrajectoryOptimization/PTPoptimization.h>
 #include <rovin/utils/utils.h>
 #include <rovin/Model/State.h>
+#include <rovin/Reflexxes/Core.h>
 
 #include <windows.h>
 #include <iostream>
@@ -23,7 +24,7 @@ DWORD WINAPI ThreadProc();
 HANDLE hPipe;
 BOOL Finished;
 
-SE3 TOOLTIP(Vector3(0, 0, 0.11));
+SE3 TOOLTIP(Vector3(0, 0, 0.12));
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 BSplinePointToPointOptimization::ObjectiveFunctionType objfunCond;
@@ -69,7 +70,7 @@ bool solving = false;
 double frameRate = 50;
 
 int order = 4;
-int nMiddleCP = 6;
+int nMiddleCP = 4;
 
 void setBoundaryValues(bool checkq0, bool checkqf, bool checkdq0, bool checkdqf, bool checkddq0, bool checkddqf);
 unsigned long __stdcall apply(void * pParam);
@@ -112,7 +113,7 @@ int main(int argc, char *argv[])
 		renderer = shared_ptr<OSG_simpleRender>(new OSG_simpleRender(*gAssem, *state, 600, 600));
 		renderer->getViewer().realize();
 
-		state->setJointq(State::TARGET_JOINT::ACTIVEJOINT, Vector6::Ones());
+		state->setJointq(State::TARGET_JOINT::ACTIVEJOINT, Vector6::Zero());
 		rovin::Kinematics::solveForwardKinematics(*gAssem, *state, State::LINKS_POS);
 
 		sx = sy = sz = sdx = sdy = sdz = sddx = sddy = sddz = 0.0;
@@ -459,7 +460,12 @@ unsigned long __stdcall apply(void * pParam)
 	cout << "OPTIMIZATION START" << endl;
 	BsplinePTP->setFinalTimeAndTimeSpanUsingGaussianQuadrature(tf, 25);
 	BsplinePTP->setSplineCondition(order, nMiddleCP, BSplinePointToPointOptimization::KnotType::Uniform);
-	BsplinePTP->run(objfunCond);
+	if (BsplinePTP->run(objfunCond).size() == 0)
+	{
+		cout << "ERROR - CANNOT FIND FEASIBLE SOLUTION!!" << endl;
+		solving = false;
+		return 0;
+	}
 	cout << "OPTIMIZATION END" << endl;
 	//cout << BsplinePTP->_fval << endl;
 
@@ -495,14 +501,14 @@ unsigned long __stdcall postprocess(void * pParam)
 	if (!firstLineDrawing)
 	{
 		renderer->removeGeometry(*ours);
-		//renderer->removeGeometry(*reflexxes);
-		renderer->removeGeometry(*linear);
+		renderer->removeGeometry(*reflexxes);
+		//renderer->removeGeometry(*linear);
 	}
 	firstLineDrawing = false;
 
 	ours = shared_ptr<Line>(new Line);
-	//reflexxes = shared_ptr<Line>(new Line);
-	linear = shared_ptr<Line>(new Line);
+	reflexxes = shared_ptr<Line>(new Line);
+	//linear = shared_ptr<Line>(new Line);
 
 	StatePtr efort_state = gAssem->makeState();
 	for (int i = 0; i < ntrajectory; i++)
@@ -518,4 +524,44 @@ unsigned long __stdcall postprocess(void * pParam)
 	cout << " Computation Time = " << BsplinePTP->_computationTime << endl;
 	cout << " Objective Funcion = " << BsplinePTP->_fval << endl;
 	cout << "=====================================================" << endl << endl;
+
+	///////////////////////////////REFLEXXES////////////////////////////////////////////////////////////////////////
+	const double re_timeStep = 0.01;
+
+	Reflexxes::ReflexxesWrapper		ReflexxSolver(state->getDOF(State::STATEJOINT), re_timeStep);
+	ReflexxSolver._q0 = q0;
+	ReflexxSolver._qf = qf;
+	for (unsigned int i = 0; i < state->getDOF(State::STATEJOINT); i++)
+	{
+		ReflexxSolver._dqLim[i] = gAssem->getJointPtrByMateIndex(i)->getLimitVelUpper().operator[](0);
+		ReflexxSolver._ddqLim[i] = gAssem->getJointPtrByMateIndex(i)->getLimitAccUpper().operator[](0);
+	}
+	double re_c = clock();
+	vector<MatrixX> traj = ReflexxSolver.solve2();
+	double re_ctime = clock() - re_c;
+
+	Real Cost = 0.0;
+	MatrixX val(6, traj[0].cols());
+	if (objfunCond == BSplinePointToPointOptimization::Effort)
+	{
+		for (int i = 0; i < traj[0].cols(); i++)
+		{
+			efort_state->setJointq(State::ACTIVEJOINT, traj[0].col(i));
+			efort_state->setJointqdot(State::ACTIVEJOINT, traj[1].col(i));
+			efort_state->setJointqddot(State::ACTIVEJOINT, traj[2].col(i));
+			rovin::Dynamics::solveInverseDynamics(*gAssem, *efort_state);
+			val.col(i) = efort_state->getJointTorque(State::ACTIVEJOINT);
+			reflexxes->push_back(eigen2osgVec<osg::Vec3>((rovin::Kinematics::calculateEndeffectorFrame(*gAssem, *efort_state) * TOOLTIP).getPosition()));
+		}
+		Cost = effortTrj(val).sum() * re_timeStep;
+	}
+	renderer->addGeometry(*reflexxes);
+	cout << "===== REFLEXXES =================================" << endl;
+	cout << " Tf = " << (traj[0].cols() - 1) * re_timeStep << endl;
+	cout << " Computation Time = " << re_ctime << endl;
+	cout << " Objective Funcion = " << Cost << endl;
+	cout << "=====================================================" << endl << endl;
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	return 0;
 }
