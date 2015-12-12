@@ -63,6 +63,9 @@
     <ClCompile Include="test_opt_rendering.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
+    <ClCompile Include="GoogolTechDemoCode.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="efortRobot.h">

@@ -25,7 +25,7 @@ void setBoundaryValues(bool checkq0, bool checkqf, bool checkdq0, bool checkdqf,
 
 int main()
 {
-	double tf = 3.0;
+	double tf = 10;
 	double frameRate = 50;
 
 	int order = 4;
@@ -35,7 +35,7 @@ int main()
 	StatePtr effortState = gAssem->makeState();
 
 
-	BSplinePointToPointOptimization::ObjectiveFunctionType objfunCond = BSplinePointToPointOptimization::EnergyLoss;
+	BSplinePointToPointOptimization::ObjectiveFunctionType objfunCond = BSplinePointToPointOptimization::Effort;
 	shared_ptr<BSplinePointToPointOptimization> BsplinePTP = shared_ptr<BSplinePointToPointOptimization>(new BSplinePointToPointOptimization);
 	BsplinePTP->setSOCRobotModel(gAssem);
 
@@ -66,33 +66,33 @@ int main()
 	
 
 
-	for (int iter = 0; iter < 2; iter++)
-	{
-		optActiveJointIdx << 3, 4, 5;
-		BsplinePTP->setInitialGuess(BsplinePTP->_noptControlPoint, BsplinePTP->_solX);
-		BsplinePTP->setOptimizingJointIndex(optActiveJointIdx);
+	//for (int iter = 0; iter < 2; iter++)
+	//{
+	//	optActiveJointIdx << 3, 4, 5;
+	//	BsplinePTP->setInitialGuess(BsplinePTP->_noptControlPoint, BsplinePTP->_solX);
+	//	BsplinePTP->setOptimizingJointIndex(optActiveJointIdx);
 
-		///////////////////////////////////////////////////////// varying tf
-		//BsplinePTP->setFinalTimeAndTimeSpan(3.0, 100);
-		BsplinePTP->setFinalTimeAndTimeSpanUsingGaussianQuadrature(tf, 25);
-		BsplinePTP->setSplineCondition(order, nMiddleCP, BSplinePointToPointOptimization::KnotType::Uniform);
-		BsplinePTP->run(objfunCond, false, true);
-		cout << "Objective : " << BsplinePTP->_fval << endl;
-		cout << "Computation time : " << BsplinePTP->_computationTime << "ms" << endl;
+	//	///////////////////////////////////////////////////////// varying tf
+	//	//BsplinePTP->setFinalTimeAndTimeSpan(3.0, 100);
+	//	BsplinePTP->setFinalTimeAndTimeSpanUsingGaussianQuadrature(tf, 25);
+	//	BsplinePTP->setSplineCondition(order, nMiddleCP, BSplinePointToPointOptimization::KnotType::Uniform);
+	//	BsplinePTP->run(objfunCond, false, true);
+	//	cout << "Objective : " << BsplinePTP->_fval << endl;
+	//	cout << "Computation time : " << BsplinePTP->_computationTime << "ms" << endl;
 
 
-		optActiveJointIdx << 0, 1, 2;
-		BsplinePTP->setInitialGuess(BsplinePTP->_noptControlPoint, BsplinePTP->_solX);
-		BsplinePTP->setOptimizingJointIndex(optActiveJointIdx);
+	//	optActiveJointIdx << 0, 1, 2;
+	//	BsplinePTP->setInitialGuess(BsplinePTP->_noptControlPoint, BsplinePTP->_solX);
+	//	BsplinePTP->setOptimizingJointIndex(optActiveJointIdx);
 
-		///////////////////////////////////////////////////////// varying tf
-		//BsplinePTP->setFinalTimeAndTimeSpan(3.0, 100);
-		BsplinePTP->setFinalTimeAndTimeSpanUsingGaussianQuadrature(tf, 25);
-		BsplinePTP->setSplineCondition(order, nMiddleCP, BSplinePointToPointOptimization::KnotType::Uniform);
-		BsplinePTP->run(objfunCond, false, true);
-		cout << "Objective : " << BsplinePTP->_fval << endl;
-		cout << "Computation time : " << BsplinePTP->_computationTime << "ms" << endl;
-	}
+	//	///////////////////////////////////////////////////////// varying tf
+	//	//BsplinePTP->setFinalTimeAndTimeSpan(3.0, 100);
+	//	BsplinePTP->setFinalTimeAndTimeSpanUsingGaussianQuadrature(tf, 25);
+	//	BsplinePTP->setSplineCondition(order, nMiddleCP, BSplinePointToPointOptimization::KnotType::Uniform);
+	//	BsplinePTP->run(objfunCond, false, true);
+	//	cout << "Objective : " << BsplinePTP->_fval << endl;
+	//	cout << "Computation time : " << BsplinePTP->_computationTime << "ms" << endl;
+	//}
 
 
 
@@ -154,15 +154,30 @@ void setBoundaryValues(bool checkq0, bool checkqf, bool checkdq0, bool checkdqf,
 	int dof = 6;
 
 	srand(time(NULL));
-	q0.setRandom(dof);
-	qf.setRandom(dof);
+	//q0.setRandom(dof);
+	//qf.setRandom(dof);
 	//dq0.setRandom(dof);
 	//dqf.setRandom(dof);
 	//ddq0.setRandom(dof);
 	//ddqf.setRandom(dof);
 
-	//q0.setOnes(dof);
-	//qf.setZero(dof);
+	q0.resize(6);
+	q0 << 4.15061,
+		3.89918,
+		0.624688,
+		2.2771e-14,
+		2.80501e-13,
+		2.54595e-14;
+	qf.resize(6);
+	qf << -3.92519,
+		- 3.64717,
+		2.31541,
+		1.9211e-14,
+		1.78467e-14,
+		1.86751e-14;
+
+	//qf.setOnes(dof);
+	//q0.setZero(dof);
 	dq0.setZero(dof);
 	dqf.setZero(dof);
 	ddq0.setZero(dof);
