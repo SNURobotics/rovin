@@ -31,7 +31,7 @@ int main()
 
 	cout << "Effort :	" << effort.sum()*timeStep << endl;
 	cout << "Energy :	" << energy.sum()*timeStep << endl;
-	//writeText(traj.transpose(), "reflexxTraj.txt");
+	writeText(traj.transpose(), "reflexxTraj.txt");
 
 
 	//	Open renderer window
@@ -70,8 +70,12 @@ Reflexxes::ReflexxesWrapper setupReflexxesProblem(const socAssembly & assem)
 	StatePtr state = assem.makeState();
 	Reflexxes::ReflexxesWrapper		ReflexxSolver(state->getDOF(State::STATEJOINT), timeStep);
 	//	Set initial and fial state (otherwise zero).
-	ReflexxSolver._q0.setZero();
-	ReflexxSolver._qf.setOnes();
+	int numWayPoints = 2;
+	MatrixX	positions(state->getDOF(State::STATEJOINT), numWayPoints);
+	for (int i = 0; i < numWayPoints; i++)
+		positions.col(i) = VectorX::Ones(positions.rows()) * i;
+	ReflexxSolver.setWayPointsPos(positions);
+
 	//	Set kinematic limit.
 	for (unsigned int i = 0; i < state->getDOF(State::STATEJOINT); i++)
 	{

@@ -20,13 +20,9 @@ namespace Reflexxes
 			:_DOF(DOF), _RML(DOF, timeStep), _IP(DOF), _OP(DOF)
 		{
 			_Flag.SynchronizationBehavior = RMLPositionFlags::PHASE_SYNCHRONIZATION_IF_POSSIBLE;
-			
-			_q0.setZero(DOF);
-			_dq0.setZero(DOF);
-			_ddq0.setZero(DOF);
 
-			_qf.setZero(DOF);
-			_dqf.setZero(DOF);
+			//_q_waypoint.setZero(DOF, numWaypoints);
+			//_qdot_waypoint.setZero(DOF, numWaypoints);
 
 			_dqLim = VectorX::Ones(DOF) * RealMax;
 			_ddqLim = VectorX::Ones(DOF) * RealMax;
@@ -39,14 +35,12 @@ namespace Reflexxes
 
 		const MatrixX&	solve()
 		{
+			//	Initialize
 			for (int i = 0; i < _DOF; i++)
 			{
-				_IP.CurrentPositionVector->VecData[i] = _q0[i];
-				_IP.CurrentVelocityVector->VecData[i] = _dq0[i];
-				_IP.CurrentAccelerationVector->VecData[i] = _ddq0[i];
-
-				_IP.TargetPositionVector->VecData[i] = _qf[i];
-				_IP.TargetVelocityVector->VecData[i] = _dqf[i];
+				_IP.CurrentPositionVector->VecData[i] = _q_waypoint(i,0);
+				_IP.CurrentVelocityVector->VecData[i] = _qdot_waypoint(i, 0);
+				_IP.CurrentAccelerationVector->VecData[i] = 0.0;
 
 				_IP.MaxVelocityVector->VecData[i] = _dqLim[i];
 				_IP.MaxAccelerationVector->VecData[i] = _ddqLim[i];
@@ -57,7 +51,6 @@ namespace Reflexxes
 
 			int	ResultValue = 0;
 			int count = 0;
-
 			//	put initial state.
 			for (int i = 0; i < _DOF; i++)
 			{
@@ -66,34 +59,42 @@ namespace Reflexxes
 				_ddqResult(i, count) = _IP.CurrentAccelerationVector->VecData[i];
 			}
 			count++;
-			while (ResultValue != ReflexxesAPI::RML_FINAL_STATE_REACHED)
+			for (int destPointIdx = 1; destPointIdx < _q_waypoint.cols(); destPointIdx++)
 			{
-				ResultValue = _RML.RMLPosition(_IP, &_OP, _Flag);
-				if (ResultValue < 0)
-				{
-					printf("An error occurred (%d).\n", ResultValue);
-					break;
-				}
-
-				_IP.CurrentPositionVector = _OP.NewPositionVector;
-				_IP.CurrentVelocityVector = _OP.NewVelocityVector;
-				_IP.CurrentAccelerationVector = _OP.NewAccelerationVector;
-
-				_qResult.conservativeResize(Eigen::NoChange, count + 1);
-				_dqResult.conservativeResize(Eigen::NoChange, count + 1);
-				_ddqResult.conservativeResize(Eigen::NoChange, count + 1);
-
 				for (int i = 0; i < _DOF; i++)
 				{
-					_qResult(i, count) = _IP.CurrentPositionVector->VecData[i];
-					_dqResult(i, count) = _IP.CurrentVelocityVector->VecData[i];
-					_ddqResult(i, count) = _IP.CurrentAccelerationVector->VecData[i];
+					_IP.TargetPositionVector->VecData[i] = _q_waypoint(i,destPointIdx);
+					_IP.TargetVelocityVector->VecData[i] = _qdot_waypoint(i, destPointIdx);
+				}
+				ResultValue = ReflexxesAPI::RML_WORKING;
+				while (ResultValue != ReflexxesAPI::RML_FINAL_STATE_REACHED)
+				{
+					ResultValue = _RML.RMLPosition(_IP, &_OP, _Flag);
+					if (ResultValue < 0)
+					{
+						printf("An error occurred (%d).\n", ResultValue);
+						break;
+					}
+
+					_IP.CurrentPositionVector = _OP.NewPositionVector;
+					_IP.CurrentVelocityVector = _OP.NewVelocityVector;
+					_IP.CurrentAccelerationVector = _OP.NewAccelerationVector;
+
+					_qResult.conservativeResize(Eigen::NoChange, count + 1);
+					_dqResult.conservativeResize(Eigen::NoChange, count + 1);
+					_ddqResult.conservativeResize(Eigen::NoChange, count + 1);
+
+					for (int i = 0; i < _DOF; i++)
+					{
+						_qResult(i, count) = _IP.CurrentPositionVector->VecData[i];
+						_dqResult(i, count) = _IP.CurrentVelocityVector->VecData[i];
+						_ddqResult(i, count) = _IP.CurrentAccelerationVector->VecData[i];
+					}
+
+					count++;
 				}
 
-				count++;
 			}
-			
-
 			return _qResult;
 		}
 
@@ -101,8 +102,26 @@ namespace Reflexxes
 		const MatrixX&	getResultVel() const { return _dqResult; }
 		const MatrixX&	getResultAcc() const { return _ddqResult; }
 		
-		VectorX							_q0, _dq0, _ddq0;
-		VectorX							_qf, _dqf;
+
+		void			setWayPointsPos(const MatrixX&	pos)
+		{
+			_q_waypoint = pos;
+			if (_qdot_waypoint.size() != _q_waypoint.size())
+			{
+				_qdot_waypoint.setZero(pos.rows(), pos.cols());
+			}
+		}
+
+		void			setWayPointsVel(const MatrixX&	vel)
+		{
+			_qdot_waypoint = vel;
+		}
+
+		//	Point which generated motion will pass (include initial and final position)
+		MatrixX							_q_waypoint, _qdot_waypoint;
+
+		//VectorX							_q0, _dq0, _ddq0;
+		//VectorX							_qf, _dqf;
 		VectorX							_dqLim, _ddqLim, _dddqLim;
 		
 	protected:
