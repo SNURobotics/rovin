@@ -19,15 +19,16 @@ using namespace std::chrono;
 efortRobot gAssem;
 const double timeStep = 0.02;
 
-Reflexxes::ReflexxesWrapper setupReflexxesProblem(const socAssembly&	assem);
+shared_ptr<Reflexxes::ReflexxesWrapper>  setupReflexxesProblem(const socAssembly&	assem);
 int main()
 {
 	auto ReflexxSolver = setupReflexxesProblem(gAssem);
-	auto traj = ReflexxSolver.solve();
-	auto torque = calcTorque(gAssem, ReflexxSolver.getResultPos(), ReflexxSolver.getResultVel(), ReflexxSolver.getResultAcc());
+
+	auto traj = ReflexxSolver->solve();
+	auto torque = calcTorque(gAssem, ReflexxSolver->getResultPos(), ReflexxSolver->getResultVel(), ReflexxSolver->getResultAcc());
 
 	auto effort = calcEffort(torque);
-	auto energy = calcEnergy(gAssem, ReflexxSolver.getResultVel(), ReflexxSolver.getResultAcc(), torque);
+	auto energy = calcEnergy(gAssem, ReflexxSolver->getResultVel(), ReflexxSolver->getResultAcc(), torque);
 
 	cout << "Effort :	" << effort.sum()*timeStep << endl;
 	cout << "Energy :	" << energy.sum()*timeStep << endl;
@@ -64,23 +65,23 @@ int main()
 	return 0;
 }
 
-Reflexxes::ReflexxesWrapper setupReflexxesProblem(const socAssembly & assem)
+shared_ptr<Reflexxes::ReflexxesWrapper>  setupReflexxesProblem(const socAssembly & assem)
 {
 	//	Construct Reflexx class
 	StatePtr state = assem.makeState();
-	Reflexxes::ReflexxesWrapper		ReflexxSolver(state->getDOF(State::STATEJOINT), timeStep);
+	shared_ptr<Reflexxes::ReflexxesWrapper>		ReflexxSolver(new Reflexxes::ReflexxesWrapper(state->getDOF(State::STATEJOINT), timeStep));
 	//	Set initial and fial state (otherwise zero).
 	int numWayPoints = 2;
 	MatrixX	positions(state->getDOF(State::STATEJOINT), numWayPoints);
 	for (int i = 0; i < numWayPoints; i++)
 		positions.col(i) = VectorX::Ones(positions.rows()) * i;
-	ReflexxSolver.setWayPointsPos(positions);
+	ReflexxSolver->setWayPointsPos(positions);
 
 	//	Set kinematic limit.
 	for (unsigned int i = 0; i < state->getDOF(State::STATEJOINT); i++)
 	{
-		ReflexxSolver._dqLim[i] = assem.getJointPtrByMateIndex(i)->getLimitVelUpper().operator[](0);
-		ReflexxSolver._ddqLim[i] = assem.getJointPtrByMateIndex(i)->getLimitAccUpper().operator[](0);
+		ReflexxSolver->_dqLim[i] = assem.getJointPtrByMateIndex(i)->getLimitVelUpper().operator[](0);
+		ReflexxSolver->_ddqLim[i] = assem.getJointPtrByMateIndex(i)->getLimitAccUpper().operator[](0);
 	}
 	return ReflexxSolver;
 }
