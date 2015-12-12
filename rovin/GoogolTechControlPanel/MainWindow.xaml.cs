@@ -133,5 +133,21 @@ namespace GoogolTechControlPanel
                 PipeServer.SendMessage("ea " + ((Slider)sender).Value + "=", PipeServer.clientse);
             }
         }
+
+        private void energyButton_Checked(object sender, RoutedEventArgs e)
+        {
+            if (start)
+            {
+                PipeServer.SendMessage("effort=", PipeServer.clientse);
+            }
+        }
+
+        private void effortButton_Checked(object sender, RoutedEventArgs e)
+        {
+            if (start)
+            {
+                PipeServer.SendMessage("energyloss=", PipeServer.clientse);
+            }
+        }
     }
 }

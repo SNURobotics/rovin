@@ -504,7 +504,6 @@ unsigned long __stdcall postprocess(void * pParam)
 		renderer->removeGeometry(*reflexxes);
 		//renderer->removeGeometry(*linear);
 	}
-	firstLineDrawing = false;
 
 	ours = shared_ptr<Line>(new Line);
 	reflexxes = shared_ptr<Line>(new Line);
@@ -562,6 +561,8 @@ unsigned long __stdcall postprocess(void * pParam)
 	cout << " Objective Funcion = " << Cost << endl;
 	cout << "=====================================================" << endl << endl;
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	firstLineDrawing = false;
 
 	return 0;
 }
