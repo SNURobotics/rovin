@@ -138,7 +138,7 @@ namespace GoogolTechControlPanel
         {
             if (start)
             {
-                PipeServer.SendMessage("effort=", PipeServer.clientse);
+                PipeServer.SendMessage("energyloss=", PipeServer.clientse);
             }
         }
 
@@ -146,7 +146,7 @@ namespace GoogolTechControlPanel
         {
             if (start)
             {
-                PipeServer.SendMessage("energyloss=", PipeServer.clientse);
+                PipeServer.SendMessage("effort=", PipeServer.clientse);
             }
         }
     }

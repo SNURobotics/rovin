@@ -7,8 +7,8 @@
         Title="GoogolTechDemoControlPanel" Height="528.844" Width="360.723">
     <Grid>
         <Label Content="Energy Objective Function" HorizontalAlignment="Left" Height="27" VerticalAlignment="Top" Width="167" Margin="10,10,0,0" FontWeight="Bold"/>
-        <RadioButton x:Name="effortButton" Content="Effort" HorizontalAlignment="Left" Margin="10,37,0,0" VerticalAlignment="Top" IsChecked="True"/>
-        <RadioButton x:Name="energyButton" Content="EnergyLoss" HorizontalAlignment="Left" Margin="63,37,0,0" VerticalAlignment="Top"/>
+        <RadioButton x:Name="effortButton" Content="Effort" HorizontalAlignment="Left" Margin="10,37,0,0" VerticalAlignment="Top" IsChecked="True" Checked="effortButton_Checked"/>
+        <RadioButton x:Name="energyButton" Content="EnergyLoss" HorizontalAlignment="Left" Margin="63,37,0,0" VerticalAlignment="Top" Checked="energyButton_Checked"/>
         <Label Content="Start Point" HorizontalAlignment="Left" Height="27" VerticalAlignment="Top" Width="167" Margin="10,128,0,0" FontWeight="Bold"/>
         <Button x:Name="applyButton" Content="apply" HorizontalAlignment="Left" Margin="201,17,0,0" VerticalAlignment="Top" Width="127" Height="42" FontSize="13.333" Click="applyButton_Click"/>
         <Slider x:Name="sx" HorizontalAlignment="Left" Margin="40,155,0,0" VerticalAlignment="Top" Width="73" Value="50" Minimum="0" Maximum="100" ValueChanged="sx_ValueChanged" />

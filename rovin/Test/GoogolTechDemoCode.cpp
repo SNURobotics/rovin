@@ -10,6 +10,7 @@
 
 
 #include "efortRobot.h"
+#include "test_functions.h"
 
 
 using namespace std;
@@ -25,6 +26,7 @@ HANDLE hPipe;
 BOOL Finished;
 
 SE3 TOOLTIP(Vector3(0, 0, 0.12));
+std::shared_ptr<Reflexxes::ReflexxesWrapper> ReflexxSolver;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 BSplinePointToPointOptimization::ObjectiveFunctionType objfunCond;
@@ -48,6 +50,8 @@ shared_ptr<Line> startzaxis, endzaxis;
 Vector3 szaxis, ezaxis;
 Real spsize = 10.0, epsize = 10.0;
 Real tf = 3.0;
+
+double re_timeStep = 0.01;
 
 bool firstLineDrawing = true;
 shared_ptr<Line> ours, reflexxes, linear;
@@ -124,6 +128,8 @@ int main(int argc, char *argv[])
 
 		newstartpoint(true);
 		newendpoint(true);
+
+		ReflexxSolver = shared_ptr<Reflexxes::ReflexxesWrapper>(new Reflexxes::ReflexxesWrapper(state->getDOF(State::STATEJOINT), re_timeStep));
 
 		hThread = CreateThread(NULL, 0, &NET_RvThr, NULL, 0, NULL);
 
@@ -288,6 +294,14 @@ unsigned long __stdcall NET_RvThr(void * pParam) {
 				{
 					ea = stod(subcommand[1]) / 100.0 * Math::PI - Math::PI / 2;
 					newendpoint();
+				}
+				else if (subcommand[0].compare("energyloss") == 0)
+				{
+					objfunCond = BSplinePointToPointOptimization::EnergyLoss;
+				}
+				else if (subcommand[0].compare("effort") == 0)
+				{
+					objfunCond = BSplinePointToPointOptimization::Effort;
 				}
 			}
 		}
@@ -525,38 +539,39 @@ unsigned long __stdcall postprocess(void * pParam)
 	cout << "=====================================================" << endl << endl;
 
 	///////////////////////////////REFLEXXES////////////////////////////////////////////////////////////////////////
-	const double re_timeStep = 0.01;
-
-	Reflexxes::ReflexxesWrapper		ReflexxSolver(state->getDOF(State::STATEJOINT), re_timeStep);
-	ReflexxSolver._q0 = q0;
-	ReflexxSolver._qf = qf;
+	ReflexxSolver->_q0 = q0;
+	ReflexxSolver->_qf = qf;
 	for (unsigned int i = 0; i < state->getDOF(State::STATEJOINT); i++)
 	{
-		ReflexxSolver._dqLim[i] = gAssem->getJointPtrByMateIndex(i)->getLimitVelUpper().operator[](0);
-		ReflexxSolver._ddqLim[i] = gAssem->getJointPtrByMateIndex(i)->getLimitAccUpper().operator[](0);
+		ReflexxSolver->_dqLim[i] = gAssem->getJointPtrByMateIndex(i)->getLimitVelUpper().operator[](0);
+		ReflexxSolver->_ddqLim[i] = gAssem->getJointPtrByMateIndex(i)->getLimitAccUpper().operator[](0);
 	}
 	double re_c = clock();
-	vector<MatrixX> traj = ReflexxSolver.solve2();
+	MatrixX traj = ReflexxSolver->solve();
 	double re_ctime = clock() - re_c;
+	auto torque = calcTorque(*gAssem, ReflexxSolver->getResultPos(), ReflexxSolver->getResultVel(), ReflexxSolver->getResultAcc());
 
 	Real Cost = 0.0;
-	MatrixX val(6, traj[0].cols());
-	if (objfunCond == BSplinePointToPointOptimization::Effort)
+	MatrixX val(6, traj.cols());
+	for (int i = 0; i < traj.cols(); i++)
 	{
-		for (int i = 0; i < traj[0].cols(); i++)
-		{
-			efort_state->setJointq(State::ACTIVEJOINT, traj[0].col(i));
-			efort_state->setJointqdot(State::ACTIVEJOINT, traj[1].col(i));
-			efort_state->setJointqddot(State::ACTIVEJOINT, traj[2].col(i));
-			rovin::Dynamics::solveInverseDynamics(*gAssem, *efort_state);
-			val.col(i) = efort_state->getJointTorque(State::ACTIVEJOINT);
-			reflexxes->push_back(eigen2osgVec<osg::Vec3>((rovin::Kinematics::calculateEndeffectorFrame(*gAssem, *efort_state) * TOOLTIP).getPosition()));
-		}
-		Cost = effortTrj(val).sum() * re_timeStep;
+		efort_state->setJointq(State::ACTIVEJOINT, traj.col(i));
+		reflexxes->push_back(eigen2osgVec<osg::Vec3>((rovin::Kinematics::calculateEndeffectorFrame(*gAssem, *efort_state) * TOOLTIP).getPosition()));
 	}
 	renderer->addGeometry(*reflexxes);
+
+	if (objfunCond == BSplinePointToPointOptimization::Effort)
+	{
+		cout << " EFFORT " << endl;
+		Cost = calcEffort(torque).sum()*re_timeStep;
+	}
+	else
+	{
+		cout << " ENERGYLOSS " << endl;
+		Cost = calcEnergy(*gAssem, ReflexxSolver->getResultVel(), ReflexxSolver->getResultAcc(), torque).sum()*re_timeStep;
+	}
 	cout << "===== REFLEXXES =================================" << endl;
-	cout << " Tf = " << (traj[0].cols() - 1) * re_timeStep << endl;
+	cout << " Tf = " << (traj.cols() - 1) * re_timeStep << endl;
 	cout << " Computation Time = " << re_ctime << endl;
 	cout << " Objective Funcion = " << Cost << endl;
 	cout << "=====================================================" << endl << endl;
