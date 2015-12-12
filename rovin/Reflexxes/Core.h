@@ -94,6 +94,10 @@ namespace Reflexxes
 
 			return _qResult;
 		}
+
+		const MatrixX&	getResultPos() const { return _qResult; }
+		const MatrixX&	getResultVel() const { return _dqResult; }
+		const MatrixX&	getResultAcc() const { return _ddqResult; }
 		
 		VectorX							_q0, _dq0, _ddq0;
 		VectorX							_qf, _dqf;
