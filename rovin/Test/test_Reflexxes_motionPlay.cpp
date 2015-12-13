@@ -40,6 +40,10 @@ int main()
 	OSG_simpleRender renderer(gAssem, *state, 600, 600);
 	renderer.getViewer().realize();
 
+	ExtFile	table("../Data/CAD/demo/table.3ds", 0.01);
+	table.setPosition(osg::Vec3(0, 1, 0));
+	renderer.add(table);
+
 	double t = omp_get_wtime();
 	while (1)
 	{
@@ -71,7 +75,7 @@ shared_ptr<Reflexxes::ReflexxesWrapper>  setupReflexxesProblem(const socAssembly
 	StatePtr state = assem.makeState();
 	shared_ptr<Reflexxes::ReflexxesWrapper>		ReflexxSolver(new Reflexxes::ReflexxesWrapper(state->getDOF(State::STATEJOINT), timeStep));
 	//	Set initial and fial state (otherwise zero).
-	int numWayPoints = 2;
+	int numWayPoints = 4;
 	MatrixX	positions(state->getDOF(State::STATEJOINT), numWayPoints);
 	for (int i = 0; i < numWayPoints; i++)
 		positions.col(i) = VectorX::Ones(positions.rows()) * i;

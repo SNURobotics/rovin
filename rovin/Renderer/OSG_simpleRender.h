@@ -17,6 +17,7 @@
 
 #include "OSG_NodeVisitor.h"
 #include "OSG_Primitives.h"
+#include "OSG_ExtFile.h"
 
 namespace rovin
 {
@@ -47,6 +48,9 @@ namespace rovin
 
 			void addGeometry(const Primitives& geom) { _geometryNode->addDrawable(geom.getGeometry()); }
 			void removeGeometry(const Primitives& geom) { _geometryNode->removeDrawable(geom.getGeometry()); }
+
+			void add(const ExtFile& file) { _rootNode->addChild(file.getRoot()); }
+			void remove(const ExtFile& file) { _rootNode->removeChild(file.getRoot()); }
 
 		protected:
 			static const unsigned int numTiles = 25;

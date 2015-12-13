@@ -124,6 +124,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="OSG_ExtFile.h" />
     <ClInclude Include="OSG_NodeVisitor.h" />
     <ClInclude Include="OSG_Primitives.h" />
     <ClInclude Include="OSG_simpleRender.h" />
