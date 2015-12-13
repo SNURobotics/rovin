@@ -503,6 +503,21 @@ namespace rovin
 		}
 	}
 
+	void Kinematics::solveInverseKinematics(const SerialOpenChainAssembly& assem, State& state, const Vector3 goalPosition, const Math::SE3& tip)
+	{
+		VectorX S;
+		Matrix6X J;
+		while (true)
+		{
+			solveForwardKinematics(assem, state, State::JOINTS_T_FROM_BASE);
+
+			J = computeJacobian(assem, state);
+			if ((S = (goalPosition - (state.getJointStateByMateIndex(assem._Tree[assem._Tree.size() - 1].first)._accumulatedT * assem._socLink[assem._endeffectorLink]._M).getPosition())).norm() < InverseKinematicsExitCondition)
+				break;
+			state.addJointq(State::ACTIVEJOINT, pInv(-Bracket((state.getJointStateByMateIndex(assem._Tree[assem._Tree.size() - 1].first)._accumulatedT * assem._socLink[assem._endeffectorLink]._M).getPosition())*J.topRows<3>()+(J).bottomRows<3>()) * S);
+		}
+	}
+
 	vector<VectorX> Kinematics::solveInverseKinematicsOnlyForEfort(const Model::SerialOpenChainAssembly& assem, const Math::SE3& goalT)
 	{
 		MatrixX screw(6, 6);

@@ -36,6 +36,7 @@ namespace rovin
 		static Math::Matrix6X computeJacobian(const Model::SerialOpenChainAssembly& assem, Model::State& state);
 		static Math::Matrix6X computeJacobianDot(const Model::SerialOpenChainAssembly& assem, Model::State& state);
 		static void solveInverseKinematics(const Model::SerialOpenChainAssembly& assem, Model::State& state, const Math::SE3 goalT);
+		static void solveInverseKinematics(const Model::SerialOpenChainAssembly& assem, Model::State& state, const Math::Vector3 goalPosition, const Math::SE3& tip = (Math::SE3()));
 
 		static std::vector<Math::VectorX> solveInverseKinematicsOnlyForEfort(const Model::SerialOpenChainAssembly& assem, const Math::SE3& goalT);
 

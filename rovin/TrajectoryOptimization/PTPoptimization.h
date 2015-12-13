@@ -335,10 +335,16 @@ namespace rovin
 			////////////////////// run
 
 
-			Math::VectorX run(const ObjectiveFunctionType& objectiveType, bool withEQ = (false));
+			Math::VectorX run(const ObjectiveFunctionType& objectiveType, bool withEQ = (false), bool useInitialGuess = (false));
 
 
 			////////////////////////////
+
+			void setInitialGuess(const Math::VectorX& initaloptGuess, const Math::VectorX& initalnoptGuess)
+			{
+				_initoptGuess = initaloptGuess;
+				_initnoptGuess = initalnoptGuess;
+			}
 			
 			void setSplineCondition(const unsigned int order, const unsigned int nMiddleCP, KnotType knotType);
 			void checkKnotVectorFeasibility();
@@ -389,6 +395,8 @@ namespace rovin
 			Math::MatrixX _Aineq_nopt;
 			Math::VectorX _bineq_nopt;
 
+			Math::VectorX _initoptGuess;
+			Math::VectorX _initnoptGuess;
 			// Solution
 			Math::VectorX _solX;
 			Math::Real _fval;

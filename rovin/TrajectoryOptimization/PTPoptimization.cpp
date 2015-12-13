@@ -347,7 +347,7 @@ namespace rovin
 		{
 		}
 
-		Math::VectorX BSplinePointToPointOptimization::run(const ObjectiveFunctionType & objectiveType, bool withEQ)
+		Math::VectorX BSplinePointToPointOptimization::run(const ObjectiveFunctionType & objectiveType, bool withEQ, bool useInitialGuess)
 		{
 			NonlinearOptimization nonlinearSolver;
 			VectorX x(_optActiveJointDOF*_nMiddleCP);
@@ -355,12 +355,19 @@ namespace rovin
 			///////////////////////////////////////// INITIAL GUESS ///////////////////////////////////
 			//x.setRandom();
 
-			for (int i = 0; i < _optActiveJointDOF; i++)
+			if (!useInitialGuess)
 			{
-				for (int j = 0; j < _nMiddleCP; j++)
+				for (int i = 0; i < _optActiveJointDOF; i++)
 				{
-					x(i*_nMiddleCP + j) = BoundaryCP[0](_optActiveJointIdx(i)) + (Real)(j + 1) * (BoundaryCP[5](_optActiveJointIdx(i)) - BoundaryCP[0](_optActiveJointIdx(i))) / (Real)(_nMiddleCP + 1);
+					for (int j = 0; j < _nMiddleCP; j++)
+					{
+						x(i*_nMiddleCP + j) = BoundaryCP[0](_optActiveJointIdx(i)) + (Real)(j + 1) * (BoundaryCP[5](_optActiveJointIdx(i)) - BoundaryCP[0](_optActiveJointIdx(i))) / (Real)(_nMiddleCP + 1);
+					}
 				}
+			}
+			else
+			{
+				x = _initoptGuess;
 			}
 			///////////////////////////////////////// EQUALITY CONSTRAINT ///////////////////////////////////
 			generateLinearEqualityConstraint();
@@ -402,7 +409,14 @@ namespace rovin
 
 
 			/////////////////////////////////////// NOPT CP & SET SHARED DID ///////////////////////////////////
-			generateNoptControlPoint();
+			if (!useInitialGuess)
+			{
+				generateNoptControlPoint();
+			}
+			else
+			{
+				_noptControlPoint = _initnoptGuess;
+			}
 			setdqdp();
 			shared_ptr<SharedDID> sharedDID = shared_ptr<SharedDID>(new SharedDID(_socAssem, _nStep, _timeSpan, _timeSpanWeight, _knot,
 				BoundaryCP, _nInitCP, _nFinalCP, _nMiddleCP,
@@ -1175,20 +1189,20 @@ namespace rovin
 			//cout << "noptCP" << endl;
 			//cout << _noptControlPoint.transpose() << endl;
 
-			ProjectToFeasibleSpace proj;
-			FunctionPtr linearEq = FunctionPtr(new LinearFunction());
-			FunctionPtr linearInEq = FunctionPtr(new LinearFunction());
-			static_pointer_cast<LinearFunction> (linearEq)->A = _Aeq_nopt;
-			static_pointer_cast<LinearFunction> (linearEq)->b = _beq_nopt;
+			//ProjectToFeasibleSpace proj;
+			//FunctionPtr linearEq = FunctionPtr(new LinearFunction());
+			//FunctionPtr linearInEq = FunctionPtr(new LinearFunction());
+			//static_pointer_cast<LinearFunction> (linearEq)->A = _Aeq_nopt;
+			//static_pointer_cast<LinearFunction> (linearEq)->b = _beq_nopt;
 
-			static_pointer_cast<LinearFunction> (linearInEq)->A = _Aineq_nopt;
-			static_pointer_cast<LinearFunction> (linearInEq)->b = _bineq_nopt;
+			//static_pointer_cast<LinearFunction> (linearInEq)->A = _Aineq_nopt;
+			//static_pointer_cast<LinearFunction> (linearInEq)->b = _bineq_nopt;
 
-			if (_noptActiveJointDOF > 0)
-			{
-				proj._eqConstraintFunc = linearEq;
-				proj._inEqConstraintFunc = linearInEq;
-			}
+			//if (_noptActiveJointDOF > 0)
+			//{
+			//	proj._eqConstraintFunc = linearEq;
+			//	proj._inEqConstraintFunc = linearInEq;
+			//}
 			
 			
 			
@@ -1240,9 +1254,9 @@ namespace rovin
 						for (unsigned int l = 0; l < _socAssem->getJointPtrByMateIndex(jointID)->getDOF(); l++)
 						{
 							dofIdx = _defaultState->getAssemIndex(jointID) + l;
-							_dqdp[i](dofIdx, _nMiddleCP*_defaultState->getActiveJointIndex(_optActiveJointIdx[k]) + j) = Ni(0);
-							_dqdotdp[i](dofIdx, _nMiddleCP*_defaultState->getActiveJointIndex(_optActiveJointIdx[k]) + j) = dNi(0);
-							_dqddotdp[i](dofIdx, _nMiddleCP*_defaultState->getActiveJointIndex(_optActiveJointIdx[k]) + j) = ddNi(0);
+							_dqdp[i](dofIdx, _nMiddleCP*k+ j) = Ni(0);
+							_dqdotdp[i](dofIdx, _nMiddleCP*k + j) = dNi(0);
+							_dqddotdp[i](dofIdx, _nMiddleCP*k + j) = ddNi(0);
 						}
 					}
 				}
