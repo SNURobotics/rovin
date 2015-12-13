@@ -72,6 +72,22 @@ namespace rovin
 			std::vector< Math::MatrixX > Hessian(const Math::VectorX& x) const;
 		};
 
+		class LinearInterpolation
+		{
+		public:
+			LinearInterpolation() {}
+
+			Math::VectorX operator ()(const Math::Real& x);
+
+			void setX(const Math::VectorX& x);
+
+			void setElements(const std::vector<Math::VectorX>& fs);
+			
+			Math::VectorX _x;
+			std::vector<Math::VectorX> _fs;
+		};
+
+
 		class BilinearInterpolation
 		{
 		public:

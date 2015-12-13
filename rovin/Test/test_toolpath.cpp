@@ -13,25 +13,30 @@
 #include <rovin/Dynamics/Dynamics.h>
 #include <rovin/Math/Optimization.h>
 #include <rovin/TrajectoryOptimization/GivenPathOptimization.h>
-#include <rovin/Renderer/SimpleOSG.h>
+//#include <rovin/Renderer/SimpleOSG.h>
 #include <rovin/utils/Diagnostic.h>
 #include <rovin/utils/fileIO.h>
+#include "efortRobot.h"
 
 using namespace std;
 using namespace rovin::Math;
 using namespace rovin::Model;
-using namespace rovin::Renderer;
+//using namespace rovin::Renderer;
 using namespace rovin::TrajectoryOptimization;
 
 socAssemblyPtr openchain;
-socAssemblyPtr effortRobot;
+socAssemblyPtr efortRob = socAssemblyPtr(new efortRobot);
 unsigned int dof;
-VectorX q0;
-VectorX qf;
-VectorX dq0;
-VectorX dqf;
-VectorX ddq0;
-VectorX ddqf;
+VectorX sdot0(1);
+VectorX sdotf(1);
+VectorX sddot0(1);
+VectorX sddotf(1);
+VectorX th0(1);
+VectorX thf(1);
+VectorX dth0(1);
+VectorX dthf(1);
+VectorX ddth0(1);
+VectorX ddthf(1);
 
 void effortRobotModeling();
 void setBoundaryValues(bool checkq0, bool checkqf, bool checkdq0, bool checkdqf, bool checkddq0, bool checkddqf);
@@ -68,18 +73,48 @@ VectorX energyConsumptionTrj(const socAssembly& socAssem, const MatrixX& jointVe
 
 int main()
 {
+
 	effortRobotModeling();
 	double total_time = clock();
+	
+	SE3 TlastLinkToEndeffector = SE3(Vector3(0.0, 0.0, 0.125)) * SE3(SO3::RotZ(PI)*SO3::RotY(-PI_HALF), Vector3(0.1525, 0.0, 0.0490));
+	SE3 Tbase = SE3(Vector3(0.5, 0.0, 0.0));
 
-	GivenPathOptimization givenPath;
+	BSplineGivenPathOptimization givenPath;
+	givenPath.setSOCRobotModel(efortRob, Tbase, TlastLinkToEndeffector);
+
+	//////////////////////////////////
+
 
 	givenPath.loadToolPath("toolpath_test.txt");
 	Real curvTol = 500;
 	givenPath.truncatePath(curvTol);
+	givenPath.setParameters(6600.0 / 60.0*0.001, 1e-6, 6e-3);
+	givenPath.setNumberofTimeStep(101);
+	givenPath.setThetaGridNumber(46);
+	givenPath.setPathNum(1);
+	givenPath.findFeasibleJointSpace(0);
+	givenPath.findContinuousFeasibleSearchSpace();
+	givenPath.setThetaBound();
+	givenPath.setConstraint(true, true, true);
+	sdot0(0) = 1;
+	sdotf(0) = 1;
+	sddot0(0) = 0;
+	sddotf(0) = 0;
+	th0(0) = 0;
+	thf(0) = 0.9057;
+	dth0(0) = 0.0;
+	dthf(0) = 0.0;
+	ddth0(0) = 0.0;
+	ddthf(0) = 0.0;
+	
+	givenPath.setBoundaryConditionForSdot(sdot0, sdotf);
+	givenPath.setBoundaryConditionForTh(th0);
 
+	givenPath.setSplineCondition(4, 5, 4, 18, true);
 
-
-	//cout << givenPath._posTrj << endl;
+	givenPath.run(BSplineGivenPathOptimization::ObjectiveFunctionType::EnergyLoss);
+	
 
 	cout << "=======================================================" << endl;
 	cout << "TOTAL COMPUTATION TIME WITHOUT MODELING" << endl;
@@ -241,43 +276,4 @@ void effortRobotModeling()
 		openchain->getJointPtrByMateIndex(i)->setLimitInput(taumin.segment(i, 1), taumax.segment(i, 1));
 	}
 	openchain->completeAssembling("L1");
-}
-
-void setBoundaryValues(bool checkq0, bool checkqf, bool checkdq0, bool checkdqf, bool checkddq0, bool checkddqf)
-{
-	//q0.setRandom(dof);
-	//qf.setRandom(dof);
-	//dq0.setRandom(dof);
-	//dqf.setRandom(dof);
-	//ddq0.setRandom(dof);
-	//ddqf.setRandom(dof);
-
-
-	q0.setZero(dof);
-	qf.setOnes(dof);
-	dq0.setZero(dof);
-	dqf.setZero(dof);
-	ddq0.setZero(dof);
-	ddqf.setZero(dof);
-
-	if (!checkq0)
-	{
-		q0.resize(0); dq0.resize(0); ddq0.resize(0);
-	}
-	if (!checkqf)
-	{
-		qf.resize(0); dqf.resize(0); ddqf.resize(0);
-	}
-	if (!checkdq0)
-	{
-		dq0.resize(0); ddq0.resize(0);
-	}
-	if (!checkdqf)
-	{
-		dqf.resize(0); ddqf.resize(0);
-	}
-	if (!checkddq0)
-		ddq0.resize(0);
-	if (!checkddqf)
-		ddqf.resize(0);
 }

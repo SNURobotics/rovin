@@ -216,11 +216,11 @@ namespace rovin
 
 			if (R.determinant() > 0)
 			{
-				result._e = svd.matrixV() * svd.matrixU().transpose();
+				result._e = svd.matrixU() * svd.matrixV().transpose();
 			}
 			else
 			{
-				result._e = svd.matrixV() * Eigen::DiagonalMatrix<Real, 3>(1, 1, -1) * svd.matrixU().transpose();
+				result._e = svd.matrixU() * Eigen::DiagonalMatrix<Real, 3>(1, 1, -1) * svd.matrixV().transpose();
 			}
 
 			return result;

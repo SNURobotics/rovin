@@ -349,7 +349,7 @@ namespace rovin
 
 		Math::VectorX BSplinePointToPointOptimization::run(const ObjectiveFunctionType & objectiveType, bool withEQ)
 		{
-			NonlinearOptimization nonlinearSolver;;
+			NonlinearOptimization nonlinearSolver;
 			VectorX x(_optActiveJointDOF*_nMiddleCP);
 
 			///////////////////////////////////////// INITIAL GUESS ///////////////////////////////////
@@ -531,11 +531,11 @@ namespace rovin
 				if (_eqFunc != NULL) _eqConstraintVal = (*_eqFunc)(_solX);
 				if (_ineqFunc != NULL) _ineqConstraintVal = (*_ineqFunc)(_solX);
 			}
-			//cout << nonlinearSolver._Iter << endl;
-			//cout << "x : " << endl << _solX << endl;
-			//cout << "obj : " << endl << (*_objectiveFunc)(x) << endl;
-			//cout << "eq : " << endl << (*_eqFunc)(x) << endl;
-			//cout << "ineq : " << endl << (*_ineqFunc)(x) << endl;
+			cout << nonlinearSolver._Iter << endl;
+			cout << "x : " << endl << _solX << endl;
+			cout << "obj : " << endl << (*_objectiveFunc)(x) << endl;
+			cout << "eq : " << endl << (*_eqFunc)(x) << endl;
+			cout << "ineq : " << endl << (*_ineqFunc)(x) << endl;
 			_computationTime = clock() - c;
 			return _solX;
 		}

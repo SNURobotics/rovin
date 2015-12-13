@@ -519,7 +519,6 @@ namespace rovin
 
 		SE3 M = assem._socLink[6]._M;
 		SE3 gd = goalT*M.inverse();
-
 		Vector3 pw_now = gd.getRotation().matrix()*pw + gd.getPosition();
 		Vector3 z1 = screw.col(0).head<3>();
 		Vector3 p1 = z1.cross(screw.col(1).tail<3>());

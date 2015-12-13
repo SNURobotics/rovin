@@ -171,10 +171,10 @@ namespace rovin
 				return BSpline<-1, -1, Dimension>(new_knots, new_controlPoint);
 			}
 
+		public:
+			Eigen::Matrix<Real, Dimension, ((CoefficientN == -1) ? -1 : CoefficientN)> _controlPoints;
 		private:
 			Eigen::Matrix<Real, ((OrderK == -1) || (CoefficientN == -1) ? -1 : CoefficientN + OrderK), 1> _knots;
-			Eigen::Matrix<Real, Dimension, ((CoefficientN == -1) ? -1 : CoefficientN)> _controlPoints;
-
 			Eigen::Matrix<Real, OrderK, ((OrderK == -1) || (CoefficientN == -1) ? -1 : CoefficientN + OrderK)> _InvDeltaU;
 			Eigen::Matrix<Real, Dimension, (OrderK == -1 ? -1 : OrderK*OrderK)> _d;
 

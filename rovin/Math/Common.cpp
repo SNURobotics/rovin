@@ -346,12 +346,28 @@ namespace rovin
 			int yidx = findIdx(_y, y);
 
 			Real x1 = _x(xidx);
-			Real x2 = _x(xidx + 1);
-
 			Real y1 = _y(yidx);
-			Real y2 = _y(yidx + 1);
-			
-			return (1.0 / ((x2 - x1) * (y2 - y1))) * (_fs[xidx][yidx] * (x2 - x)*(y2 - y) + _fs[xidx + 1][yidx] * (x - x1)*(y2 - y) + _fs[xidx][yidx + 1] * (x2 - x)*(y - y1) + _fs[xidx + 1][yidx + 1] * (x - x1)*(y - y1));
+			Real x2;
+			Real y2;
+
+			if (xidx == _x.size() - 1 && yidx == _y.size() - 1)
+				return _fs[xidx][yidx];			
+			else if (xidx == _x.size() - 1)
+			{
+				y2 = _y(yidx + 1);
+				return  ((y - y1) / (y2 - y1))*(_fs[xidx][yidx + 1] - _fs[xidx][yidx]) + _fs[xidx][yidx];
+			}
+			else if (yidx == _y.size() - 1)
+			{
+				x2 = _x(xidx + 1);
+				return ((x - x1) / (x2 - x1))*(_fs[xidx + 1][yidx] - _fs[xidx][yidx]) + _fs[xidx][yidx];
+			}
+			else
+			{
+				x2 = _x(xidx + 1);
+				y2 = _y(yidx + 1);
+				return (1.0 / ((x2 - x1) * (y2 - y1))) * (_fs[xidx][yidx] * (x2 - x)*(y2 - y) + _fs[xidx + 1][yidx] * (x - x1)*(y2 - y) + _fs[xidx][yidx + 1] * (x2 - x)*(y - y1) + _fs[xidx + 1][yidx + 1] * (x - x1)*(y - y1));
+			}
 		}
 
 		void BilinearInterpolation::setX(const VectorX& x)
@@ -368,5 +384,27 @@ namespace rovin
 		{
 			_fs = fs;
 		}
-	}
+		VectorX LinearInterpolation::operator()(const Real & x)
+		{
+			int xidx = findIdx(_x, x);
+
+			Real x1 = _x(xidx);
+			if (xidx == _x.size() - 1)
+				return _fs[xidx];
+			else
+			{
+				Real x2 = _x(xidx + 1);
+				return ((x - x1) / (x2 - x1))*(_fs[xidx + 1] - _fs[xidx]) + _fs[xidx];
+			}
+			
+		}
+		void LinearInterpolation::setX(const Math::VectorX & x)
+		{
+			_x = x;
+		}
+		void LinearInterpolation::setElements(const vector<VectorX>& fs)
+		{
+			_fs = fs;
+		}
+}
 }
