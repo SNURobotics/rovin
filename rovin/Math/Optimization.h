@@ -125,7 +125,8 @@ namespace rovin
 			enum NLoptAlgorithm
 			{
 				NLoptMMA,
-				NLoptSLSQP
+				NLoptSLSQP,
+				Other
 			};
 
 			/////////////////////////////////////// NLOPT ////////////////////////////////////////////////////

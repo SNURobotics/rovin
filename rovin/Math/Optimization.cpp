@@ -418,16 +418,22 @@ namespace rovin
 				opt.add_inequality_mconstraint(mineqconstraint, this, vector<Real>(ineqN, 1e-8));
 				opt.add_equality_mconstraint(meqconstraint, this, vector<Real>(eqN, 1e-8));
 			}
-			else
+			else if (_NLoptSubAlgo == NonlinearOptimization::NLoptAlgorithm::NLoptMMA)
 			{
 				opt = nlopt::opt(nlopt::LD_MMA, xN);
 				opt.set_min_objective(objective, this);
 				opt.add_inequality_mconstraint(mineqconstraint, this, vector<Real>(ineqN, 1e-8));
 
 			}
+			else
+			{
+				opt = nlopt::opt(nlopt::LN_COBYLA, xN);
+				opt.set_min_objective(objective, this);
+				opt.add_inequality_mconstraint(mineqconstraint, this, vector<Real>(ineqN, 1e-8));
+			}
 			opt.set_xtol_rel(1e-4);
 			opt.set_ftol_rel(1e-4);
-			opt.set_maxeval(100);
+			opt.set_maxeval(1000);
 
 			std::vector<Real> xi(xN);
 			for (int i = 0; i < xN; i++)
@@ -442,7 +448,9 @@ namespace rovin
 				for (int i = 0; i < xN; i++)
 				{
 					xi[i] += ((rand() % 100) / 50.0 - 1.0) * 1e-4;
+					cout << xi[i] << " ";
 				}
+				cout << endl;
 			}
 			if (result < 0) return VectorX();
 			for (int i = 0; i < xN; i++)

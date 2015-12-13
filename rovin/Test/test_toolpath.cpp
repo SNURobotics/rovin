@@ -13,7 +13,7 @@
 #include <rovin/Dynamics/Dynamics.h>
 #include <rovin/Math/Optimization.h>
 #include <rovin/TrajectoryOptimization/GivenPathOptimization.h>
-//#include <rovin/Renderer/SimpleOSG.h>
+#include <rovin/Renderer/OSG_simpleRender.h>
 #include <rovin/utils/Diagnostic.h>
 #include <rovin/utils/fileIO.h>
 #include "efortRobot.h"
@@ -21,7 +21,7 @@
 using namespace std;
 using namespace rovin::Math;
 using namespace rovin::Model;
-//using namespace rovin::Renderer;
+using namespace rovin::Renderer;
 using namespace rovin::TrajectoryOptimization;
 
 socAssemblyPtr openchain;
@@ -83,20 +83,16 @@ int main()
 	BSplineGivenPathOptimization givenPath;
 	givenPath.setSOCRobotModel(efortRob, Tbase, TlastLinkToEndeffector);
 
-	//////////////////////////////////
-
 
 	givenPath.loadToolPath("toolpath_test.txt");
 	Real curvTol = 500;
+	int nStep = 101;
 	givenPath.truncatePath(curvTol);
 	givenPath.setParameters(6600.0 / 60.0*0.001, 1e-6, 6e-3);
-	givenPath.setNumberofTimeStep(101);
+	givenPath.setNumberofTimeStep(nStep);
 	givenPath.setThetaGridNumber(46);
-	givenPath.setPathNum(1);
-	givenPath.findFeasibleJointSpace(0);
-	givenPath.findContinuousFeasibleSearchSpace();
-	givenPath.setThetaBound();
 	givenPath.setConstraint(true, true, true);
+
 	sdot0(0) = 1;
 	sdotf(0) = 1;
 	sddot0(0) = 0;
@@ -107,18 +103,68 @@ int main()
 	dthf(0) = 0.0;
 	ddth0(0) = 0.0;
 	ddthf(0) = 0.0;
+	int nDOF = efortRob->makeState()->getDOF(State::TARGET_JOINT::ASSEMJOINT);
+	Math::MatrixX jointVal(nDOF, nStep * 3); // givenPath._pathN);
+	jointVal.setZero();
+	Math::VectorX qInit;
+	for (int i = 1; i < 4; i++)
+	{
+		if (i > 1)
+			givenPath.setPathNum(i, qInit);
+		else
+			givenPath.setPathNum(i);
+		givenPath.findFeasibleJointSpace(0);
+		givenPath.findContinuousFeasibleSearchSpace();
+		givenPath.setThetaBound();
+
+		givenPath.setBoundaryConditionForSdot(sdot0, sdotf);
+		if (i > 1)
+			givenPath.setBoundaryConditionForTh(th0);
+		else
+			givenPath.setBoundaryConditionForTh();
+
+		givenPath.setSplineCondition(4, 5, 4, 18, true);
+
+		givenPath.run(BSplineGivenPathOptimization::ObjectiveFunctionType::EnergyLoss);
+		qInit = givenPath._jointVal.col(nStep - 1);
+		jointVal.block(0, (i-1)*nStep, nDOF, nStep) = givenPath._jointVal;
+	}
 	
-	givenPath.setBoundaryConditionForSdot(sdot0, sdotf);
-	givenPath.setBoundaryConditionForTh(th0);
-
-	givenPath.setSplineCondition(4, 5, 4, 18, true);
-
-	givenPath.run(BSplineGivenPathOptimization::ObjectiveFunctionType::EnergyLoss);
 	
 
 	cout << "=======================================================" << endl;
 	cout << "TOTAL COMPUTATION TIME WITHOUT MODELING" << endl;
 	cout << clock() - total_time << endl;
+
+
+	//////////////////////////////// rendering
+	Model::StatePtr state = efortRob->makeState();
+	OSG_simpleRender renderer(*efortRob, *state, 600, 600);
+	renderer._viewer.realize();
+
+	
+
+	double c = clock();
+	int n = 0;
+	double frameRate = 60;
+	while (1)
+	{
+		
+		if (clock() - c >= 1000 / frameRate)
+		{
+			
+			state->setJointq(State::ACTIVEJOINT, jointVal.col(n));
+			rovin::Kinematics::solveForwardKinematics(*efortRob, *state, State::LINKS_POS);
+			c = clock();
+		}
+		renderer.updateFrame();
+		n += 1;
+		if (n > jointVal.cols() - 1)
+			n = 0;
+	}
+
+	renderer._viewer.run();
+
 
 	return 0;
 }

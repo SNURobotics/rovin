@@ -26,10 +26,10 @@ namespace rovin
 			void setSOCRobotModel(const Model::socAssemblyPtr& socAssem, const Math::SE3& Tbase, const Math::SE3& TlastLinkToEndeffector);
 			void loadToolPath(const std::string& fileName);
 			void setNumberofTimeStep(const int nStep);
-			void setParameters(const Real feedRate, const Real chordError, const Real robotTimeStep);
-			void truncatePath(const Real curvTol);
+			void setParameters(const Math::Real feedRate, const Math::Real chordError, const Math::Real robotTimeStep);
+			void truncatePath(const Math::Real curvTol);
 			void setThetaGridNumber(const int thN);
-			void setPathNum(const int pathNum);
+			void setPathNum(const int pathNum, const Math::VectorX& qInit = (Math::VectorX()));
 
 			// generate constraint for sdot from curvature and feedrate
 			void generateSdotMax(const int startIdx, const int endIdx);
@@ -305,9 +305,6 @@ namespace rovin
 				int _nConstraint;
 			};
 
-
-			
-
 		public:
 			
 			// Number of middle control points & order of B-spline
@@ -337,6 +334,10 @@ namespace rovin
 			Math::VectorX _eqConstraintVal;
 			Math::VectorX _ineqConstraintVal;
 			Math::Real _computationTime;
+			Math::MatrixX _jointVal;
+			Math::MatrixX _jointVel;
+			Math::MatrixX _jointAcc;
+			Math::MatrixX _jointTorque;
 		};
 
 	}

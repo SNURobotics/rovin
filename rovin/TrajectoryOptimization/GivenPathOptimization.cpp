@@ -123,11 +123,11 @@ namespace rovin
 			//cout << "thspan = " << _thSpanDouble << endl;
 		}
 
-		void GivenPathOptimization::setPathNum(const int pathNum)
+		void GivenPathOptimization::setPathNum(const int pathNum, const VectorX& qInit)
 		{
 			_thBoundGenerated = false;
 			generateSdotMax(_startPathIdx[pathNum], _endPathIdx[pathNum]);
-			solveInverseKinematics(_startPathIdx[pathNum], _endPathIdx[pathNum]);
+			solveInverseKinematics(_startPathIdx[pathNum], _endPathIdx[pathNum], qInit);
 			_sf = (Real)(_endPathIdx[pathNum] - _startPathIdx[pathNum]);
 		}
 
@@ -1349,7 +1349,7 @@ namespace rovin
 				_sdotSpline = Math::BSpline<-1, -1, 1>(_knotSdot, _sdotCP);
 				_thetaSpline = Math::BSpline<-1, -1, 1>(_knotTh, _thCP);
 
-				// get s(t) from sdot(s)
+				// get s(t) from sdot(s) and calculate tf
 				getSFromSdot();
 				//getSFromSdotUsingGaussianQuadrature();
 				
@@ -1708,6 +1708,7 @@ namespace rovin
 
 
 			////////////////////////////////// OBJECTIVE FUNCTION /////////////////////////////////////
+			
 			if (objectiveType == ObjectiveFunctionType::Effort)
 			{
 				_objectiveFunc = FunctionPtr(new effortFunction());
@@ -1718,6 +1719,10 @@ namespace rovin
 				_objectiveFunc = FunctionPtr(new energyLossFunction());
 				static_pointer_cast<energyLossFunction>(_objectiveFunc)->_sharedVar = _SharedVar;
 			}
+
+
+
+
 			///////////////////////////////////////////////////////////////////////////////////////////
 			cout << "obj0: " << (*_objectiveFunc)(x) << endl;
 			cout << "maxInEq: " << (*_ineqFunc)(x).maxCoeff() << endl;
@@ -1740,9 +1745,15 @@ namespace rovin
 			
 			cout << "x : " << endl << _solX << endl;	
 			cout << "obj : " << endl << (*_objectiveFunc)(_solX) << endl;
+			cout << "tf : " << _SharedVar->_tf << endl;
 			//cout << "eq : " << endl << (*_eqFunc)(_solX) << endl;
 			//cout << "ineq : " << endl << (*_ineqFunc)(_solX) << endl;
+			cout << "maxInEq : " << (*_ineqFunc)(_solX).maxCoeff() << endl;
 			_computationTime = clock() - c;
+			_jointVal = _SharedVar->getJointVal(_solX);
+			_jointVel = _SharedVar->getJointVel(_solX);
+			_jointAcc = _SharedVar->getJointAcc(_solX);
+			_jointTorque = _SharedVar->getTau(_solX);
 			return _solX;
 			///////////////////////////////////////////////////////////////////////////////////////////
 		}
