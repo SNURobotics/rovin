@@ -4,35 +4,80 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:GoogolTechControlPanel"
-        Title="GoogolTechDemoControlPanel" Height="528.844" Width="360.723">
+        Title="GoogolTechDemoControlPanel" Height="847.844" Width="360.723">
     <Grid>
         <Label Content="Energy Objective Function" HorizontalAlignment="Left" Height="27" VerticalAlignment="Top" Width="167" Margin="10,10,0,0" FontWeight="Bold"/>
         <RadioButton x:Name="effortButton" Content="Effort" HorizontalAlignment="Left" Margin="10,37,0,0" VerticalAlignment="Top" IsChecked="True" Checked="effortButton_Checked"/>
         <RadioButton x:Name="energyButton" Content="EnergyLoss" HorizontalAlignment="Left" Margin="63,37,0,0" VerticalAlignment="Top" Checked="energyButton_Checked"/>
-        <Label Content="Start Point" HorizontalAlignment="Left" Height="27" VerticalAlignment="Top" Width="167" Margin="10,128,0,0" FontWeight="Bold"/>
-        <Button x:Name="applyButton" Content="apply" HorizontalAlignment="Left" Margin="201,17,0,0" VerticalAlignment="Top" Width="127" Height="42" FontSize="13.333" Click="applyButton_Click"/>
-        <Slider x:Name="sx" HorizontalAlignment="Left" Margin="40,155,0,0" VerticalAlignment="Top" Width="73" Value="50" Minimum="0" Maximum="100" ValueChanged="sx_ValueChanged" />
-        <Label Content="x" HorizontalAlignment="Left" Margin="20,148,0,0" VerticalAlignment="Top"/>
-        <Slider x:Name="sy" HorizontalAlignment="Left" Margin="143,154,0,0" VerticalAlignment="Top" Width="73" Value="50" Minimum="0" Maximum="100" ValueChanged="sy_ValueChanged" />
-        <Label Content="y" HorizontalAlignment="Left" Margin="125,147,0,0" VerticalAlignment="Top"/>
-        <Slider x:Name="sz" HorizontalAlignment="Left" Margin="246,155,0,0" VerticalAlignment="Top" Width="73" Value="0" Minimum="0" Maximum="100" ValueChanged="sz_ValueChanged" />
-        <Label Content="z" HorizontalAlignment="Left" Margin="229,148,0,0" VerticalAlignment="Top"/>
-        <Label Content="End Point" HorizontalAlignment="Left" Height="27" VerticalAlignment="Top" Width="167" Margin="10,230,0,0" FontWeight="Bold"/>
-        <Slider x:Name="ex" HorizontalAlignment="Left" Margin="40,257,0,0" VerticalAlignment="Top" Width="73" Value="50" Minimum="0" Maximum="100" ValueChanged="ex_ValueChanged" />
-        <Label Content="x" HorizontalAlignment="Left" Margin="20,250,0,0" VerticalAlignment="Top"/>
-        <Slider x:Name="ey" HorizontalAlignment="Left" Margin="143,256,0,0" VerticalAlignment="Top" Width="73" Value="50" Minimum="0" Maximum="100" ValueChanged="ey_ValueChanged" />
-        <Label Content="y" HorizontalAlignment="Left" Margin="125,249,0,0" VerticalAlignment="Top"/>
-        <Slider x:Name="ez" HorizontalAlignment="Left" Margin="246,257,0,0" VerticalAlignment="Top" Width="73" Value="0" Minimum="0" Maximum="100" ValueChanged="ez_ValueChanged" />
-        <Label Content="z" HorizontalAlignment="Left" Margin="231,250,0,0" VerticalAlignment="Top"/>
-        <Label Content="Final Time" HorizontalAlignment="Left" Height="27" VerticalAlignment="Top" Width="88" Margin="10,66,0,0" FontWeight="Bold"/>
-        <Slider x:Name="finaltime" HorizontalAlignment="Left" Margin="18,89,0,0" VerticalAlignment="Top" Width="301" Value="30" Minimum="0" Maximum="100" ValueChanged="sy_Copy_ValueChanged" />
-        <Slider x:Name="stheta" HorizontalAlignment="Left" Margin="40,186,0,0" VerticalAlignment="Top" Width="73" Value="50" Minimum="0" Maximum="100" ValueChanged="stheta_ValueChanged"/>
-        <Label Content="θ" HorizontalAlignment="Left" Margin="20,181,0,0" VerticalAlignment="Top"/>
-        <Slider x:Name="salpha" HorizontalAlignment="Left" Margin="143,186,0,0" VerticalAlignment="Top" Width="73" Value="50" Minimum="0" Maximum="100" ValueChanged="salpha_ValueChanged"/>
-        <Label Content="α" HorizontalAlignment="Left" Margin="123,179,0,0" VerticalAlignment="Top"/>
-        <Slider x:Name="etheta" HorizontalAlignment="Left" Margin="40,287,0,0" VerticalAlignment="Top" Width="73" Value="50" Minimum="0" Maximum="100" ValueChanged="etheta_ValueChanged"/>
-        <Label Content="θ" HorizontalAlignment="Left" Margin="20,282,0,0" VerticalAlignment="Top"/>
-        <Slider x:Name="ealpha" HorizontalAlignment="Left" Margin="143,287,0,0" VerticalAlignment="Top" Width="73" Value="50" Minimum="0" Maximum="100" ValueChanged="ealpha_ValueChanged"/>
-        <Label Content="α" HorizontalAlignment="Left" Margin="123,280,0,0" VerticalAlignment="Top"/>
+        <Label Content="Start Point" HorizontalAlignment="Left" Height="27" VerticalAlignment="Top" Width="167" Margin="10,180,0,0" FontWeight="Bold"/>
+        <Button x:Name="applyButton" Content="solve" HorizontalAlignment="Left" Margin="201,17,0,0" VerticalAlignment="Top" Width="127" Height="42" FontSize="13.333" Click="applyButton_Click"/>
+        <Slider x:Name="sx" HorizontalAlignment="Left" Margin="40,207,0,0" VerticalAlignment="Top" Width="73" Value="50" Minimum="0" Maximum="100" ValueChanged="sx_ValueChanged" />
+        <Label Content="x" HorizontalAlignment="Left" Margin="20,200,0,0" VerticalAlignment="Top"/>
+        <Slider x:Name="sy" HorizontalAlignment="Left" Margin="143,206,0,0" VerticalAlignment="Top" Width="73" Value="50" Minimum="0" Maximum="100" ValueChanged="sy_ValueChanged" />
+        <Label Content="y" HorizontalAlignment="Left" Margin="125,199,0,0" VerticalAlignment="Top"/>
+        <Slider x:Name="sz" HorizontalAlignment="Left" Margin="246,207,0,0" VerticalAlignment="Top" Width="73" Value="0" Minimum="0" Maximum="100" ValueChanged="sz_ValueChanged" />
+        <Label Content="z" HorizontalAlignment="Left" Margin="229,200,0,0" VerticalAlignment="Top"/>
+        <Label Content="End Point" HorizontalAlignment="Left" Height="27" VerticalAlignment="Top" Width="167" Margin="10,264,0,0" FontWeight="Bold"/>
+        <Slider x:Name="ex" HorizontalAlignment="Left" Margin="40,291,0,0" VerticalAlignment="Top" Width="73" Value="50" Minimum="0" Maximum="100" ValueChanged="ex_ValueChanged" />
+        <Label Content="x" HorizontalAlignment="Left" Margin="20,284,0,0" VerticalAlignment="Top"/>
+        <Slider x:Name="ey" HorizontalAlignment="Left" Margin="143,290,0,0" VerticalAlignment="Top" Width="73" Value="50" Minimum="0" Maximum="100" ValueChanged="ey_ValueChanged" />
+        <Label Content="y" HorizontalAlignment="Left" Margin="125,283,0,0" VerticalAlignment="Top"/>
+        <Slider x:Name="ez" HorizontalAlignment="Left" Margin="246,291,0,0" VerticalAlignment="Top" Width="73" Value="0" Minimum="0" Maximum="100" ValueChanged="ez_ValueChanged" />
+        <Label Content="z" HorizontalAlignment="Left" Margin="231,284,0,0" VerticalAlignment="Top"/>
+        <Label Content="Final Time" HorizontalAlignment="Left" Height="27" VerticalAlignment="Top" Width="88" Margin="10,72,0,0" FontWeight="Bold"/>
+        <Slider x:Name="finaltime" HorizontalAlignment="Left" Margin="18,99,0,0" VerticalAlignment="Top" Width="301" Value="30" Minimum="0" Maximum="100" ValueChanged="sy_Copy_ValueChanged" />
+        <Slider x:Name="stheta" HorizontalAlignment="Left" Margin="40,238,0,0" VerticalAlignment="Top" Width="73" Value="50" Minimum="0" Maximum="100" ValueChanged="stheta_ValueChanged"/>
+        <Label Content="θ" HorizontalAlignment="Left" Margin="20,233,0,0" VerticalAlignment="Top"/>
+        <Slider x:Name="salpha" HorizontalAlignment="Left" Margin="143,238,0,0" VerticalAlignment="Top" Width="73" Value="50" Minimum="0" Maximum="100" ValueChanged="salpha_ValueChanged"/>
+        <Label Content="α" HorizontalAlignment="Left" Margin="123,231,0,0" VerticalAlignment="Top"/>
+        <Slider x:Name="etheta" HorizontalAlignment="Left" Margin="40,321,0,0" VerticalAlignment="Top" Width="73" Value="50" Minimum="0" Maximum="100" ValueChanged="etheta_ValueChanged"/>
+        <Label Content="θ" HorizontalAlignment="Left" Margin="20,316,0,0" VerticalAlignment="Top"/>
+        <Slider x:Name="ealpha" HorizontalAlignment="Left" Margin="143,321,0,0" VerticalAlignment="Top" Width="73" Value="50" Minimum="0" Maximum="100" ValueChanged="ealpha_ValueChanged"/>
+        <Label Content="α" HorizontalAlignment="Left" Margin="123,314,0,0" VerticalAlignment="Top"/>
+
+        <CheckBox x:Name="timeconstraint" HorizontalAlignment="Left" Margin="286,359,0,0" VerticalAlignment="Top" Checked="timeconstraint_Checked" Unchecked="timeconstraint_unChecked" IsEnabled="False"/>
+        <Label x:Name="time" Content="Time" HorizontalAlignment="Left" Margin="248,353,0,0" VerticalAlignment="Top"/>
+
+        <Label Content="Waypoint1" HorizontalAlignment="Left" Height="27" VerticalAlignment="Top" Width="88" Margin="10,363,0,0" FontWeight="Bold"/>
+        <CheckBox x:Name="w1c" HorizontalAlignment="Left" Margin="87,369,0,0" VerticalAlignment="Top" Checked="w1c_Checked" Unchecked="w1c_Unchecked"/>
+        <Slider x:Name="w1x" HorizontalAlignment="Left" Margin="40,395,0,0" VerticalAlignment="Top" Width="73" Value="50" Minimum="0" Maximum="100" ValueChanged="w1x_ValueChanged"/>
+        <Label Content="x" HorizontalAlignment="Left" Margin="20,388,0,0" VerticalAlignment="Top"/>
+        <Slider x:Name="w1y" HorizontalAlignment="Left" Margin="143,394,0,0" VerticalAlignment="Top" Width="73" Value="50" Minimum="0" Maximum="100" ValueChanged="w1y_ValueChanged" />
+        <Label Content="y" HorizontalAlignment="Left" Margin="125,387,0,0" VerticalAlignment="Top"/>
+        <Slider x:Name="w1z" HorizontalAlignment="Left" Margin="246,395,0,0" VerticalAlignment="Top" Width="73" Value="0" Minimum="0" Maximum="100" ValueChanged="w1z_ValueChanged" />
+        <Label Content="z" HorizontalAlignment="Left" Margin="231,388,0,0" VerticalAlignment="Top"/>
+        <Slider x:Name="w1t" HorizontalAlignment="Left" Margin="40,425,0,0" VerticalAlignment="Top" Width="73" Value="50" Minimum="0" Maximum="100" ValueChanged="w1t_ValueChanged"/>
+        <Label Content="θ" HorizontalAlignment="Left" Margin="20,420,0,0" VerticalAlignment="Top"/>
+        <Slider x:Name="w1a" HorizontalAlignment="Left" Margin="143,425,0,0" VerticalAlignment="Top" Width="73" Value="50" Minimum="0" Maximum="100" ValueChanged="w1a_ValueChanged" />
+        <Label Content="α" HorizontalAlignment="Left" Margin="123,418,0,0" VerticalAlignment="Top"/>
+        <Slider x:Name="w1time" HorizontalAlignment="Left" Margin="63,453,0,0" VerticalAlignment="Top" Width="256" Value="33" Minimum="0" Maximum="100" Height="24" ValueChanged="w1time_ValueChanged" />
+        <Label Content="Time" HorizontalAlignment="Left" Margin="21,451,0,0" VerticalAlignment="Top"/>
+
+        <Label Content="Waypoint2" HorizontalAlignment="Left" Height="27" VerticalAlignment="Top" Width="88" Margin="10,480,0,0" FontWeight="Bold"/>
+        <CheckBox x:Name="w2c" HorizontalAlignment="Left" Margin="87,486,0,0" VerticalAlignment="Top" Checked="w2c_Checked" Unchecked="w2c_Unchecked_1"/>
+        <Slider x:Name="w2x" HorizontalAlignment="Left" Margin="40,512,0,0" VerticalAlignment="Top" Width="73" Value="50" Minimum="0" Maximum="100" ValueChanged="w2x_ValueChanged"  />
+        <Label Content="x" HorizontalAlignment="Left" Margin="20,505,0,0" VerticalAlignment="Top"/>
+        <Slider x:Name="w2y" HorizontalAlignment="Left" Margin="143,511,0,0" VerticalAlignment="Top" Width="73" Value="50" Minimum="0" Maximum="100" ValueChanged="w2y_ValueChanged"/>
+        <Label Content="y" HorizontalAlignment="Left" Margin="125,504,0,0" VerticalAlignment="Top"/>
+        <Slider x:Name="w2z" HorizontalAlignment="Left" Margin="246,512,0,0" VerticalAlignment="Top" Width="73" Value="0" Minimum="0" Maximum="100" ValueChanged="w2z_ValueChanged"  />
+        <Label Content="z" HorizontalAlignment="Left" Margin="231,505,0,0" VerticalAlignment="Top"/>
+        <Slider x:Name="w2t" HorizontalAlignment="Left" Margin="40,542,0,0" VerticalAlignment="Top" Width="73" Value="50" Minimum="0" Maximum="100" ValueChanged="w2t_ValueChanged"/>
+        <Label Content="θ" HorizontalAlignment="Left" Margin="20,537,0,0" VerticalAlignment="Top"/>
+        <Slider x:Name="w2a" HorizontalAlignment="Left" Margin="143,542,0,0" VerticalAlignment="Top" Width="73" Value="50" Minimum="0" Maximum="100" ValueChanged="w2a_ValueChanged" />
+        <Label Content="α" HorizontalAlignment="Left" Margin="123,535,0,0" VerticalAlignment="Top"/>
+        <Slider x:Name="w2time" HorizontalAlignment="Left" Margin="63,570,0,0" VerticalAlignment="Top" Width="256" Value="66" Minimum="0" Maximum="100" Height="24" ValueChanged="w2time_ValueChanged" />
+        <Label Content="Time" HorizontalAlignment="Left" Margin="21,568,0,0" VerticalAlignment="Top"/>
+        <Label Content="Examples" HorizontalAlignment="Left" Height="27" VerticalAlignment="Top" Width="88" Margin="10,618,0,0" FontWeight="Bold"/>
+        <Button x:Name="ex1" Content="PTP(1)" HorizontalAlignment="Left" Margin="23,645,0,0" VerticalAlignment="Top" Width="75" Height="67" Click="ex1_Click"/>
+        <Button x:Name="ex2" Content="PTP(2)" HorizontalAlignment="Left" Margin="113,645,0,0" VerticalAlignment="Top" Width="75" Height="67" Click="ex2_Click"/>
+        <Button x:Name="ex3" Content="Waypoint1(1)" HorizontalAlignment="Left" Margin="203,645,0,0" VerticalAlignment="Top" Width="75" Height="67" Click="ex3_Click" FontSize="10.667"/>
+        <Button x:Name="ex4" Content="Waypoint1(2)" HorizontalAlignment="Left" Margin="23,723,0,0" VerticalAlignment="Top" Width="75" Height="67" Click="ex4_Click" FontSize="10.667"/>
+        <Button x:Name="ex5" Content="Waypoint1(3)" HorizontalAlignment="Left" Margin="113,723,0,0" VerticalAlignment="Top" Width="75" Height="67" Click="ex5_Click" FontSize="10.667"/>
+        <Button x:Name="ex6" Content="Pick n Place" HorizontalAlignment="Left" Margin="203,723,0,0" VerticalAlignment="Top" Width="75" Height="67" Click="ex6_Click"/>
+        <Button x:Name="apply" Content="apply" HorizontalAlignment="Left" Margin="286,64,0,0" VerticalAlignment="Top" Width="42" Height="24" Click="apply_Click"/>
+
+        <Label Content="EndEffector Weight" HorizontalAlignment="Left" Height="27" VerticalAlignment="Top" Width="130" Margin="10,120,0,0" FontWeight="Bold"/>
+        <Slider x:Name="weight" HorizontalAlignment="Left" Margin="18,147,0,0" VerticalAlignment="Top" Width="301" Value="0" Minimum="0" Maximum="100" ValueChanged="weight_ValueChanged" />
+        <CheckBox x:Name="wrist" Content="wrist" HorizontalAlignment="Left" Margin="172,64,0,0" VerticalAlignment="Top" Checked="checkBox_Checked" Unchecked="checkBox_Unchecked"/>
     </Grid>
 </Window>

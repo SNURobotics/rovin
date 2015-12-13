@@ -269,9 +269,24 @@ namespace rovin
 				Math::VectorX func(const Math::VectorX& x) const;
 				Math::MatrixX Jacobian(const Math::VectorX& x) const;
 
+				Real _radius;
+				std::vector<Vector3> _waypoint;
+				std::shared_ptr<SharedDID> _sharedDID;
+				Math::SE3 TOOLTIP = Math::SE3(Math::Vector3(0, 0, 0.12));
+			};
+
+			class waypointObjectiveFunction2 : public Math::Function
+			{
+			public:
+				waypointObjectiveFunction2() {}
+
+				Math::VectorX func(const Math::VectorX& x) const;
+				Math::MatrixX Jacobian(const Math::VectorX& x) const;
+
 				Real _weight;
 				std::vector<Vector3> _waypoint;
 				std::shared_ptr<SharedDID> _sharedDID;
+				Math::SE3 TOOLTIP = Math::SE3(Math::Vector3(0, 0, 0.12));
 			};
 
 
@@ -335,7 +350,7 @@ namespace rovin
 			////////////////////// run
 
 
-			Math::VectorX run(const ObjectiveFunctionType& objectiveType, bool withEQ = (false), bool useInitialGuess = (false));
+			Math::VectorX run(const ObjectiveFunctionType& objectiveType, bool withEQ = (false), bool useInitialGuessopt = (false), bool useInitialGuessnopt = (false));
 
 
 			////////////////////////////

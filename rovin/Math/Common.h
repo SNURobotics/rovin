@@ -49,6 +49,19 @@ namespace rovin
 			std::vector<FunctionPtr> _functionList;
 		};
 
+		class MultiObjectiveFunction2 : public Function
+		{
+		public:
+			MultiObjectiveFunction2() : _functionList(std::vector<FunctionPtr>()) {}
+
+			VectorX func(const VectorX& x) const;
+			MatrixX Jacobian(const VectorX& x) const;
+
+			void addFunction(FunctionPtr func);
+
+			std::vector<FunctionPtr> _functionList;
+		};
+
 		class EmptyFunction : public Function
 		{
 		public:

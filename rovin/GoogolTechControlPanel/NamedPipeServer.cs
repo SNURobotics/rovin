@@ -50,7 +50,6 @@ namespace GoogolTechControlPanel
         {
             pipeName = PName;
             ClientType = Mode;//0 Reading Pipe, 1 Writing Pipe
-
         }
 
         public void Start()
@@ -141,6 +140,8 @@ namespace GoogolTechControlPanel
             //clean up resources
             clientse.stream.Close();
             clientse.handle.Close();
+
+            clientse = null;
 
         }
         public void SendMessage(string message, Client client)

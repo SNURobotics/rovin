@@ -347,7 +347,7 @@ namespace rovin
 		{
 		}
 
-		Math::VectorX BSplinePointToPointOptimization::run(const ObjectiveFunctionType & objectiveType, bool withEQ, bool useInitialGuess)
+		Math::VectorX BSplinePointToPointOptimization::run(const ObjectiveFunctionType & objectiveType, bool withEQ, bool useInitialGuessopt, bool useInitialGuessnopt)
 		{
 			NonlinearOptimization nonlinearSolver;;
 			VectorX x(_optActiveJointDOF*_nMiddleCP);
@@ -355,7 +355,7 @@ namespace rovin
 			///////////////////////////////////////// INITIAL GUESS ///////////////////////////////////
 			//x.setRandom();
 
-			if (!useInitialGuess)
+			if (!useInitialGuessopt)
 			{
 				for (int i = 0; i < _optActiveJointDOF; i++)
 				{
@@ -409,7 +409,7 @@ namespace rovin
 
 
 			/////////////////////////////////////// NOPT CP & SET SHARED DID ///////////////////////////////////
-			if (!useInitialGuess)
+			if (!useInitialGuessnopt)
 			{
 				generateNoptControlPoint();
 			}
@@ -443,26 +443,6 @@ namespace rovin
 			_testNonLinearIneqConstFun->loadConstraint(_socAssem, _optActiveJointIdx, _optActiveJointDOF, _velConstraintExist, _torqueConstraintExist, _accConstraintExist);
 			////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-			if (!_waypointPositionExist)
-			{
-				nonlinearSolver._objectiveFunc = _objectiveFunc;
-			}
-			else
-			{
-				Math::FunctionPtr multiObject = Math::FunctionPtr(new MultiObjectiveFunction);
-				Math::FunctionPtr penaltyFunction = Math::FunctionPtr(new waypointObjectiveFunction);
-				std::static_pointer_cast<waypointObjectiveFunction>(penaltyFunction)->_waypoint = _waypointPosition;
-				std::static_pointer_cast<waypointObjectiveFunction>(penaltyFunction)->_sharedDID = sharedDID;
-				std::static_pointer_cast<waypointObjectiveFunction>(penaltyFunction)->_weight = 99999999.9;
-				std::static_pointer_cast<MultiObjectiveFunction>(multiObject)->addFunction(_objectiveFunc);
-				std::static_pointer_cast<MultiObjectiveFunction>(multiObject)->addFunction(penaltyFunction);
-				nonlinearSolver._objectiveFunc = multiObject;
-
-			}
-			nonlinearSolver._eqFunc = _eqFunc;
-			nonlinearSolver._ineqFunc = _ineqFunc;
-
-			double c = clock();
 
 			if (withEQ)
 			{
@@ -471,6 +451,51 @@ namespace rovin
 				proj._inEqConstraintFunc = _ineqFunc;
 				x = proj.project(x);
 			}
+
+			double c = clock();
+
+			nonlinearSolver._eqFunc = _eqFunc;
+			if (!_waypointPositionExist)
+			{
+				nonlinearSolver._ineqFunc = _ineqFunc;
+				nonlinearSolver._objectiveFunc = _objectiveFunc;
+			}
+			else
+			{
+				nonlinearSolver._objectiveFunc = Math::FunctionPtr(new EmptyFunction);
+
+				Math::FunctionPtr multiObject = Math::FunctionPtr(new MultiObjectiveFunction);
+				Math::FunctionPtr penaltyFunction = Math::FunctionPtr(new waypointObjectiveFunction);
+				std::static_pointer_cast<waypointObjectiveFunction>(penaltyFunction)->_waypoint = _waypointPosition;
+				std::static_pointer_cast<waypointObjectiveFunction>(penaltyFunction)->_sharedDID = sharedDID;
+				std::static_pointer_cast<waypointObjectiveFunction>(penaltyFunction)->_radius = 5;
+				std::static_pointer_cast<MultiObjectiveFunction>(multiObject)->addFunction(_ineqFunc);
+				std::static_pointer_cast<MultiObjectiveFunction>(multiObject)->addFunction(penaltyFunction);
+				nonlinearSolver._ineqFunc = multiObject;
+
+				int xN = x.size();
+				VectorX temp = x;
+				x = nonlinearSolver.solve(x);
+				if (x.size() == 0)
+				{
+					x = temp;
+					Math::FunctionPtr multiObject2 = Math::FunctionPtr(new MultiObjectiveFunction2);
+					Math::FunctionPtr penaltyFunction2 = Math::FunctionPtr(new waypointObjectiveFunction2);
+					std::static_pointer_cast<waypointObjectiveFunction2>(penaltyFunction2)->_waypoint = _waypointPosition;
+					std::static_pointer_cast<waypointObjectiveFunction2>(penaltyFunction2)->_sharedDID = sharedDID;
+					std::static_pointer_cast<waypointObjectiveFunction2>(penaltyFunction2)->_weight = 1e+5;
+					std::static_pointer_cast<MultiObjectiveFunction2>(multiObject2)->addFunction(_objectiveFunc);
+					std::static_pointer_cast<MultiObjectiveFunction2>(multiObject2)->addFunction(penaltyFunction2);
+					std::static_pointer_cast<waypointObjectiveFunction>(penaltyFunction)->_radius = 1;
+					nonlinearSolver._objectiveFunc = multiObject2;
+				}
+				else
+				{
+					std::static_pointer_cast<waypointObjectiveFunction>(penaltyFunction)->_radius = 1;
+					nonlinearSolver._objectiveFunc = _objectiveFunc;
+				}
+			}
+
 
 			//cout << _Aineq_opt*x + _bineq_opt << endl;
 
@@ -1856,7 +1881,7 @@ namespace rovin
 			return val;
 		}
 
-		VectorX BSplinePointToPointOptimization::waypointObjectiveFunction::func(const VectorX& x) const
+		VectorX BSplinePointToPointOptimization::waypointObjectiveFunction2::func(const VectorX& x) const
 		{
 			VectorX result(1);
 			result.setZero();
@@ -1866,12 +1891,12 @@ namespace rovin
 			for (unsigned int i = 0; i < _waypoint.size(); i++)
 			{
 				Vector3 lastPosition;
-				Vector3 Position = rovin::Kinematics::calculateEndeffectorFrame(*_sharedDID->_socAssem, *_sharedDID->_stateTrj[0]).getPosition();
+				Vector3 Position = (rovin::Kinematics::calculateEndeffectorFrame(*_sharedDID->_socAssem, *_sharedDID->_stateTrj[0]) * TOOLTIP).getPosition();
 				Real minV = (_waypoint[i] - Position).squaredNorm();
 				for (int j = 1; j < _sharedDID->_nStep; j++)
 				{
 					lastPosition = Position;
-					Position = rovin::Kinematics::calculateEndeffectorFrame(*_sharedDID->_socAssem, *_sharedDID->_stateTrj[j]).getPosition();
+					Position = (rovin::Kinematics::calculateEndeffectorFrame(*_sharedDID->_socAssem, *_sharedDID->_stateTrj[j]) * TOOLTIP).getPosition();
 
 					if (RealBigger(((lastPosition - Position).transpose()*(_waypoint[i] - Position))(0), 0.0))
 					{
@@ -1901,12 +1926,12 @@ namespace rovin
 						}
 					}
 				}
-				result(0) += _weight * minV;
+				result(0) += minV * _weight;
 			}
 			return result;
 		}
 
-		MatrixX BSplinePointToPointOptimization::waypointObjectiveFunction::Jacobian(const VectorX& x) const
+		MatrixX BSplinePointToPointOptimization::waypointObjectiveFunction2::Jacobian(const VectorX& x) const
 		{
 			MatrixX result(1, x.size());
 			result.setZero();
@@ -1916,7 +1941,120 @@ namespace rovin
 			for (unsigned int i = 0; i < _waypoint.size(); i++)
 			{
 				Vector3 lastPosition;
-				Vector3 Position = rovin::Kinematics::calculateEndeffectorFrame(*_sharedDID->_socAssem, *_sharedDID->_stateTrj[0]).getPosition();
+				Vector3 Position = (rovin::Kinematics::calculateEndeffectorFrame(*_sharedDID->_socAssem, *_sharedDID->_stateTrj[0]) * TOOLTIP).getPosition();
+				MatrixX lastJacobi;
+				MatrixX Jacobi = rovin::Kinematics::computeJacobian(*_sharedDID->_socAssem, *_sharedDID->_stateTrj[0]);
+				Real minV = (_waypoint[i] - Position).squaredNorm();
+				MatrixX minJacobi = 2 * (_waypoint[i] - Position).transpose()*(-(-Bracket(Position)*Jacobi.topRows(3) + Jacobi.bottomRows(3))*_sharedDID->_dqdp[0]);
+				for (int j = 1; j < _sharedDID->_nStep; j++)
+				{
+					lastPosition = Position;
+					lastJacobi = Jacobi;
+					Position = (rovin::Kinematics::calculateEndeffectorFrame(*_sharedDID->_socAssem, *_sharedDID->_stateTrj[j]) * TOOLTIP).getPosition();
+					Jacobi = rovin::Kinematics::computeJacobian(*_sharedDID->_socAssem, *_sharedDID->_stateTrj[j]);
+
+					if (RealBigger(((lastPosition - Position).transpose()*(_waypoint[i] - Position))(0), 0.0))
+					{
+						Real temp = (_waypoint[i] - Position).squaredNorm();
+						if (minV > temp)
+						{
+							minV = temp;
+							minJacobi = 2 * (_waypoint[i] - Position).transpose()*
+								(-(-Bracket(Position)*Jacobi.topRows(3) + Jacobi.bottomRows(3))*_sharedDID->_dqdp[j]);
+						}
+					}
+					else if (RealBigger(((Position - lastPosition).transpose()*(_waypoint[i] - lastPosition))(0), 0.0))
+					{
+						Real temp = (_waypoint[i] - lastPosition).squaredNorm();
+						if (minV > temp)
+						{
+							minV = temp;
+							minJacobi = 2 * (_waypoint[i] - lastPosition).transpose()*
+								(-(-Bracket(lastPosition)*lastJacobi.topRows(3) + lastJacobi.bottomRows(3))*_sharedDID->_dqdp[j - 1]);
+						}
+					}
+					else
+					{
+						Vector3 a, b;
+						a = Position - lastPosition;
+						b = _waypoint[i] - lastPosition;
+						Real temp = a.cross(b).squaredNorm() / a.squaredNorm();
+						if (minV > temp)
+						{
+							minV = temp;
+							minJacobi = -2 * (b.transpose()*Bracket(a)*Bracket(a)) / (a.transpose()*a)(0)*
+								(-(-Bracket(lastPosition)*lastJacobi.topRows(3) + lastJacobi.bottomRows(3))*_sharedDID->_dqdp[j - 1]) -
+								2.0 / (a.transpose()*a)(0)*(a.transpose()*Bracket(b)*Bracket(b) - (a.transpose()*Bracket(b)*Bracket(b)*a) / (a.transpose()*a)(0)*a.transpose())*
+								(((-Bracket(Position)*Jacobi.topRows(3) + Jacobi.bottomRows(3))*_sharedDID->_dqdp[j]) - ((-Bracket(lastPosition)*lastJacobi.topRows(3) + lastJacobi.bottomRows(3))*_sharedDID->_dqdp[j - 1]));
+						}
+					}
+				}
+				result += minJacobi * _weight;
+			}
+			return result;
+		}
+
+		VectorX BSplinePointToPointOptimization::waypointObjectiveFunction::func(const VectorX& x) const
+		{
+			VectorX result(_waypoint.size());
+			result.setZero();
+
+			const MatrixX& tauTrj = _sharedDID->getTau(x);
+
+			for (unsigned int i = 0; i < _waypoint.size(); i++)
+			{
+				Vector3 lastPosition;
+				Vector3 Position = (rovin::Kinematics::calculateEndeffectorFrame(*_sharedDID->_socAssem, *_sharedDID->_stateTrj[0]) * TOOLTIP).getPosition();
+				Real minV = (_waypoint[i] - Position).squaredNorm();
+				for (int j = 1; j < _sharedDID->_nStep; j++)
+				{
+					lastPosition = Position;
+					Position = (rovin::Kinematics::calculateEndeffectorFrame(*_sharedDID->_socAssem, *_sharedDID->_stateTrj[j]) * TOOLTIP).getPosition();
+
+					if (RealBigger(((lastPosition - Position).transpose()*(_waypoint[i] - Position))(0), 0.0))
+					{
+						Real temp = (_waypoint[i] - Position).squaredNorm();
+						if (minV > temp)
+						{
+							minV = temp;
+						}
+					}
+					else if (RealBigger(((Position - lastPosition).transpose()*(_waypoint[i] - lastPosition))(0), 0.0))
+					{
+						Real temp = (_waypoint[i] - lastPosition).squaredNorm();
+						if (minV > temp)
+						{
+							minV = temp;
+						}
+					}
+					else
+					{
+						Vector3 a, b;
+						a = Position - lastPosition;
+						b = _waypoint[i] - lastPosition;
+						Real temp = a.cross(b).squaredNorm() / a.squaredNorm();
+						if (minV > temp)
+						{
+							minV = temp;
+						}
+					}
+				}
+				result(i) = minV*10000 - _radius;
+			}
+			return result;
+		}
+
+		MatrixX BSplinePointToPointOptimization::waypointObjectiveFunction::Jacobian(const VectorX& x) const
+		{
+			MatrixX result(_waypoint.size(), x.size());
+			result.setZero();
+
+			const MatrixX& tauTrj = _sharedDID->getTau(x);
+
+			for (unsigned int i = 0; i < _waypoint.size(); i++)
+			{
+				Vector3 lastPosition;
+				Vector3 Position = (rovin::Kinematics::calculateEndeffectorFrame(*_sharedDID->_socAssem, *_sharedDID->_stateTrj[0]) * TOOLTIP).getPosition();
 				MatrixX lastJacobi;
 				MatrixX Jacobi = rovin::Kinematics::computeJacobian(*_sharedDID->_socAssem, *_sharedDID->_stateTrj[0]);
 				Real minV = (_waypoint[i] - Position).squaredNorm();
@@ -1925,7 +2063,7 @@ namespace rovin
 				{
 					lastPosition = Position;
 					lastJacobi = Jacobi;
-					Position = rovin::Kinematics::calculateEndeffectorFrame(*_sharedDID->_socAssem, *_sharedDID->_stateTrj[j]).getPosition();
+					Position = (rovin::Kinematics::calculateEndeffectorFrame(*_sharedDID->_socAssem, *_sharedDID->_stateTrj[j]) * TOOLTIP).getPosition();
 					Jacobi = rovin::Kinematics::computeJacobian(*_sharedDID->_socAssem, *_sharedDID->_stateTrj[j]);
 
 					if (RealBigger(((lastPosition - Position).transpose()*(_waypoint[i] - Position))(0), 0.0))
@@ -1964,7 +2102,7 @@ namespace rovin
 						}
 					}
 				}
-				result += _weight * minJacobi;
+				result.block(i, 0, 1, x.size()) = minJacobi*10000;
 			}
 			return result;
 		}

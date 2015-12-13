@@ -1,5 +1,7 @@
 #include "Common.h"
 
+#include <iostream>
+
 using namespace std;
 using namespace Eigen;
 
@@ -286,16 +288,58 @@ namespace rovin
 
 		VectorX MultiObjectiveFunction::func(const VectorX & x) const
 		{
-			VectorX result;
-			result = (*_functionList[0])(x);
+			vector<VectorX> result;
+			result.push_back((*_functionList[0])(x));
+			VectorU sumdof(_functionList.size());
+			sumdof(0) = result[0].size();
 			for (unsigned int i = 1; i < _functionList.size(); i++)
 			{
-				result += (*_functionList[i])(x);
+				result.push_back((*_functionList[i])(x));
+				sumdof(i) = result[i].size();
+			}
+			VectorX result1(sumdof.sum());
+			int dof = 0;
+			for (unsigned int i = 0; i < _functionList.size(); i++)
+			{
+				result1.segment(dof, sumdof(i)) = result[i];
+				dof += sumdof(i);
+			}
+			return result1;
+		}
+
+		MatrixX MultiObjectiveFunction::Jacobian(const VectorX & x) const
+		{
+			vector<MatrixX> result;
+			result.push_back((*_functionList[0]).Jacobian(x));
+			VectorU sumdof(_functionList.size());
+			sumdof(0) = result[0].rows();
+			for (unsigned int i = 1; i < _functionList.size(); i++)
+			{
+				result.push_back((*_functionList[i]).Jacobian(x));
+				sumdof(i) = result[i].rows();
+			}
+			MatrixX result1(sumdof.sum(), x.size());
+			int dof = 0;
+			for (unsigned int i = 0; i < _functionList.size(); i++)
+			{
+				result1.block(dof, 0, sumdof(i), x.size()) = result[i];
+				dof += sumdof(i);
+			}
+			return result1;
+		}
+
+		VectorX MultiObjectiveFunction2::func(const VectorX & x) const
+		{
+			VectorX result(1);
+			result(0) = (*_functionList[0])(x)(0);
+			for (unsigned int i = 1; i < _functionList.size(); i++)
+			{
+				result(0) += (*_functionList[i])(x)(0);
 			}
 			return result;
 		}
 
-		MatrixX MultiObjectiveFunction::Jacobian(const VectorX & x) const
+		MatrixX MultiObjectiveFunction2::Jacobian(const VectorX & x) const
 		{
 			MatrixX result;
 			result = (*_functionList[0]).Jacobian(x);
@@ -304,6 +348,11 @@ namespace rovin
 				result += (*_functionList[i]).Jacobian(x);
 			}
 			return result;
+		}
+
+		void MultiObjectiveFunction2::addFunction(FunctionPtr func)
+		{
+			_functionList.push_back(func);
 		}
 
 		void MultiObjectiveFunction::addFunction(FunctionPtr func)

@@ -32,15 +32,21 @@ std::shared_ptr<Reflexxes::ReflexxesWrapper> ReflexxSolver;
 BSplinePointToPointOptimization::ObjectiveFunctionType objfunCond;
 shared_ptr<BSplinePointToPointOptimization> BsplinePTP;
 
+bool wrist = false;
+
 shared_ptr<OSG_simpleRender> renderer;
+
+Inertia mI(0.0);
 
 socAssemblyPtr gAssem;
 
 StatePtr state;
 
 Real pmax = 1.0, vmax = 1.0, amax = 1.0;
-Real sx, sy, sz, sdx, sdy, sdz, sddx, sddy, sddz;
-Real ex, ey, ez, edx, edy, edz, eddx, eddy, eddz;
+Real sx, sy, sz;
+Real ex, ey, ez;
+
+vector<pair<VectorX, Real>> wayPoints;
 
 Real st, sa;
 Real et, ea;
@@ -74,13 +80,46 @@ bool solving = false;
 double frameRate = 50;
 
 int order = 4;
-int nMiddleCP = 4;
+int nMiddleCP = 5;
 
 void setBoundaryValues(bool checkq0, bool checkqf, bool checkdq0, bool checkdqf, bool checkddq0, bool checkddqf);
 unsigned long __stdcall apply(void * pParam);
 unsigned long __stdcall postprocess(void * pParam);
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+bool waypoint1 = false;
+bool waypoint2 = false;
+
+
+Real w1x, w1y, w1z;
+Real w2x, w2y, w2z;
+
+Real w1t, w1a;
+Real w2t, w2a;
+
+bool timeconstraint = false;
+
+Real w1time;
+Real w2time;
+
+
+shared_ptr<Points> w1point, w2point;
+shared_ptr<Line> waypoint1zaxis, waypoint2zaxis;
+Vector3 w1zaxis, w2zaxis;
+Real w1psize = 10.0, w2psize = 10.0;
+
+
+
+
+
+
+
+
+
+
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void newstartpoint(bool);
 void newendpoint(bool);
 
@@ -120,11 +159,17 @@ int main(int argc, char *argv[])
 		state->setJointq(State::TARGET_JOINT::ACTIVEJOINT, Vector6::Zero());
 		rovin::Kinematics::solveForwardKinematics(*gAssem, *state, State::LINKS_POS);
 
-		sx = sy = sz = sdx = sdy = sdz = sddx = sddy = sddz = 0.0;
-		ex = ey = ez = edx = edy = edz = eddx = eddy = eddz = 0.0;
+		sx = sy = sz = 0.0;
+		ex = ey = ez = 0.0;
 
 		st = sa = 0.0;
 		et = ea = 0.0;
+
+		w1x = w1y = w1z = 0.0;
+		w2x = w2y = w2z = 0.0;
+
+		w1t = w1a = 0.0;
+		w2t = w2a = 0.0;
 
 		newstartpoint(true);
 		newendpoint(true);
@@ -205,16 +250,58 @@ void newendpoint(bool first = false)
 	renderer->addGeometry(*endpoint);
 }
 
+void newwaypoint1()
+{
+	if (!waypoint1) return;
+
+	if (timeconstraint)
+	{
+		w1zaxis = Vector3(cos(w1t)*cos(w1a), sin(w1t)*cos(w1a), sin(w1a));
+		waypoint1zaxis = shared_ptr<Line>(new Line);
+		waypoint1zaxis->push_back(osg::Vec3(w1x, w1y, w1z));
+		waypoint1zaxis->push_back(eigen2osgVec<osg::Vec3>(Vector3(w1x, w1y, w1z) + w1zaxis*0.1));
+		waypoint1zaxis->setColor(0.0f, 0.0f, 0.0f);
+		renderer->addGeometry(*waypoint1zaxis);
+	}
+
+	w1point = shared_ptr<Points>(new Points);
+	w1point->push_back(osg::Vec3(w1x, w1y, w1z));
+	w1point->setSize(w1psize);
+	w1point->setColor(0.0f, 0.0f, 0.0f);
+	renderer->addGeometry(*w1point);
+}
+
+void newwaypoint2()
+{
+	if (!waypoint2) return;
+
+	if (timeconstraint)
+	{
+		w2zaxis = Vector3(cos(w2t)*cos(w2a), sin(w2t)*cos(w2a), sin(w2a));
+		waypoint2zaxis = shared_ptr<Line>(new Line);
+		waypoint2zaxis->push_back(osg::Vec3(w2x, w2y, w2z));
+		waypoint2zaxis->push_back(eigen2osgVec<osg::Vec3>(Vector3(w2x, w2y, w2z) + w2zaxis*0.1));
+		waypoint2zaxis->setColor(0.0f, 0.0f, 0.0f);
+		renderer->addGeometry(*waypoint2zaxis);
+	}
+
+	w2point = shared_ptr<Points>(new Points);
+	w2point->push_back(osg::Vec3(w2x, w2y, w2z));
+	w2point->setSize(w2psize);
+	w2point->setColor(0.0f, 0.0f, 0.0f);
+	renderer->addGeometry(*w2point);
+}
+
 unsigned long __stdcall NET_RvThr(void * pParam) {
 	BOOL fSuccess;
-	char chBuf[100];
+	char chBuf[500];
 	DWORD dwBytesToWrite = (DWORD)strlen(chBuf);
 	DWORD cbRead;
 
 	while (1)
 	{
-		for (int i = 0; i < 100; i++) chBuf[i] = 0;
-		fSuccess = ReadFile(hPipe, chBuf, 100, &cbRead, NULL);
+		for (int i = 0; i < 500; i++) chBuf[i] = 0;
+		fSuccess = ReadFile(hPipe, chBuf, 500, &cbRead, NULL);
 		if (fSuccess)
 		{
 			int ix;
@@ -302,6 +389,256 @@ unsigned long __stdcall NET_RvThr(void * pParam) {
 				else if (subcommand[0].compare("effort") == 0)
 				{
 					objfunCond = BSplinePointToPointOptimization::Effort;
+				}
+
+
+				else if (subcommand[0].compare("timec") == 0)
+				{
+					if (waypoint1)
+					{
+						if (timeconstraint)
+						{
+							renderer->removeGeometry(*waypoint1zaxis);
+						}
+						renderer->removeGeometry(*w1point);
+					}
+					timeconstraint = true;
+					newwaypoint1();
+					newwaypoint2();
+				}
+				else if (subcommand[0].compare("timeuc") == 0)
+				{
+					if (timeconstraint)
+					{
+						if (waypoint1)
+						{
+							renderer->removeGeometry(*waypoint1zaxis);
+						}
+						if (waypoint2)
+						{
+							renderer->removeGeometry(*waypoint2zaxis);
+						}
+					}
+					timeconstraint = false;
+				}
+
+
+				else if (subcommand[0].compare("w1c") == 0)
+				{
+					if (waypoint1)
+					{
+						if (timeconstraint)
+						{
+							renderer->removeGeometry(*waypoint1zaxis);
+						}
+						renderer->removeGeometry(*w1point);
+					}
+					if (waypoint2)
+					{
+						if (timeconstraint)
+						{
+							renderer->removeGeometry(*waypoint2zaxis);
+						}
+						renderer->removeGeometry(*w2point);
+					}
+					waypoint1 = true;
+					newwaypoint1();
+				}
+				else if (subcommand[0].compare("w1uc") == 0)
+				{
+					if (waypoint1)
+					{
+						if (timeconstraint)
+						{
+							renderer->removeGeometry(*waypoint1zaxis);
+						}
+						renderer->removeGeometry(*w1point);
+					}
+					waypoint1 = false;
+				}
+				else if (subcommand[0].compare("w1x") == 0)
+				{
+					w1x = stod(subcommand[1]) / 100.0 * pmax * 2 - pmax;
+					if (waypoint1)
+					{
+						if (timeconstraint)
+						{
+							renderer->removeGeometry(*waypoint1zaxis);
+						}
+						renderer->removeGeometry(*w1point);
+					}
+					newwaypoint1();
+				}
+				else if (subcommand[0].compare("w1y") == 0)
+				{
+					w1y = stod(subcommand[1]) / 100.0 * pmax * 2 - pmax;
+					if (waypoint1)
+					{
+						if (timeconstraint)
+						{
+							renderer->removeGeometry(*waypoint1zaxis);
+						}
+						renderer->removeGeometry(*w1point);
+					}
+					newwaypoint1();
+				}
+				else if (subcommand[0].compare("w1z") == 0)
+				{
+					w1z = stod(subcommand[1]) / 100.0 * pmax * 2;
+					if (waypoint1)
+					{
+						if (timeconstraint)
+						{
+							renderer->removeGeometry(*waypoint1zaxis);
+						}
+						renderer->removeGeometry(*w1point);
+					}
+					newwaypoint1();
+				}
+				else if (subcommand[0].compare("w1t") == 0)
+				{
+					w1t = stod(subcommand[1]) / 100.0 * pmax * 2 - pmax;
+					if (waypoint1)
+					{
+						if (timeconstraint)
+						{
+							renderer->removeGeometry(*waypoint1zaxis);
+						}
+						renderer->removeGeometry(*w1point);
+					}
+					newwaypoint1();
+				}
+				else if (subcommand[0].compare("w1a") == 0)
+				{
+					w1a = stod(subcommand[1]) / 100.0 * pmax * 2 - pmax;
+					if (waypoint1)
+					{
+						if (timeconstraint)
+						{
+							renderer->removeGeometry(*waypoint1zaxis);
+						}
+						renderer->removeGeometry(*w1point);
+					}
+					newwaypoint1();
+				}
+				else if (subcommand[0].compare("w1time") == 0)
+				{
+					w1time = stod(subcommand[1]) / 100.0;
+				}
+
+
+				else if (subcommand[0].compare("w2c") == 0)
+				{
+					if (waypoint2)
+					{
+						if (timeconstraint)
+						{
+							renderer->removeGeometry(*waypoint2zaxis);
+						}
+						renderer->removeGeometry(*w2point);
+					}
+					waypoint2 = true;
+					newwaypoint2();
+				}
+				else if (subcommand[0].compare("w2uc") == 0)
+				{
+					if (waypoint2)
+					{
+						if (timeconstraint)
+						{
+							renderer->removeGeometry(*waypoint2zaxis);
+						}
+						renderer->removeGeometry(*w2point);
+					}
+					waypoint2 = false;
+				}
+				else if (subcommand[0].compare("w2x") == 0)
+				{
+					w2x = stod(subcommand[1]) / 100.0 * pmax * 2 - pmax;
+					if (waypoint2)
+					{
+						if (timeconstraint)
+						{
+							renderer->removeGeometry(*waypoint2zaxis);
+						}
+						renderer->removeGeometry(*w2point);
+					}
+					newwaypoint2();
+				}
+				else if (subcommand[0].compare("w2y") == 0)
+				{
+					w2y = stod(subcommand[1]) / 100.0 * pmax * 2 - pmax;
+					if (waypoint2)
+					{
+						if (timeconstraint)
+						{
+							renderer->removeGeometry(*waypoint2zaxis);
+						}
+						renderer->removeGeometry(*w2point);
+					}
+					newwaypoint2();
+				}
+				else if (subcommand[0].compare("w2z") == 0)
+				{
+					w2z = stod(subcommand[1]) / 100.0 * pmax * 2;
+					if (waypoint2)
+					{
+						if (timeconstraint)
+						{
+							renderer->removeGeometry(*waypoint2zaxis);
+						}
+						renderer->removeGeometry(*w2point);
+					}
+					newwaypoint2();
+				}
+				else if (subcommand[0].compare("w2t") == 0)
+				{
+					w2t = stod(subcommand[1]) / 100.0 * pmax * 2 - pmax;
+					if (waypoint2)
+					{
+						if (timeconstraint)
+						{
+							renderer->removeGeometry(*waypoint2zaxis);
+						}
+						renderer->removeGeometry(*w2point);
+					}
+					newwaypoint2();
+				}
+				else if (subcommand[0].compare("w2a") == 0)
+				{
+					w2a = stod(subcommand[1]) / 100.0 * pmax * 2 - pmax;
+					if (waypoint2)
+					{
+						if (timeconstraint)
+						{
+							renderer->removeGeometry(*waypoint2zaxis);
+						}
+						renderer->removeGeometry(*w2point);
+					}
+					newwaypoint2();
+				}
+				else if (subcommand[0].compare("w2time") == 0)
+				{
+					w2time = stod(subcommand[1]) / 100.0;
+				}
+
+				else if (subcommand[0].compare("ew") == 0)
+				{
+					double m = stod(subcommand[1]) / 100.0 * 5.0;
+					Inertia mm(m);
+					mm.changeFrame(gAssem->_socLink[6]._M * TOOLTIP);
+					gAssem->_socLink[6]._G -= mI;
+					gAssem->_socLink[6]._G += mm;
+					mI = mm;
+				}
+
+				else if (subcommand[0].compare("wrist") == 0)
+				{
+					wrist = true;
+				}
+				else if (subcommand[0].compare("uwrist") == 0)
+				{
+					wrist = false;
 				}
 			}
 		}
@@ -464,17 +801,105 @@ unsigned long __stdcall apply(void * pParam)
 		return 0;
 	}
 
+	BsplinePTP->_waypointPositionExist = false;
+	wayPoints = vector<pair<VectorX, Real>>();
+
+	if (timeconstraint)
+	{
+		if (waypoint1)
+		{
+			VectorX w1;
+			z = w1zaxis;
+			if (w1zaxis(0) != 0) x << -z(1), z(0), 0;
+			else if (w1zaxis(1) != 0) x << 0, -z(2), z(1);
+			else if (w1zaxis(2) != 0) x << z(2), 0, -z(0);
+			y = z.cross(x);
+			R.col(0) = x; R.col(1) = y; R.col(2) = z;
+			goalT = SE3(Vector3(w1x, w1y, w1z)) * SE3(SO3(R));
+			inversek = rovin::Kinematics::solveInverseKinematicsOnlyForEfort(*gAssem, goalT*TOOLTIP.inverse());
+			min = RealMax;
+			flag = false;
+			for (i = 0; i < inversek.size(); i++)
+			{
+				int j;
+				for (j = 0; j < 6; j++)
+				{
+					if (gAssem->getJointPtrByMateIndex(j)->getLimitPosLower()(0) <= inversek[i](j) && inversek[i](j) <= gAssem->getJointPtrByMateIndex(j)->getLimitPosUpper()(0));
+					else break;
+				}
+				if (j == 6)
+				{
+					flag = true;
+					sum = (inversek[i] - q0).squaredNorm();
+					if (min > sum)
+					{
+						min = sum;
+						w1 = inversek[i];
+					}
+				}
+			}
+			if (flag == false)
+			{
+				cout << "ERROR - WAYPOINT1 IS NOT AVAILABLE!!" << endl;
+				solving = false;
+				return 0;
+			}
+			wayPoints.push_back(pair<VectorX, Real>(w1, w1time));
+		}
+		if (waypoint1 || waypoint2)
+		{
+			BsplinePTP->setWayPoint(wayPoints);
+		}
+	}
+	else
+	{
+		if (waypoint1 || waypoint2)
+		{
+			vector<Vector3> waypointposition;
+
+			if (waypoint1)
+			{
+				waypointposition.push_back(Vector3(w1x, w1y, w1z));
+			}
+			if (waypoint2)
+			{
+				waypointposition.push_back(Vector3(w2x, w2y, w2z));
+			}
+
+			BsplinePTP->setWayPointOnlyPosition(waypointposition);
+		}
+	}
+
 	BsplinePTP->setBoundaryCondition(q0, qf, dq0, dqf, ddq0, ddqf);
 	BsplinePTP->setConstraintRange(true, true, true, true);
 
-	VectorU optActiveJointIdx(3);
-	optActiveJointIdx << 0, 1, 2;
+	VectorU optActiveJointIdx;
+	if (wrist)
+	{
+		optActiveJointIdx.setZero(6);
+		optActiveJointIdx << 0, 1, 2, 3, 4, 5;
+	}
+	else
+	{
+		optActiveJointIdx.setZero(3);
+		optActiveJointIdx << 0, 1, 2;
+	}
 	BsplinePTP->setOptimizingJointIndex(optActiveJointIdx);
 
 	cout << "OPTIMIZATION START" << endl;
-	BsplinePTP->setFinalTimeAndTimeSpanUsingGaussianQuadrature(tf, 25);
+	order = 4;
+	nMiddleCP = 4;
+	if ((waypoint1 || waypoint2) && !timeconstraint)
+	{
+		nMiddleCP = 5;
+		BsplinePTP->setFinalTimeAndTimeSpanUsingGaussianQuadrature(tf, 100);
+	}
+	else
+	{
+		BsplinePTP->setFinalTimeAndTimeSpanUsingGaussianQuadrature(tf, 25);
+	}
 	BsplinePTP->setSplineCondition(order, nMiddleCP, BSplinePointToPointOptimization::KnotType::Uniform);
-	if (BsplinePTP->run(objfunCond).size() == 0)
+	if (BsplinePTP->run(objfunCond, (waypoint1 || waypoint2) && timeconstraint).size() == 0)
 	{
 		cout << "ERROR - CANNOT FIND FEASIBLE SOLUTION!!" << endl;
 		solving = false;
@@ -535,12 +960,76 @@ unsigned long __stdcall postprocess(void * pParam)
 	cout << "===== OUR ALGORITHM =================================" << endl;
 	cout << " Tf = " << BsplinePTP->_tf << endl;
 	cout << " Computation Time = " << BsplinePTP->_computationTime << endl;
-	cout << " Objective Funcion = " << BsplinePTP->_fval << endl;
+	cout << " Objective Funcion = " << BsplinePTP->_objectiveFunc->func(BsplinePTP->_solX) << endl;
 	cout << "=====================================================" << endl << endl;
 
 	///////////////////////////////REFLEXXES////////////////////////////////////////////////////////////////////////
-	ReflexxSolver->_q0 = q0;
-	ReflexxSolver->_qf = qf;
+
+	if ((waypoint1 || waypoint2) && timeconstraint)
+	{
+		MatrixX position(6, 2 + wayPoints.size());
+		position.col(0) = q0;
+		for (unsigned int i = 0; i < wayPoints.size();i++)
+		{
+			position.col(i + 1) = wayPoints[i].first;
+		}
+		position.col(wayPoints.size() + 1) = qf;
+		ReflexxSolver->setWayPointsPos(position);
+	}
+	else if((waypoint1 || waypoint2) && !timeconstraint)
+	{
+		vector<VectorX> pp;
+		pp.push_back(q0);
+		StatePtr tempState = gAssem->makeState();
+		if (waypoint1)
+		{
+			VectorX tempX;
+			double min = RealMax;
+			for (int i = 0; i < ntrajectory; i++)
+			{
+				tempState->setJointq(State::TARGET_JOINT::ACTIVEJOINT, trajectory.col(i));
+				double tempDistance = (Vector3(w1x, w1y, w1z) - (rovin::Kinematics::calculateEndeffectorFrame(*gAssem, *tempState)*TOOLTIP).getPosition()).norm();
+				if (min > tempDistance)
+				{
+					min = tempDistance;
+					tempX = trajectory.col(i);
+				}
+			}
+			pp.push_back(tempX);
+		}
+		if (waypoint2)
+		{
+			VectorX tempX;
+			double min = RealMax;
+			for (int i = 0; i < ntrajectory; i++)
+			{
+				tempState->setJointq(State::TARGET_JOINT::ACTIVEJOINT, trajectory.col(i));
+				double tempDistance = (Vector3(w2x, w2y, w2z) - (rovin::Kinematics::calculateEndeffectorFrame(*gAssem, *tempState)*TOOLTIP).getPosition()).norm();
+				if (min > tempDistance)
+				{
+					min = tempDistance;
+					tempX = trajectory.col(i);
+				}
+			}
+			pp.push_back(tempX);
+		}
+		pp.push_back(qf);
+
+		MatrixX position(6, pp.size());
+		for (unsigned int i = 0; i < pp.size();i++)
+		{
+			position.col(i) = pp[i];
+		}
+		ReflexxSolver->setWayPointsPos(position);
+	}
+	else
+	{
+		MatrixX position(6, 2);
+		position.col(0) = q0;
+		position.col(1) = qf;
+		ReflexxSolver->setWayPointsPos(position);
+	}
+
 	for (unsigned int i = 0; i < state->getDOF(State::STATEJOINT); i++)
 	{
 		ReflexxSolver->_dqLim[i] = gAssem->getJointPtrByMateIndex(i)->getLimitVelUpper().operator[](0);
@@ -562,15 +1051,13 @@ unsigned long __stdcall postprocess(void * pParam)
 
 	if (objfunCond == BSplinePointToPointOptimization::Effort)
 	{
-		cout << " EFFORT " << endl;
 		Cost = calcEffort(torque).sum()*re_timeStep;
 	}
 	else
 	{
-		cout << " ENERGYLOSS " << endl;
 		Cost = calcEnergy(*gAssem, ReflexxSolver->getResultVel(), ReflexxSolver->getResultAcc(), torque).sum()*re_timeStep;
 	}
-	cout << "===== REFLEXXES =================================" << endl;
+	cout << "===== REFLEXXES ====================================" << endl;
 	cout << " Tf = " << (traj.cols() - 1) * re_timeStep << endl;
 	cout << " Computation Time = " << re_ctime << endl;
 	cout << " Objective Funcion = " << Cost << endl;

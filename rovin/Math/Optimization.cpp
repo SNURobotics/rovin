@@ -439,17 +439,25 @@ namespace rovin
 			srand((unsigned int)time(NULL));
 			while ((result = opt.optimize(xi, minf)) == nlopt::result::MAXEVAL_REACHED)
 			{
+				if (x[0] != x[0])
+				{
+					result = nlopt::result::FAILURE;
+					break;
+				}
+
 				for (int i = 0; i < xN; i++)
 				{
 					xi[i] += ((rand() % 100) / 50.0 - 1.0) * 1e-4;
 				}
 				opt.set_maxeval(100);
 			}
+			cout << result << endl;
 			if (result < 0) return VectorX();
 			for (int i = 0; i < xN; i++)
 			{
 				_xf(i) = xi[i];
 			}
+			cout << (*_ineqFunc)(_xf) << endl;
 			if (_NLoptSubAlgo == NonlinearOptimization::NLoptAlgorithm::NLoptSLSQP)
 			{
 				if (!OptRealEqual((*_eqFunc)(_xf), 0.0)) return VectorX();
