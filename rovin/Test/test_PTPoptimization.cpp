@@ -133,10 +133,7 @@ int main()
 
 	setBoundaryValues(checkq0, checkqf, checkdq0, checkdqf, checkddq0, checkddqf);
 
-	int optdof = 3;
-	VectorU optActiveJointIdx(optdof);
-	for (int i = 0; i < optdof; i++)
-		optActiveJointIdx(i) = i;
+	
 
 	
 	BsplinePTP->setBoundaryCondition(q0, qf, dq0, dqf, ddq0, ddqf);
@@ -162,19 +159,23 @@ int main()
 	//kjState->setJointq(State::TARGET_JOINT::ACTIVEJOINT, wayPoints[1].first);
 	//waypointposition.push_back(rovin::Kinematics::calculateEndeffectorFrame(*openchain, *kjState).getPosition());
 	//BsplinePTP->setWayPointOnlyPosition(waypointposition);
-	
-	BsplinePTP->setOptimizingJointIndex(optActiveJointIdx);
-
+	int optdof = 3;
 	int order = 4;
-	int nMiddleCP = 6;
+	int nMiddleCP = 4;
 	Real ti = 0.3;
+	VectorU optActiveJointIdx(optdof);
+	for (int i = 0; i < optdof; i++)
+		optActiveJointIdx(i) = i;
+	BsplinePTP->setOptimizingJointIndex(optActiveJointIdx);
+	
+
 
 	///////////////////////////////////////////////////////// varying tf
 	//BsplinePTP->setFinalTimeAndTimeSpan(3.0, 100);
-	BsplinePTP->setFinalTimeAndTimeSpanUsingGaussianQuadrature(3.0, 25);
-	BsplinePTP->setSplineCondition(order, nMiddleCP, BSplinePointToPointOptimization::KnotType::Uniform);
-	cout << "knot = " << BsplinePTP->_knot.transpose() << endl;
-	BsplinePTP->run(objfunCond, useWaypoint);
+	//BsplinePTP->setFinalTimeAndTimeSpanUsingGaussianQuadrature(3.0, 25);
+	//BsplinePTP->setSplineCondition(order, nMiddleCP, BSplinePointToPointOptimization::KnotType::Uniform);
+	//cout << "knot = " << BsplinePTP->_knot.transpose() << endl;
+	//BsplinePTP->run(objfunCond, useWaypoint);
 
 	///////////////////////////////////////////////////// linesearch Tf
 	//FunctionPtr tfF = FunctionPtr(new tfFunction);
@@ -190,59 +191,104 @@ int main()
 	//cout << linesearch.GoldenSectionMethod(start, (start + end) / 2.0, end);
 
 	/////////////////////////////////////////////////////////////PRINT
-	int N = 10000;
-	VectorX timeSpan(N);
-	for (int i = 0; i < N; i++)
-	{
-		timeSpan(i) = BsplinePTP->_tf / (Real)(N - 1)*(Real)i;
-	}
-	timeSpan(N - 1) = BsplinePTP->_tf - 1e-10;
-	vector<MatrixX> valvelacctau = BsplinePTP->getJointTrj(timeSpan);
-	rovin::utils::writeText(valvelacctau[0], "val.txt");
-	rovin::utils::writeText(valvelacctau[1], "vel.txt");
-	rovin::utils::writeText(valvelacctau[2], "acc.txt");
+	//int N = 10000;
+	//VectorX timeSpan(N);
+	//for (int i = 0; i < N; i++)
+	//{
+	//	timeSpan(i) = BsplinePTP->_tf / (Real)(N - 1)*(Real)i;
+	//}
+	//timeSpan(N - 1) = BsplinePTP->_tf - 1e-10;
+	//vector<MatrixX> valvelacctau = BsplinePTP->getJointTrj(timeSpan);
+	//rovin::utils::writeText(valvelacctau[0], "val.txt");
+	//rovin::utils::writeText(valvelacctau[1], "vel.txt");
+	//rovin::utils::writeText(valvelacctau[2], "acc.txt");
 
-	StatePtr tempState = openchain->makeState();
-	Real sum = 0;
-	if (objfunCond == BSplinePointToPointOptimization::EnergyLoss)
-		sum = (energyConsumptionTrj(*openchain, valvelacctau[1], valvelacctau[2], valvelacctau[3]).transpose()*VectorX::Ones(valvelacctau[0].cols()))(0) * BsplinePTP->_tf / (Real)(N - 1);
-	else if (objfunCond == BSplinePointToPointOptimization::Effort)
-	{
-		sum = (effortTrj(valvelacctau[3]).transpose()*VectorX::Ones(valvelacctau[3].cols()))(0) * BsplinePTP->_tf / (Real)(N - 1);
-	}
-	
-	cout << "Objective (fine Euler integration) : " << sum << endl;
-	cout << "Objective : " << BsplinePTP->_fval << endl;
-	cout << "Computation time : " << BsplinePTP->_computationTime << "ms" << endl;
+	//StatePtr tempState = openchain->makeState();
+	//Real sum = 0;
+	//if (objfunCond == BSplinePointToPointOptimization::EnergyLoss)
+	//	sum = (energyConsumptionTrj(*openchain, valvelacctau[1], valvelacctau[2], valvelacctau[3]).transpose()*VectorX::Ones(valvelacctau[0].cols()))(0) * BsplinePTP->_tf / (Real)(N - 1);
+	//else if (objfunCond == BSplinePointToPointOptimization::Effort)
+	//{
+	//	sum = (effortTrj(valvelacctau[3]).transpose()*VectorX::Ones(valvelacctau[3].cols()))(0) * BsplinePTP->_tf / (Real)(N - 1);
+	//}
+	//
+	//cout << "Objective (fine Euler integration) : " << sum << endl;
+	//cout << "Objective : " << BsplinePTP->_fval << endl;
+	//cout << "Computation time : " << BsplinePTP->_computationTime << "ms" << endl;
 	///////////////////////////////////////////////////////// varying tf
-	VectorX tfSet(40);
-	for (int i = 0; i < tfSet.size(); i++)
-		tfSet(i) = 2.0 + (Real)(i + 1)*0.025;
+	//VectorX tfSet(50);
+	//Real tmin = 0.5;
+	//Real tmax = 10.0;
+	//for (int i = 0; i < tfSet.size(); i++)
+	//	tfSet(i) = tmin + (tmax - tmin)*(Real) i / (Real) (tfSet.size() - 1);
+	//cout << tfSet << endl;
+	//VectorX result(tfSet.size());
+	//VectorX solved(tfSet.size());
+	//for (int i = 0; i < tfSet.size(); i++)
+	//{
+	//	BsplinePTP->setFinalTimeAndTimeSpanUsingGaussianQuadrature(tfSet(i), 25);
+	//	BsplinePTP->setSplineCondition(order, nMiddleCP, BSplinePointToPointOptimization::KnotType::Uniform);
+	//	//cout << "knot = " << BsplinePTP->_knot.transpose() << endl;
+	//	cout << tfSet(i) << endl;
+	//	BsplinePTP->run(objfunCond);
+	//	if (BsplinePTP->_resultFlag == false)
+	//	{
+	//		cout << "X" << endl;
+	//		result(i) = BsplinePTP->_fval;
+	//		solved(i) = 0;
+	//	}
+	//	else
+	//	{
+	//		result(i) = BsplinePTP->_fval;
+	//		solved(i) = 1;
+	//	}
+	//}
+	//cout << "result = " << endl;
+	//for (int i = 0; i < tfSet.size(); i++)
+	//{
+	//	cout << tfSet(i) << " " << result(i) << " " << solved(i) << endl;
+	//}
 
-	VectorX result(tfSet.size());
 
-	for (int i = 0; i < tfSet.size(); i++)
+
+	/////////////////////////////////// varying optdof
+	int n_initGuess = 20;
+	VectorI optdoftemp(2);
+	MatrixX computeTime(optdoftemp.size(), n_initGuess);
+	MatrixX objectives(optdoftemp.size(), n_initGuess);
+	
+	optdoftemp(0) = 3;
+	optdoftemp(1) = 6;
+	for (int k = 0; k < 2; k++)
 	{
-		BsplinePTP->setFinalTimeAndTimeSpanUsingGaussianQuadrature(tfSet(i), 25);
+		VectorU optActiveJointIdxTemp(optdoftemp(k));
+		for (int i = 0; i < optdoftemp(k); i++)
+			optActiveJointIdxTemp(i) = i;
+		BsplinePTP->setOptimizingJointIndex(optActiveJointIdxTemp);
+
+		BsplinePTP->setFinalTimeAndTimeSpanUsingGaussianQuadrature(3.0, 25);
 		BsplinePTP->setSplineCondition(order, nMiddleCP, BSplinePointToPointOptimization::KnotType::Uniform);
-		//cout << "knot = " << BsplinePTP->_knot.transpose() << endl;
-		cout << tfSet(i) << endl;
-		if (BsplinePTP->run(objfunCond).size() == 0)
+		
+		for (int j = 0; j < n_initGuess; j++)
 		{
-			cout << "X" << endl;
-			result(i) = 0.0;
+			if (j == 0)
+				BsplinePTP->run(objfunCond);
+			else
+			{
+				BsplinePTP->run(objfunCond, false, true);
+			}
+			if (BsplinePTP->_resultFlag == false)
+				cout << "X" << endl;
+			computeTime(k, j) = BsplinePTP->_computationTime;
+			objectives(k, j) = BsplinePTP->_fval;
 		}
-		else
-		{
-			result(i) = BsplinePTP->_fval;
-		}
-	}
-	cout << "result = " << endl;
-	for (int i = 0; i < tfSet.size(); i++)
-	{
-		cout << tfSet(i) << " " << result(i) << endl;
 	}
 
+	cout << "computationTime : " << endl;
+	cout << computeTime << endl << endl;
+	cout << "objectiveVal : " << endl;
+	cout << objectives << endl << endl;
+	///////////////////////////////////////////////////////////////////////////////////////////////////
 
 	//MatrixX Aeq_opt = BsplinePTP->_Aeq_opt;
 	//MatrixX Aeq_nopt = BsplinePTP->_Aeq_nopt;
@@ -483,6 +529,7 @@ void effortRobotModeling()
 
 void setBoundaryValues(bool checkq0, bool checkqf, bool checkdq0, bool checkdqf, bool checkddq0, bool checkddqf)
 {
+	srand((unsigned int)time(NULL));
 	//q0.setRandom(dof);
 	//qf.setRandom(dof);
 	//dq0.setRandom(dof);

@@ -145,6 +145,7 @@
     <ClCompile Include="Optimization.cpp" />
     <ClCompile Include="SE3.cpp" />
     <ClCompile Include="SO3.cpp" />
+    <ClCompile Include="Spline.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Common.h" />

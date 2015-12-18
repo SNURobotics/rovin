@@ -120,10 +120,10 @@ namespace Reflexxes
 		//	Point which generated motion will pass (include initial and final position)
 		MatrixX							_q_waypoint, _qdot_waypoint;
 
-		//VectorX							_q0, _dq0, _ddq0;
-		//VectorX							_qf, _dqf;
+		VectorX							_q0, _dq0, _ddq0;
+		VectorX							_qf, _dqf;
 		VectorX							_dqLim, _ddqLim, _dddqLim;
-		
+
 	protected:
 		int								_DOF;
 		ReflexxesAPI					_RML;
@@ -134,6 +134,8 @@ namespace Reflexxes
 		MatrixX							_qResult;
 		MatrixX							_dqResult;
 		MatrixX							_ddqResult;
+
+		
 	};
 
 }

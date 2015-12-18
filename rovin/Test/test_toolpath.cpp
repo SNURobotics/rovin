@@ -15,6 +15,7 @@
 #include <rovin/TrajectoryOptimization/GivenPathOptimization.h>
 #include <rovin/Renderer/OSG_simpleRender.h>
 #include <rovin/utils/Diagnostic.h>
+#include <rovin/utils/utils.h>
 #include <rovin/utils/fileIO.h>
 #include "efortRobot.h"
 
@@ -23,6 +24,7 @@ using namespace rovin::Math;
 using namespace rovin::Model;
 using namespace rovin::Renderer;
 using namespace rovin::TrajectoryOptimization;
+using namespace rovin::utils;
 
 socAssemblyPtr openchain;
 socAssemblyPtr efortRob = socAssemblyPtr(new efortRobot);
@@ -74,9 +76,60 @@ VectorX energyConsumptionTrj(const socAssembly& socAssem, const MatrixX& jointVe
 int main()
 {
 
+	//////////////////////////////// test SO(3) cubic spline ////////////
+	//SO3CubicSplineInterpolation so3cubic;
+	//int step = 9;
+	//VectorX sSet(step);
+	//sSet << 0, 0.5, 1.0, 3.0, 6.0, 9.0, 11.0, 11.5, 12.0;
+	//vector<SO3> oriTraj(step);
+	//for (int i = 0; i < sSet.size(); i++)
+	//{
+	//	//sSet(i) = (Real) i;
+	//	oriTraj[i] = SO3::RotX((Real)i*1.0)*SO3::RotY((Real)i*1.0);
+	//}
+	//so3cubic.setX(sSet);
+	//so3cubic.setElements(oriTraj);
+	//Vector3 w0 = Vector3::Zero();//SO3::Log(oriTraj[0].inverse()*oriTraj[1]);
+	//Vector3 wn = Vector3::Ones() * 0.99e99;// SO3::Log(oriTraj[oriTraj.size() - 2].inverse()*oriTraj[oriTraj.size() - 1]);
+
+	//so3cubic.setBoundaryConditions(w0, wn);
+	//VectorX stest(1000);
+	//int nTest = 100;
+	//vector<SO3> testOriTrjSet(nTest);
+	//vector<Vector3> logTestSet(nTest);
+	//vector<Vector3> wTestSet(nTest);
+	////cout << sSet << endl;
+	////cout << findIdx(sSet, 0.5) << endl;
+	////cout << findIdx(sSet, 3.01) << endl;
+	////so3cubic.getBodyVelocity(sSet(4));
+
+	//for (int i = 0; i < nTest; i++)
+	//{
+	//	stest(i) = (Real)i / (Real) nTest * (Real)(step - 1);
+	//	testOriTrjSet[i] = so3cubic(stest(i));
+	//	//cout << SO3::Log(testOriTrjSet[i]).transpose() << endl;
+	//	cout << so3cubic.getBodyVelocity(stest(i)).transpose() << endl;
+	//	//testTraj.push_back(eigen2osgVec<osg::Vec3>(testPosTrjSet[i] + defaultPos));
+	//}
+	//vector<SO3> testOriTrjSet2(sSet.size());
+	//VectorX error(sSet.size());
+	//for (int i = 0; i < sSet.size(); i++)
+	//{
+	//	testOriTrjSet2[i] = so3cubic(sSet(i));
+	//	error(i) = SO3::Log(oriTraj[i].inverse() * testOriTrjSet2[i]).norm();
+	//}
+	//cout << "error : " << endl;
+	//cout << error << endl;
+
+
+	/////////////////////////////////////////////////////////////////////
+
+
 	effortRobotModeling();
 	double total_time = clock();
 	
+	bool optimizeThetaOnly = true;
+
 	SE3 TlastLinkToEndeffector = SE3(Vector3(0.0, 0.0, 0.125)) * SE3(SO3::RotZ(PI)*SO3::RotY(-PI_HALF), Vector3(0.1525, 0.0, 0.0490));
 	SE3 Tbase = SE3(Vector3(0.5, 0.0, 0.0));
 
@@ -85,13 +138,20 @@ int main()
 
 
 	givenPath.loadToolPath("toolpath_test.txt");
+
 	Real curvTol = 500;
 	int nStep = 101;
 	givenPath.truncatePath(curvTol);
-	givenPath.setParameters(6600.0 / 60.0*0.001, 1e-6, 6e-3);
+	Real An = 0.1;
+	Real Jn = 30.0;
+	givenPath.setParameters(6600.0 / 60.0*0.001, 1e-7, 6e-3, An, Jn, An, Jn);
 	givenPath.setNumberofTimeStep(nStep);
 	givenPath.setThetaGridNumber(46);
 	givenPath.setConstraint(true, true, true);
+
+	givenPath.setPathNum(1);
+	if (optimizeThetaOnly)
+		givenPath.generateRealSwrtTime();
 
 	sdot0(0) = 1;
 	sdotf(0) = 1;
@@ -104,10 +164,11 @@ int main()
 	ddth0(0) = 0.0;
 	ddthf(0) = 0.0;
 	int nDOF = efortRob->makeState()->getDOF(State::TARGET_JOINT::ASSEMJOINT);
-	Math::MatrixX jointVal(nDOF, nStep * 3); // givenPath._pathN);
-	jointVal.setZero();
+	//Math::MatrixX jointVal(nDOF, nStep * 3); // givenPath._pathN);
+	//jointVal.setZero();
+	Math::MatrixX jointVal;
 	Math::VectorX qInit;
-	for (int i = 1; i < 4; i++)
+	for (int i = 1; i < 2; i++)
 	{
 		if (i > 1)
 			givenPath.setPathNum(i, qInit);
@@ -116,21 +177,26 @@ int main()
 		givenPath.findFeasibleJointSpace(0);
 		givenPath.findContinuousFeasibleSearchSpace();
 		givenPath.setThetaBound();
-
-		givenPath.setBoundaryConditionForSdot(sdot0, sdotf);
 		if (i > 1)
 			givenPath.setBoundaryConditionForTh(th0);
 		else
 			givenPath.setBoundaryConditionForTh();
-
-		givenPath.setSplineCondition(4, 5, 4, 18, true);
-
-		givenPath.run(BSplineGivenPathOptimization::ObjectiveFunctionType::EnergyLoss);
+		if (!optimizeThetaOnly)
+		{
+			givenPath.setBoundaryConditionForSdot(sdot0, sdotf);
+			givenPath.setSplineCondition(4, 5, 4, 10, true);
+			givenPath.run(BSplineGivenPathOptimization::ObjectiveFunctionType::EnergyLoss);
+		}
+		else
+		{
+			givenPath.setSplineConditionForThetaOnly(4, 6);
+			givenPath.runThetaOnly(BSplineGivenPathOptimization::ObjectiveFunctionType::EnergyLoss);
+		}
 		qInit = givenPath._jointVal.col(nStep - 1);
-		jointVal.block(0, (i-1)*nStep, nDOF, nStep) = givenPath._jointVal;
+		jointVal = givenPath._robotJointValTrj;
 	}
 	
-	
+
 
 	cout << "=======================================================" << endl;
 	cout << "TOTAL COMPUTATION TIME WITHOUT MODELING" << endl;
@@ -140,21 +206,74 @@ int main()
 	//////////////////////////////// rendering
 	Model::StatePtr state = efortRob->makeState();
 	OSG_simpleRender renderer(*efortRob, *state, 600, 600);
-	renderer._viewer.realize();
-
+	renderer.getViewer().realize();
+	Points	trajPoints;
+	renderer.addGeometry(trajPoints);
+	Line	trajLine;
+	Line	realTraj;
+	renderer.addGeometry(trajLine);
+	renderer.addGeometry(realTraj);
+	//Vector4	orange(254 / 255.0, 193 / 255.0, 27 / 255.0, 1.0), black(55 / 255.0, 55 / 255.0, 55 / 255.0, 1.0);
+	trajLine.setColor(0 / 255.0, 0 / 255.0, 255 / 255.0, 1.0);
+	Vector3 defaultPos;
+	defaultPos << -0.500, 0, 0;
+	for (int i = 0; i < givenPath._posTrj.rows(); i++)
+		realTraj.push_back(eigen2osgVec<osg::Vec3>(givenPath._posTrj.row(i).transpose() + defaultPos));
 	
+
+	//////////////////////////////// test cubic spline
+	//CubicSplineInterpolation cubic;
+	//Line testTraj;
+	//renderer.addGeometry(testTraj);
+	//testTraj.setColor(1.0, 0.0, 0.0, 1.0);	
+
+	//VectorX sSet(givenPath._endIdx - givenPath._startIdx + 1);
+	//vector<VectorX> posTrjSet(sSet.size());
+	//for (int i = 0; i < sSet.size(); i++)
+	//{
+	//	sSet(i) = givenPath._startIdx + i;
+	//	posTrjSet[i] = givenPath._posTrj.row(givenPath._startIdx + i).transpose();
+	//}
+	//VectorX Vinit = posTrjSet[1] - posTrjSet[0];
+	//VectorX Vend = posTrjSet[posTrjSet.size() - 1] - posTrjSet[posTrjSet.size() - 2];
+	//cubic.setX(sSet);
+	//cubic.setElements(posTrjSet);
+	//cubic.setBoundaryConditions(Vinit, Vend);
+	//VectorX stest(1000);
+	//vector<VectorX> testPosTrjSet(1000);
+	//for (int i = 0; i < 1000; i++)
+	//{
+	//	stest(i) = givenPath._startIdx + (Real)i * 0.001 * (Real)(givenPath._endIdx - givenPath._startIdx);
+	//	testPosTrjSet[i] = cubic(stest(i));
+	//	testTraj.push_back(eigen2osgVec<osg::Vec3>(testPosTrjSet[i] + defaultPos));
+	//}
+	//vector<VectorX> testPosTrjSet2(sSet.size());
+	//VectorX error(sSet.size());
+	//for (int i = 0; i < sSet.size(); i++)
+	//{
+	//	testPosTrjSet2[i] = cubic(sSet(i));
+	//	error(i) = (posTrjSet[i] - testPosTrjSet2[i]).norm();
+	//}
+	//cout << "error : " << endl;
+	//cout << error << endl;
+
+	////////////////////////////////////////////////////
+
+
+
 
 	double c = clock();
 	int n = 0;
 	double frameRate = 60;
 	while (1)
 	{
-		
 		if (clock() - c >= 1000 / frameRate)
 		{
-			
 			state->setJointq(State::ACTIVEJOINT, jointVal.col(n));
+			//state->setJointq(State::ACTIVEJOINT, Vector6::Zero());
 			rovin::Kinematics::solveForwardKinematics(*efortRob, *state, State::LINKS_POS);
+			trajLine.push_back(eigen2osgVec<osg::Vec3>((state->getLinkState(6)._T*TlastLinkToEndeffector).getPosition()));
+			trajPoints.push_back(eigen2osgVec<osg::Vec3>((state->getLinkState(6)._T*TlastLinkToEndeffector).getPosition()));
 			c = clock();
 		}
 		renderer.updateFrame();
@@ -163,7 +282,7 @@ int main()
 			n = 0;
 	}
 
-	renderer._viewer.run();
+	renderer.getViewer().run();
 
 
 	return 0;
@@ -293,7 +412,7 @@ void effortRobotModeling()
 	qdotmax << 100, 80, 140, 290, 290, 440;
 	qdotmax *= PI / 180;
 
-	qddotmax = 2 * qdotmax;             // user defined
+	qddotmax = 50 * qdotmax;             // user defined
 	qddotmin = -qddotmax;
 	qdddotmax = 300 * VectorX::Ones(dof);          // user defined
 	qdddotmin = -qdddotmax;
@@ -307,8 +426,8 @@ void effortRobotModeling()
 
 	VectorX temptau = (imax.cwiseProduct(gearRatio)).cwiseProduct(kt);
 	VectorX tempvel = smax.cwiseQuotient(gearRatio);
-	taumax = taumax.cwiseMax(temptau);
-	qdotmax = qdotmax.cwiseMax(tempvel);
+	taumax = taumax.cwiseMin(temptau);
+	qdotmax = qdotmax.cwiseMin(tempvel);
 	qdotmin = -qdotmax;
 	taumin = -taumax;
 	for (unsigned int i = 0; i < dof; i++)

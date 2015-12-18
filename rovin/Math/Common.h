@@ -1,10 +1,11 @@
 #pragma once
 
 #include "Constant.h"
-
+#include <iostream>
 #include <memory>
 #include <vector>
 #include <cmath>
+
 
 namespace rovin
 {
@@ -104,6 +105,61 @@ namespace rovin
 			Math::VectorX _y;
 			std::vector<std::vector<Math::VectorX>> _fs;
 		};
+
+		class CubicSplineInterpolation
+		{
+		public:
+			CubicSplineInterpolation() { _isddfCalculated = false; }
+			CubicSplineInterpolation(const Math::VectorX& x, const std::vector<Math::VectorX>& fs, const Math::VectorX& df1, const Math::VectorX& dfn);
+			// fp1, fpn for initial and final boundary conditions. 
+			// If fp1 or fpn > 0.99e99, natural spline is earned. Otherwise fp1, fpn is velocity constraint
+			Math::VectorX operator ()(const Math::Real& x);
+			
+			void setX(const Math::VectorX& x);
+			void setElements(const std::vector<Math::VectorX>& fs);
+			void setBoundaryConditions(const Math::VectorX& df1, const Math::VectorX& dfn);
+
+			Math::VectorX _x;
+			std::vector<Math::VectorX> _fs;
+			Math::VectorX _df1;
+			Math::VectorX _dfn;
+
+		private:
+			void setddf();
+			std::vector<Math::VectorX> _ddfs;
+			bool _isddfCalculated;
+			int _dim;
+		};
+
+		static int findIdx(const Math::VectorX& data, const Math::Real& x)
+		{
+			int n = data.size();
+
+			int start = 0;
+			int end = n;
+			int middle = (start + end) / 2;
+			int result = 0;
+
+			while (start < end)
+			{
+				if (data(middle) <= x)
+				{
+					result = middle;
+					start = middle + 1;
+				}
+				else
+				{
+					end = middle;
+				}
+				middle = (start + end) / 2;
+			}
+
+			if (result < 0) result = 0;
+			if (result >= n) result = n - 1;
+
+			return result;
+		}
+
 
 		static Real min(Real x, Real y)
 		{

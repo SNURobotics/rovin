@@ -4,7 +4,7 @@
 #include <vector>
 #include <fstream>
 #include <iostream>
-#include <Eigen/Dense>
+#include <Eigen/Dense> 
 
 using namespace std;
 namespace rovin
@@ -24,7 +24,7 @@ namespace rovin
 			outText.close();
 		}
 
-		Eigen::MatrixXd readFromFile(const string& fileName)
+		static Eigen::MatrixXd readFromFile(const string& fileName)
 		{
 			Eigen::MatrixXd	returnMat;
 			ifstream inputFile(fileName);

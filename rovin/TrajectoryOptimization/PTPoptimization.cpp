@@ -353,7 +353,7 @@ namespace rovin
 			VectorX x(_optActiveJointDOF*_nMiddleCP);
 
 			///////////////////////////////////////// INITIAL GUESS ///////////////////////////////////
-			//x.setRandom();
+			//
 
 			if (!useInitialGuess)
 			{
@@ -367,7 +367,21 @@ namespace rovin
 			}
 			else
 			{
-				x = _initoptGuess;
+				x.setRandom();
+				VectorX jointLB(_optActiveJointDOF);
+				VectorX jointUB(_optActiveJointDOF);
+				for (int i = 0; i < _optActiveJointDOF; i++)
+				{
+					jointLB(i) = _socAssem->getJointPtrByMateIndex(i)->getLimitPosLower()(0);
+					jointUB(i) = _socAssem->getJointPtrByMateIndex(i)->getLimitPosUpper()(0);
+					for (int j = 0; j < _nMiddleCP; j++) 
+					{
+						x(i*_nMiddleCP + j) *= 0.5*(jointUB(i) - jointLB(i));
+						x(i*_nMiddleCP + j) += 0.5*(jointUB(i) + jointLB(i));
+					}
+						
+				}
+				//x = _initoptGuess;
 			}
 			///////////////////////////////////////// EQUALITY CONSTRAINT ///////////////////////////////////
 			generateLinearEqualityConstraint();
@@ -409,14 +423,15 @@ namespace rovin
 
 
 			/////////////////////////////////////// NOPT CP & SET SHARED DID ///////////////////////////////////
-			if (!useInitialGuess)
-			{
-				generateNoptControlPoint();
-			}
-			else
-			{
-				_noptControlPoint = _initnoptGuess;
-			}
+			//if (!useInitialGuess)
+			//{
+			//	generateNoptControlPoint();
+			//}
+			//else
+			//{
+			//	_noptControlPoint = _initnoptGuess;
+			//}
+			generateNoptControlPoint();
 			setdqdp();
 			shared_ptr<SharedDID> sharedDID = shared_ptr<SharedDID>(new SharedDID(_socAssem, _nStep, _timeSpan, _timeSpanWeight, _knot,
 				BoundaryCP, _nInitCP, _nFinalCP, _nMiddleCP,
@@ -538,18 +553,26 @@ namespace rovin
 			//cout << "initial objective function : " << (*_objectiveFunc)(x)(0) << endl;
 			_resultFlag = false;
 			_solX = nonlinearSolver.solve(x);
-			if (_solX.size() != 0)
-			{
+			_fval = (*_objectiveFunc)(_solX)(0);
+			if (_eqFunc != NULL) _eqConstraintVal = (*_eqFunc)(_solX);
+			if (_ineqFunc != NULL) _ineqConstraintVal = (*_ineqFunc)(_solX);
+			
+			//cout << nonlinearSolver._Iter << endl;
+			//cout << "x : " << endl << _solX << endl;
+			cout << "obj : " << endl << (*_objectiveFunc)(_solX) << endl;
+			//cout << "eq : " << endl << (*_eqFunc)(x) << endl;
+			//cout << "ineq : " << endl << (*_ineqFunc)(x) << endl;
+			
+
+			Real maxIneq = (*_ineqFunc)(_solX).maxCoeff();
+			
+			
+
+			if (RealLess(maxIneq, 1e-4))
 				_resultFlag = true;
-				_fval = (*_objectiveFunc)(_solX)(0);
-				if (_eqFunc != NULL) _eqConstraintVal = (*_eqFunc)(_solX);
-				if (_ineqFunc != NULL) _ineqConstraintVal = (*_ineqFunc)(_solX);
-			}
-			cout << nonlinearSolver._Iter << endl;
-			cout << "x : " << endl << _solX << endl;
-			cout << "obj : " << endl << (*_objectiveFunc)(x) << endl;
-			cout << "eq : " << endl << (*_eqFunc)(x) << endl;
-			cout << "ineq : " << endl << (*_ineqFunc)(x) << endl;
+			else
+				cout << "maxineq : " << endl << maxIneq << endl;
+
 			_computationTime = clock() - c;
 			return _solX;
 		}

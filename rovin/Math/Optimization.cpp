@@ -455,21 +455,21 @@ namespace rovin
 				cout << endl;
 				opt.set_maxeval(100);
 			}
-			if (result < 0) return VectorX();
+			//if (result < 0) return VectorX();
 			for (int i = 0; i < xN; i++)
 			{
 				_xf(i) = xi[i];
 			}
-			if (_NLoptSubAlgo == NonlinearOptimization::NLoptAlgorithm::NLoptSLSQP)
-			{
-				if (!OptRealEqual((*_eqFunc)(_xf), 0.0)) return VectorX();
-				if (!OptRealLessEqual((*_ineqFunc)(_xf), 0.0)) return VectorX();
-			}
-			else
-			{
-				if (!OptRealLessEqual((*_ineqFunc)(_xf), 0.0)) return VectorX();
+			//if (_NLoptSubAlgo == NonlinearOptimization::NLoptAlgorithm::NLoptSLSQP)
+			//{
+			//	if (!OptRealEqual((*_eqFunc)(_xf), 0.0)) return VectorX();
+			//	if (!OptRealLessEqual((*_ineqFunc)(_xf), 0.0)) return VectorX();
+			//}
+			//else
+			//{
+			//	if (!OptRealLessEqual((*_ineqFunc)(_xf), 0.0)) return VectorX();
 
-			}
+			//}
 			return _xf;
 		}
 

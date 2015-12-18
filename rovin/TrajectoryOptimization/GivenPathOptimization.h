@@ -20,16 +20,43 @@ namespace rovin
 			GivenPathOptimization();
 			~GivenPathOptimization();
 
-			
-
 			// Problem definition
 			void setSOCRobotModel(const Model::socAssemblyPtr& socAssem, const Math::SE3& Tbase, const Math::SE3& TlastLinkToEndeffector);
 			void loadToolPath(const std::string& fileName);
 			void setNumberofTimeStep(const int nStep);
-			void setParameters(const Math::Real feedRate, const Math::Real chordError, const Math::Real robotTimeStep);
+			void setParameters(const Math::Real feedRate, const Math::Real chordError, const Math::Real robotTimeStep, const Math::Real An, const Math::Real Jn, const Math::Real At, const Math::Real Jt);
 			void truncatePath(const Math::Real curvTol);
 			void setThetaGridNumber(const int thN);
 			void setPathNum(const int pathNum, const Math::VectorX& qInit = (Math::VectorX()));
+
+			// generate S-shape feed rate profile  (from Xu Du et al., "A complete S-shape feed rate scheduling approach for NURBS interpolator")
+			void generateRealSwrtTime();
+			Math::Real s_a(const Math::Real vs, const Math::Real ve);
+			Math::Real s_d(const Math::Real vs, const Math::Real ve);
+			std::vector<Math::Real> findDurationForShortBlock(const Math::Real vs, const Math::Real ve, const Math::Real vmax);
+			std::vector<Math::Real> findDurationForShortBlock2(const Math::Real vs, const Math::Real ve, const Math::Real vmax);
+			std::vector<Math::Real> findDurationForLongBlock(const Math::Real vs, const Math::Real ve, const Math::Real si);
+			std::vector<Math::Real> findDurationForMediumBlock(const Math::Real vs, const Math::Real ve, const Math::Real si, const Math::Real eps = 1e-8);
+			std::pair<std::vector<Math::Real>, std::vector<Math::Real>> getArcLengthFromTimeDuration(const std::vector<Math::Real> T, const Math::Real vs);
+			class cubicFunction : public Function
+			{
+			public:
+				cubicFunction() {}
+				Math::VectorX func(const Math::VectorX& x) const;
+				Real _Jt;
+				Real _vn;
+				Real _si;
+			};
+			class quadFunction : public Function
+			{
+			public:
+				quadFunction() {}
+				Math::VectorX func(const Math::VectorX& x) const;
+				Real _Jt;
+				Real _At;
+				Real _si;
+				Real _vn;
+			};
 
 			// generate constraint for sdot from curvature and feedrate
 			void generateSdotMax(const int startIdx, const int endIdx);
@@ -38,8 +65,10 @@ namespace rovin
 			void solveInverseKinematics(const int startIdx, const int endIdx, const Math::VectorX& qInit = (Math::VectorX()));
 			Math::Real getManipulability(const Math::Matrix6X& J);
 			void findFeasibleJointSpace(const int invIdx, const Real manipTol = 0.005, const Real invSolTol = 6.0);
-			static Math::VectorX transferJointValueTemp(Math::VectorX qiTrj, const Real etha = 1.0);
-			static Math::VectorX transferJointValue(Math::VectorX qiTrj, const Real etha = 1.0);
+			static Math::VectorX transferJointValueTest(Math::VectorX qiTrj, const Real etha = 1.0);
+			static Math::VectorX transferJointValueOld(Math::VectorX qiTrj, const Real etha = 1.0);
+			static Math::VectorX transferJointValue(const Math::VectorX& qiTrj);
+			static Math::VectorX flipJointValue(const Math::VectorX& qTrj, Real q_bf);
 			void findContinuousFeasibleSearchSpace();
 			void setThetaBound(Eigen::Matrix<int, -1, -1>& feasibleRegion);
 			void setThetaBound();
@@ -52,7 +81,6 @@ namespace rovin
 			
 			// set constraint
 			void setConstraint(bool velConstraintExist = (false), bool accConstraintExist = (false), bool torqueConstraintExist = (false));
-
 
 			// TO DO
 			std::vector<Math::VectorX> sortInvKinSol(std::vector<Math::VectorX> qCur, const std::vector<Math::VectorX> qBf);
@@ -73,7 +101,7 @@ namespace rovin
 			Math::MatrixX _zAxisTrj;
 			Math::VectorX _curvature;
 			Math::VectorX _speed;
-
+			
 			bool _pathTruncated;
 
 			// parameters
@@ -81,11 +109,20 @@ namespace rovin
 			Math::Real _chordError;			// permissible tracking error
 			Math::Real _robotTimeStep;
 			Math::Real _criticalCurvature;
+			Math::Real _An;
+			Math::Real _Jn;
+			Math::Real _At;
+			Math::Real _Jt;
 			// truncated path index
 			std::vector<unsigned int> _startPathIdx;
 			std::vector<unsigned int> _endPathIdx;
+			int _startIdx;
+			int _endIdx;
 			int _pathN;
-
+			CubicSplineInterpolation _posCubic;
+			CubicSplineInterpolation _zAxisCubic;
+			std::vector<CubicSplineInterpolation> _RCubic;
+			std::vector<SO3>  _Ri;			// SE(3) trajectory of theta = 0 at s = s_i
 			// grid number
 			int _thN;		// 0 ~ 2*pi
 			int _thNdouble;	// -2*pi ~ 2*pi
@@ -95,9 +132,13 @@ namespace rovin
 			Math::VectorX _sSpan;
 			// arc length
 			Math::Real _sf;
+			CubicSplineInterpolation _realSCubic;
+			CubicSplineInterpolation _sCubic;
+			Math::Real _tfForThetaOnly;
 
 			// inverse kinematics solutions
 			std::vector<std::vector<Math::MatrixX>> _invKinSol;
+			int _invIdx;
 
 			// feasible search space
 			Eigen::Matrix<int, -1, -1> _feasibleSet;
@@ -156,6 +197,7 @@ namespace rovin
 					const int nInitCPsdot, const int nMiddleCPsdot, const int nFinalCPsdot, const int nInitCPTh, const int nMiddleCPTh, const int nFinalCPTh,
 					const Math::VectorX& knotSdot, const Math::VectorX& knotTh, 
 					const std::vector<Math::VectorX>& boundaryCPsdot, const std::vector<Math::VectorX>& boundaryCPth);
+				
 				const Math::MatrixX& getTau(const Math::VectorX& controlPoint);
 				const Math::MatrixX& getJointVal(const Math::VectorX& controlPoint);
 				const Math::MatrixX& getJointVel(const Math::VectorX& controlPoint);
@@ -165,10 +207,19 @@ namespace rovin
 				void getSFromSdotUsingGaussianQuadrature();
 				void setTimeSpan();
 				void setTimeSpanUsingGaussianQuadrature();
-
+				// optimize theta only
+				// constructor for theta only case
+				sharedVar(const Model::socAssemblyPtr socAssem, const int nStep, const Real tf,
+					const CubicSplineInterpolation& sCubic, const CubicSplineInterpolation& realSCubic,
+					const Math::VectorX& sSetInvKin, const Math::VectorX& thSetInvKin, std::vector<Math::MatrixX> invKinSolData,
+					const int nInitCPTh, const int nMiddleCPTh, const int nFinalCPTh,
+					const Math::VectorX& knotTh, const std::vector<Math::VectorX>& boundaryCPth);
+				void compareControlPointThetaOnly(const Math::VectorX& controlPoint);
 
 			public:
+				bool _optimizeThetaOnly;
 				Model::socAssemblyPtr _socAssem;
+				int _nDOF;
 				std::vector<Model::StatePtr> _stateTrj;
 				Math::MatrixX _tau;
 				Math::MatrixX _jointVal;
@@ -179,7 +230,10 @@ namespace rovin
 				// number of time step
 				int _nStep;
 				
-				int _nDOF;
+				// given s(t) in optimize theta only case
+				CubicSplineInterpolation _sCubic;
+				CubicSplineInterpolation _realSCubic;
+
 				// earned from integration of sdot w.r.t. s
 				Math::Real _tf;
 				Math::VectorX _timeSpanForS;
@@ -233,12 +287,15 @@ namespace rovin
 
 
 			void setSplineCondition(const unsigned int orderTh, const unsigned int nMiddleCPTh, const unsigned int orderS, const unsigned int nMiddleCPS, bool isKnotUniform, int par = 10);
+			void setSplineConditionForThetaOnly(const unsigned int orderTh, const unsigned int nMiddleCPTh);
 			void setLinearInequalityConstraint();
-			
+			void setLinearInequalityConstraintForThetaOnly();
+			void getRobotTrajectory(sharedVar& sharedVar, const Math::VectorX& controlPoint);
+
 			//////////////////////////////////////////////////////////////// run
 			
 			Math::VectorX run(const ObjectiveFunctionType& objectiveType);
-
+			Math::VectorX runThetaOnly(const ObjectiveFunctionType& objectiveType);
 
 			///////////////////////////////////////////// functions
 
@@ -285,9 +342,16 @@ namespace rovin
 			{
 			public:
 				nonLinearInequalityConstraint() {}
+				enum Type
+				{
+					VEL,
+					TORQUE,
+					ACC
+				};
 				void loadConstraint(const Model::socAssemblyPtr& socAssem, bool velConstraintExist = (false), bool torqueConstraintExist = (false), bool accConstraintExist = (false));
 
 				Math::VectorX func(const Math::VectorX& x) const;
+				void showConstraint(const Math::VectorX& x, Type type) const;
 				//Math::MatrixX Jacobian(const Math::VectorX& x) const;
 				//std::vector<Math::MatrixX> Hessian(const Math::VectorX& x) const;
 
@@ -338,6 +402,7 @@ namespace rovin
 			Math::MatrixX _jointVel;
 			Math::MatrixX _jointAcc;
 			Math::MatrixX _jointTorque;
+			Math::MatrixX _robotJointValTrj;
 		};
 
 	}

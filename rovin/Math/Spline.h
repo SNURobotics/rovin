@@ -1,7 +1,8 @@
 #pragma once
 
 #include "Constant.h"
-
+#include "Common.h"
+#include "LieGroup.h"
 #include <cassert>
 
 namespace rovin
@@ -183,5 +184,52 @@ namespace rovin
 			int _D;
 			int _M;
 		};
+
+
+		class SO3CubicSplineInterpolation
+		{
+		public:
+			SO3CubicSplineInterpolation() { _isBoundaryConditionSolved = false; }
+			SO3CubicSplineInterpolation(const Math::VectorX& x, const std::vector<Math::SO3> fs, const Math::Vector3& df1, const Math::Vector3& dfn);
+			~SO3CubicSplineInterpolation() {}
+			class BoundaryConditionFunction : public Function
+			{
+			public:
+				BoundaryConditionFunction() {}
+				Math::VectorX func(const Math::VectorX& x) const;
+				Math::VectorX _x;
+				std::vector<Math::SO3> _fs;
+				Math::Vector3 _df1;
+				Math::Vector3 _dfn;
+			};
+
+			Math::SO3 operator ()(const Math::Real& x);
+			void setX(const Math::VectorX& x);
+			void setElements(const std::vector<Math::SO3>& fs);
+			void setBoundaryConditions(const Math::Vector3& df1, const Math::Vector3& dfn);
+
+			void   forwardPass();
+			Math::Vector3	getBodyVelocity(const Math::Real& x);
+			Math::Vector3	getBodyAcceleration(const Math::Real& x);
+
+			void solveBoundaryCondition();
+
+
+		public:
+			bool _isBoundaryConditionSolved;
+
+			Math::VectorX _x;
+			std::vector<Math::SO3> _fs;
+			Math::Vector3 _df1;
+			Math::Vector3 _dfn;
+			Math::Vector3 _ddf1;
+			int									_K;				// number of control points
+			std::vector<Math::Vector3>			_a;				// 3rd order term
+			std::vector<Math::Vector3>			_b;				// 2nd order term
+			std::vector<Math::Vector3>			_c;				// 1st order term
+
+		};
+
+
 	}
 }

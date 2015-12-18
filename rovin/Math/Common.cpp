@@ -311,35 +311,6 @@ namespace rovin
 			_functionList.push_back(func);
 		}
 
-		int findIdx(const VectorX& data, const Real& x)
-		{
-			int n = data.size();
-
-			int start = 0;
-			int end = n;
-			int middle = (start + end) / 2;
-			int result;
-
-			while (start < end)
-			{
-				if (data(middle) <= x)
-				{
-					result = middle;
-					start = middle + 1;
-				}
-				else
-				{
-					end = middle;
-				}
-				middle = (start + end) / 2;
-			}
-
-			if (result < 0) result = 0;
-			if (result >= n) result = n - 1;
-
-			return result;
-		}
-
 		VectorX BilinearInterpolation::operator ()(const Math::Real& x, const Math::Real& y)
 		{
 			int xidx = findIdx(_x, x);
@@ -351,7 +322,7 @@ namespace rovin
 			Real y2;
 
 			if (xidx == _x.size() - 1 && yidx == _y.size() - 1)
-				return _fs[xidx][yidx];			
+				return _fs[xidx][yidx];
 			else if (xidx == _x.size() - 1)
 			{
 				y2 = _y(yidx + 1);
@@ -396,7 +367,7 @@ namespace rovin
 				Real x2 = _x(xidx + 1);
 				return ((x - x1) / (x2 - x1))*(_fs[xidx + 1] - _fs[xidx]) + _fs[xidx];
 			}
-			
+
 		}
 		void LinearInterpolation::setX(const Math::VectorX & x)
 		{
@@ -406,5 +377,101 @@ namespace rovin
 		{
 			_fs = fs;
 		}
-}
+		CubicSplineInterpolation::CubicSplineInterpolation(const Math::VectorX & x, const vector<Math::VectorX>& fs, const Math::VectorX & fp1, const Math::VectorX & fpn)
+		{
+			_x = x;
+			_fs = fs;
+			_df1 = fp1;
+			_dfn = fpn;
+			setddf();
+			_isddfCalculated = true;
+
+		}
+		Math::VectorX CubicSplineInterpolation::operator()(const Math::Real & x)
+		{
+			if (!_isddfCalculated)
+			{
+				setddf();
+				_isddfCalculated = true;
+			}
+			int xIdx = findIdx(_x, x);
+			Real h, b, a;
+			VectorX y(_dim);
+			if (xIdx == _x.size() - 1)
+			{
+				y = _fs[xIdx];
+			}
+			else
+			{
+				h = _x(xIdx + 1) - _x(xIdx);
+				if (RealEqual(h, 0.0))
+					cout << "Bad input to routine spline." << endl;
+				a = (_x(xIdx + 1) - x) / h;
+				b = (x - _x(xIdx)) / h;
+				y = a*_fs[xIdx] + b*_fs[xIdx + 1] + ((a*a*a - a)*_ddfs[xIdx] + (b*b*b - b)*_ddfs[xIdx + 1])*(h*h) / 6.0;
+			}
+			return y;
+		}
+		void CubicSplineInterpolation::setddf()
+		{
+			Real p, qn, sig, un;
+			int n = _x.size();
+			_dim = _fs[0].size();
+			VectorX u(n - 1);
+			_ddfs.resize(n);
+			for (int j = 0; j < n; j++)
+				_ddfs[j].resize(_dim);
+			for (int i = 0; i < _dim; i++)
+			{
+				if (_df1(i) > 0.99e99)
+				{
+					// natural spline (second deriv = 0)
+					_ddfs[0](i) = u(0) = 0.0;
+				}
+				else
+				{
+					// initial velocity constraint
+					_ddfs[0](i) = -0.5;
+					u(0) = (3.0 / (_x(1) - _x(0)))*((_fs[1](i) - _fs[0](i)) / (_x(1) - _x(0)) - _df1(i));
+				}
+				for (int j = 1; j < n - 1; j++)
+				{
+					sig = (_x(j) - _x(j - 1)) / (_x(j + 1) - _x(j - 1));
+					p = sig*_ddfs[j - 1](i) + 2.0;
+					_ddfs[j](i) = (sig - 1.0) / p;
+					u(j) = (_fs[j + 1](i) - _fs[j](i)) / (_x(j + 1) - _x(j)) - (_fs[j](i) - _fs[j - 1](i)) / (_x(j) - _x(j - 1));
+					u(j) = (6.0*u(j) / (_x(j + 1) - _x(j - 1)) - sig*u(j - 1)) / p;
+				}
+				if (_dfn(i) > 0.99e99)
+				{
+					// natural spline (second deriv = 0)
+					qn = un = 0.0;
+				}
+				else
+				{
+					// final velocity constraint
+					qn = 0.5;
+					un = (3.0 / (_x(n - 1) - _x(n - 2)))*(_dfn(i) - (_fs[n - 1](i) - _fs[n - 2](i)) / (_x(n - 1) - _x(n - 2)));
+				}
+				_ddfs[n - 1](i) = (un - qn*u(n - 2)) / (qn*_ddfs[n - 2](i) + 1.0);
+				for (int k = n - 2; k >= 0; k--)
+					_ddfs[k](i) = _ddfs[k](i)*_ddfs[k + 1](i) + u(k);
+			}
+
+		}
+		void CubicSplineInterpolation::setX(const Math::VectorX & x)
+		{
+			_x = x;
+		}
+		void CubicSplineInterpolation::setElements(const std::vector<Math::VectorX>& fs)
+		{
+			_fs = fs;
+		}
+		void CubicSplineInterpolation::setBoundaryConditions(const Math::VectorX & fp1, const Math::VectorX & fpn)
+		{
+			_df1 = fp1;
+			_dfn = fpn;
+		}
+
+	}
 }
